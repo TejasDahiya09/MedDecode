@@ -10,3 +10,13 @@ __pycache__/
 
 # Test/cache files
 .pytest_cache/
+
+# Shared local configuration; retain committed example templates
+.env.*
+!.env.example
+
+# Node dependencies, build output, coverage, and local logs
+node_modules/
+dist/
+coverage/
+*.log
