@@ -1813,3 +1813,43 @@ from {
 @media (max-width: 1099px) { .cc-landing-page .cc-public-footer-inner { flex-direction: column; } .cc-landing-page .cc-public-footer-nav { width: 100%; } }
 @media (max-width: 479px) { .cc-landing-page .cc-public-menu-trigger { padding-inline: 0.5rem; } .cc-landing-page .cc-public-menu-trigger > span { display: none; } .cc-landing-page .cc-public-header-inner { padding-inline: 1rem; } .cc-landing-page .md-public-actions { gap: 0.35rem; } }
 @media (max-width: 359px) { .cc-landing-page .cc-public-header .md-public-wordmark { display: none; } }
+
+/* B.3.1: mobile readability and discoverability; desktop showcase stays unchanged. */
+@media (max-width: 767px) {
+  .cc-landing-page .cc-showcase-selector {
+    grid-auto-flow: row;
+    grid-auto-columns: auto;
+    grid-template-columns: minmax(0, 1fr);
+    overflow: visible;
+    scroll-snap-type: none;
+    padding-bottom: 0.3rem;
+  }
+  .cc-landing-page .cc-showcase-option strong {
+    font-size: 0.875rem;
+  }
+  .cc-landing-page .cc-showcase-option small {
+    font-size: 0.875rem;
+    line-height: 1.5;
+  }
+  .cc-landing-page .cc-feature-copy p,
+  .cc-landing-page .cc-canvas-match p,
+  .cc-landing-page .cc-journey-steps p,
+  .cc-landing-page .cc-public-footer p,
+  .cc-landing-page .cc-public-footer-nav,
+  .cc-landing-page .md-preview-note {
+    font-size: 0.875rem;
+    line-height: 1.6;
+  }
+  .cc-landing-page .cc-canvas-match strong {
+    font-size: 0.875rem;
+  }
+  .cc-landing-page .cc-product-canvas .cc-record-label,
+  .cc-landing-page .md-capability-scene > .cc-record-label,
+  .cc-landing-page .cc-canvas-workspace,
+  .cc-landing-page .cc-canvas-footer,
+  .cc-landing-page .cc-visual-caption,
+  .cc-landing-page .cc-public-footer-nav strong {
+    font-size: 0.75rem;
+    line-height: 1.5;
+  }
+}
