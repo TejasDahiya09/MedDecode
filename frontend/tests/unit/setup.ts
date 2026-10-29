@@ -4,6 +4,8 @@ import { cleanup } from '@testing-library/react';
 beforeEach(() => {
   if (typeof window === 'undefined') return;
   localStorage.clear();
+  window.history.replaceState({}, '', '/');
+  vi.stubGlobal('scrollTo', vi.fn());
   document.documentElement.removeAttribute('data-theme');
   document.head.innerHTML = '<meta name="theme-color" content="#f8fafc">';
 });

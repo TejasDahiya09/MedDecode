@@ -20,35 +20,33 @@ for (const viewport of [
       await page.setViewportSize(viewport);
       await page.emulateMedia({ colorScheme: theme, reducedMotion: 'reduce' });
       await page.goto('/');
-      await expect(page.getByRole('heading', { name: 'MedDecode', exact: true })).toBeVisible();
-      await expect(page.getByText('Intelligence Behind Every Prescription')).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'Home', exact: true })).toBeVisible();
+      await expect(page.getByRole('link', { name: 'MedDecode home' })).toBeVisible();
       await expect(page.getByText(/Product workflows are not yet implemented/)).toBeVisible();
-      const select = page.getByLabel('Appearance');
-      await page.keyboard.press('Tab');
-      await expect(select).toBeFocused();
-      expect(await select.evaluate((element) => getComputedStyle(element).outlineStyle)).toBe('solid');
-      await page.keyboard.press('Home');
-      await page.keyboard.press('ArrowDown');
+      const control = page.getByRole('button', { name: `Use ${theme} theme` });
+      await control.focus();
+      await expect(control).toBeFocused();
+      expect(await control.evaluate((element) => getComputedStyle(element).outlineStyle)).toBe('solid');
       await page.keyboard.press('Enter');
-      await expect(select).toHaveValue('dark');
-      await select.selectOption(theme);
       await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
       await page.reload();
-      await expect(select).toHaveValue(theme);
+      await expect(control).toHaveAttribute('aria-pressed', 'true');
       await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
-      const box = await select.boundingBox();
+      const box = await control.boundingBox();
       expect(box?.height).toBeGreaterThanOrEqual(44);
       // Verify actual provisional text/background contrast, not only token declarations.
-      const ratios = await page.locator('h1, .muted, .tagline').evaluateAll((elements) => {
+      const ratios = await page.locator('h1, .md-placeholder-note, .cc-empty p').evaluateAll((elements) => {
         const luminance = (color: string) => {
           const channels = color.match(/[\d.]+/g)!.slice(0, 3).map(Number).map((v) => {
             const c = v / 255; return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
           });
           return channels[0] * 0.2126 + channels[1] * 0.7152 + channels[2] * 0.0722;
         };
-        const surface = luminance(getComputedStyle(document.querySelector('.foundation-panel')!).backgroundColor);
         return elements.map((element) => {
+          let parent: Element | null = element;
+          while (parent && ['rgba(0, 0, 0, 0)', 'transparent'].includes(getComputedStyle(parent).backgroundColor)) parent = parent.parentElement;
+          const surface = luminance(getComputedStyle(parent ?? document.documentElement).backgroundColor);
           const text = luminance(getComputedStyle(element).color);
           return (Math.max(text, surface) + 0.05) / (Math.min(text, surface) + 0.05);
         });
@@ -56,7 +54,7 @@ for (const viewport of [
       for (const ratio of ratios) expect(ratio).toBeGreaterThanOrEqual(4.5);
       await mkdir('test-results/evidence', { recursive: true });
       const mode = baseURL?.includes(':4174') ? 'preview' : 'dev';
-      await page.screenshot({ path: `test-results/evidence/${mode}-${viewport.name}-${theme}-${viewport.width}x${viewport.height}.png`, fullPage: true });
+      await page.screenshot({ path: `test-results/evidence/${mode}-shell-${viewport.name}-${theme}-${viewport.width}x${viewport.height}.png`, fullPage: true, animations: 'disabled' });
       expect(serviceRequests).toEqual([]);
       expect(errors).toEqual([]);
     });
@@ -66,13 +64,12 @@ for (const viewport of [
 test('system preference follows the OS; explicit preferences override it', async ({ page }) => {
   await page.emulateMedia({ colorScheme: 'light' });
   await page.goto('/');
-  const select = page.getByLabel('Appearance');
-  await expect(select).toHaveValue('system');
+  await expect(page.getByRole('button', { name: 'Use system theme' })).toHaveAttribute('aria-pressed', 'true');
   await page.emulateMedia({ colorScheme: 'dark' });
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
-  await select.selectOption('light');
+  await page.getByRole('button', { name: 'Use light theme' }).click();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
-  await select.selectOption('system');
+  await page.getByRole('button', { name: 'Use system theme' }).click();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
 });
 
@@ -80,8 +77,8 @@ test('synchronizes preferences between real browser tabs', async ({ page, contex
   await page.goto('/');
   const second = await context.newPage();
   await second.goto('/');
-  await page.getByLabel('Appearance').selectOption('dark');
-  await expect(second.getByLabel('Appearance')).toHaveValue('dark');
+  await page.getByRole('button', { name: 'Use dark theme' }).click();
+  await expect(second.getByRole('button', { name: 'Use dark theme' })).toHaveAttribute('aria-pressed', 'true');
   await expect(second.locator('html')).toHaveAttribute('data-theme', 'dark');
   await second.close();
 });

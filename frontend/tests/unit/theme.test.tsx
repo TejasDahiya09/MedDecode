@@ -29,8 +29,8 @@ beforeEach(() => {
 it.each(['light', 'dark', 'system'])('renders stored preference %s through providers', (mode) => {
   localStorage.setItem(themeStorageKey, mode);
   mount();
-  expect((screen.getByLabelText('Appearance') as HTMLSelectElement).value).toBe(mode);
-  expect(screen.getByRole('heading', { name: 'MedDecode' })).toBeTruthy();
+  expect(screen.getByRole('button', { name: `Use ${mode} theme` }).getAttribute('aria-pressed')).toBe('true');
+  expect(screen.getByRole('heading', { name: 'Home' })).toBeTruthy();
 });
 it.each([null, 'invalid'])('falls back to system for preference %s', (value) => {
   if (value !== null) localStorage.setItem(themeStorageKey, value);
@@ -43,19 +43,19 @@ it('supports blocked reads and writes with session-only selection', () => {
   vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => { throw new DOMException('Blocked', 'SecurityError'); });
   vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new DOMException('Blocked', 'SecurityError'); });
   mount();
-  fireEvent.change(screen.getByLabelText('Appearance'), { target: { value: 'dark' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Use dark theme' }));
   expect(document.documentElement.dataset.theme).toBe('dark');
 });
 it('selects, persists and resolves light, dark and system modes', () => {
   mount();
   for (const mode of ['dark', 'light', 'system']) {
-    fireEvent.change(screen.getByLabelText('Appearance'), { target: { value: mode } });
+    fireEvent.click(screen.getByRole('button', { name: `Use ${mode} theme` }));
     expect(localStorage.getItem(themeStorageKey)).toBe(mode);
     expect(document.documentElement.dataset.theme).toBe(mode === 'system' ? 'light' : mode);
   }
   changeSystem(true);
   expect(document.documentElement.dataset.theme).toBe('dark');
-  fireEvent.change(screen.getByLabelText('Appearance'), { target: { value: 'light' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Use light theme' }));
   changeSystem(false);
   changeSystem(true);
   expect(document.documentElement.dataset.theme).toBe('light');
@@ -68,7 +68,7 @@ it('synchronizes storage updates and clearing', () => {
   });
   expect(document.documentElement.dataset.theme).toBe('dark');
   act(() => { localStorage.clear(); window.dispatchEvent(new StorageEvent('storage', { key: null })); });
-  expect((screen.getByLabelText('Appearance') as HTMLSelectElement).value).toBe('system');
+  expect(screen.getByRole('button', { name: 'Use system theme' }).getAttribute('aria-pressed')).toBe('true');
 });
 it('cleans up listeners after Strict Mode and unmount', () => {
   const remove = vi.spyOn(window, 'removeEventListener');

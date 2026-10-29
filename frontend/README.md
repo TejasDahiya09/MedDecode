@@ -1,60 +1,49 @@
-# MedDecode frontend foundation
+# MedDecode frontend foundation and shell
 
-This phase provides an independently runnable React verification screen, theme preferences, generic JSON transport, and focused tests. Product workflows, authentication, medicine data, application API integration, and final visual identity are not implemented. Colors and the retained favicon are provisional. No CampusConnect assets are included.
+Run all commands from `frontend/`. Verified with Node 24.11.1 and npm 11.6.2; the package engine range is `^22.13.0 || >=24.0.0`.
 
-## Prerequisites and installation
-
-Node.js 24.11.1 and npm 11.6.2 were used for verification. The supported tooling range is Node `^22.13.0 || >=24.0.0`; other versions in that range were not tested. Run commands from `frontend/`.
+## Installation and development
 
 ```powershell
 npm install --strict-peer-deps
 npm run dev
 ```
 
-Installation and local startup were verified. Exact direct versions and transitive resolutions are retained in `package-lock.json`. The development address is `http://127.0.0.1:5174`; strict ports prevent silent fallback. No backend is needed to render the screen, and startup makes no application API requests.
+The frontend starts at `http://127.0.0.1:5174` without backend configuration. Ports are strict. It makes no application API calls on boot. The dependency lockfile is retained; the shell adds only React Router to the B.1 stack.
 
-## Scripts
+## Navigation and scope
 
-| Command | Purpose |
+| Section | Frontend route |
 | --- | --- |
-| `npm run dev` | Local Vite development server on port 5174 |
-| `npm run typecheck` | Strict, non-emitting TypeScript check |
-| `npm run lint` | ESLint with zero warnings allowed |
-| `npm run test:unit -- --run` | Deterministic unit/component/configuration checks |
-| `npm test` | Alias for one unit-test run |
-| `npm run build` | Type check and production build to ignored `dist/` |
-| `npm run preview` | Production preview on port 4174 |
-| `npm run test:e2e` | Chromium tests with controlled development-server startup |
-| `npm run test:e2e:preview` | The same browser checks against the existing production build |
+| Home | `/home` |
+| Upload Prescription | `/upload-prescription` |
+| Medicine Insights | `/medicine-insights` |
+| Compare Medicines | `/compare-medicines` |
+| My Cabinet | `/my-cabinet` |
+| Reminders | `/reminders` |
+| Learn & Resources | `/learn-resources` |
 
-Typecheck, lint, unit tests, build, and both browser suites were executed successfully during this phase. The alias uses the same verified unit command. Playwright will fail rather than reuse a server already occupying a test port; stop a manually started frontend before running it. Test-managed servers are stopped after the run.
+`/` redirects to Home. Unknown routes have an accessible not-found state and a Home link. These are navigation placeholders, not product features or application API routes. There are no login restrictions, patient records, medical examples, predictions, fabricated alerts, or account data.
 
-## Public environment and local proxy
+At 1200px and wider, a persistent sidebar exposes all seven sections. From 768-1199px, Explore opens the adapted drawer. Below 768px, Home/Upload/Cabinet/More forms the bottom navigation. More exposes all seven sections and retains current-section indication. The drawer supports Escape, focus containment/restoration, inert background, body scroll locking and navigation close. Route changes update the title and focus main content. Bottom clearance includes browser safe-area insets.
 
-`.env.example` intentionally leaves `VITE_API_BASE_URL` empty. Add public configuration to an ignored local `.env.local` only when transport is needed; this foundation does not create one. Vite browser variables must never contain Supabase service-role credentials, AWS credentials, tokens, or patient information.
+## Presentation provenance
 
-For optional local development, `VITE_API_BASE_URL=http://127.0.0.1:5174/backend` works with the development-only proxy. A helper path `/health` becomes browser URL `http://127.0.0.1:5174/backend/health`, forwarded to `http://127.0.0.1:3000/health`. `/backend` maps to `/`; `/backend-other` is not proxied. Prefix matching and rewrites are configuration-tested. No live backend request was made, and backend/cloud connectivity is not verified.
+See [SOURCE-REUSE.md](SOURCE-REUSE.md) for source paths, hashes, retained components and intentional adaptations. CampusConnect's actual primitives, inline SVG icons, theme controls, application palette and selected shell rules are reused. Source authentication, services, roles, sockets and domain workflows are excluded. Manrope and its supplied SIL OFL notice are bundled. Inter is not redistributed; body text uses system fallbacks until attribution is resolved. No modal, tabs or toast components are imported unnecessarily.
 
-The proxy is disabled for production preview and is not a deployment API. Production builds need an explicit public HTTP(S) API base and separately agreed server CORS/authentication behavior.
+The reference is protected by the clone-local `.git/info/exclude` entry `/campusconnect-reference/`; this is not shared repository configuration. New clones need their own local exclusion if they contain the reference.
 
-## Theme and styling
+## Theme and transport
 
-The pre-React initializer and existing provider share the `meddecode-theme` preference (`light`, `dark`, or `system`). Missing/invalid preferences resolve to system. Storage failure permits session-only selection. OS changes and cross-tab storage events update the effective theme; subscriptions are cleaned up under Strict Mode.
+The existing MedDecode provider and `meddecode-theme` storage key remain authoritative. Light/Dark/System, pre-React initialization, storage fallback, OS changes and cross-tab updates are retained. The root `data-theme` drives CSS variables, native color scheme and Tailwind's dark variant. The application canvas is Light `#f8f9fc` / Dark `#0d1018`.
 
-The effective `data-theme` drives semantic CSS variables, native `color-scheme`, and Tailwind's dark selector. System fonts, visible focus, 48px select height, reduced-motion rules, and neutral provisional tokens support foundation verification. Final branding is a separate approval. The Tailwind v4 baseline targets Safari 16.4+, Chrome 111+, and Firefox 128+; only Chromium was exercised here.
+`.env.example` retains an empty public `VITE_API_BASE_URL`. No real environment file is created. Optional development configuration is `http://127.0.0.1:5174/backend`: `/backend/health` proxies to `http://127.0.0.1:3000/health`. `/backend` maps to `/`; `/backend-other` is excluded. The proxy is development-only. No backend call was made to verify live connectivity.
 
-## Generic transport
+The B.1 generic JSON helper is unchanged. It transports JSON and multipart options, preserves cancellation, separates error categories and returns `T | undefined` for JSON/empty successes. It does not validate feature schemas, invent endpoints, establish authentication or impose a timeout. Production needs explicit API configuration and server contracts. Never expose server/cloud secrets through browser variables.
 
-`requestJson<T>` preserves fetch options, headers, multipart bodies and cancellation. It returns `T | undefined` for JSON or empty successful responses. `T` does not validate runtime data: feature services must validate confirmed contracts later. No endpoint-specific schemas, authentication headers, cookie policy, automatic retries, query parameters or default timeout are imposed.
-
-Bases must be absolute HTTP(S) URLs without userinfo, query or fragment. Paths must start with one slash and cannot contain query/fragment text, whitespace, controls, dot traversal, nested percent encodings or encoded separators. Base paths are retained. These transport constraints are not a server authorization boundary.
-
-`ApiError.kind` distinguishes configuration, path, HTTP, response and network failures. HTTP status is retained when available; network/read failures retain their cause. Abort failures remain recognizable. JSON and `application/*+json` are accepted. Empty bodies, HEAD, 204 and 205 return `undefined`. No application endpoints are contacted by the screen.
-
-## Verification and evidence
+## Verification
 
 ```powershell
-npx --no-install playwright install chromium
 npm run typecheck
 npm run lint
 npm run test:unit -- --run
@@ -63,8 +52,10 @@ npm run test:e2e
 npm run test:e2e:preview
 ```
 
-Chromium installation was verified; it downloads browser tooling, not application data. Unit tests substitute fetch and browser preferences. Browser tests use fresh contexts and synthetic content. They cover 390x844, 768x1024 and 1440x900 in both themes, persistence, keyboard operation, OS changes, real cross-tab sync, and initialization before React. They check primary/muted text contrast, horizontal overflow, control height, runtime/console errors, and absence of application fetch/XHR during boot. This is not a WCAG conformance audit or cross-browser certification.
+All commands were verified for this phase. `npm test` remains a one-run unit-test alias. `npm run preview` serves the built app on port 4174. Browser suites manage development/preview servers and refuse to reuse occupied ports. If Chromium is unavailable, the verified installation command is `npx --no-install playwright install chromium`.
 
-Synthetic screenshots are saved to ignored `test-results/evidence/`, named `{dev|preview}-{mobile|tablet|desktop}-{light|dark}-{width}x{height}.png`. Browser traces/screenshots are retained on failure in ignored test output. A later development test run clears the default test-results directory; preserve evidence separately if needed. Screenshots are engineering evidence, not visual approval.
+Tests retain API/proxy/theme regressions and cover route placeholders, active navigation, history, drawer keyboard/focus/background behavior, not-found recovery, scroll clearance, loaded Manrope, reduced motion, contrast and overflow. Browser checks run in Chromium at 390x844, 768x1024 and 1440x900 in Light/Dark, plus 320px and 720px reflow. The 720px check simulates 200% available width for a 1440px window; it is not native browser-zoom certification. Cross-browser and full assistive-technology conformance are not claimed.
 
-No real OCR, backend, database, cloud service or patient records are used by these checks. Final product behavior remains outside this foundation.
+Screenshots are ignored under `test-results/evidence/`: `{dev|preview}-shell-{mobile|tablet|desktop}-{light|dark}-{width}x{height}.png`, plus `*-shell-mobile-more-open-390x844.png` and `*-shell-desktop-navigation-focus.png`. Animations are completed for stable captures. Development runs clear the default test-results directory; capture both suites before archiving evidence. Screenshots remain subject to owner visual approval and are not committed.
+
+No complete Home page, authentication, prescription, medicine, cabinet, reminder or resource workflow has been implemented. The next phase requires separate approval.

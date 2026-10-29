@@ -26,7 +26,7 @@ export function ThemeProvider({ children }: PropsWithChildren) {
   useLayoutEffect(() => {
     document.documentElement.dataset.theme = resolvedTheme;
     document.documentElement.style.colorScheme = resolvedTheme;
-    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', resolvedTheme === 'dark' ? '#111827' : '#f8fafc');
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', resolvedTheme === 'dark' ? '#0d1018' : '#f8f9fc');
   }, [resolvedTheme]);
 
   const value = useMemo(() => ({
