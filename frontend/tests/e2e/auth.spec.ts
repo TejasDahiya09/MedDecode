@@ -2,8 +2,8 @@ import { mkdir } from 'node:fs/promises';
 import { expect, test, type Page } from '@playwright/test';
 import { authScreens, type AuthScreen } from '../../src/features/auth/auth-presentation';
 
-const evidence = 'playwright-report/b4a';
-const sizes = [{ name: 'desktop', width: 1440, height: 900 }, { name: 'tablet', width: 768, height: 1024 }, { name: 'mobile', width: 390, height: 844 }];
+const evidence = 'playwright-report/b4a2';
+const sizes = [{ name: 'narrow', width: 320, height: 568 }, { name: 'desktop', width: 1440, height: 900 }, { name: 'tablet', width: 768, height: 1024 }, { name: 'mobile', width: 390, height: 844 }];
 async function fill(page: Page, kind: AuthScreen) {
   if (kind === 'sign-up') await page.getByLabel('Full name', { exact: true }).fill('Preview Reader');
   if (kind !== 'reset-password') await page.getByLabel('Email address', { exact: true }).fill('preview@example.test');
@@ -22,7 +22,7 @@ for (const kind of Object.keys(authScreens) as AuthScreen[]) for (const size of 
     await expect(page.getByRole('heading', { level: 1 })).toHaveText(authScreens[kind].title);
     await expect(page).toHaveTitle(`${authScreens[kind].pageTitle} | MedDecode`);
     await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
-    await expect(page.getByText(/Account actions are not connected. Nothing is sent/)).toBeVisible();
+    await expect(page.getByText(/Account access is not connected yet/)).toBeVisible();
     await expect(page.getByRole('navigation', { name: 'Primary navigation' })).toHaveCount(0);
     await expect(page.getByRole('alert')).toHaveCount(0);
     await expect(page.getByRole('form').locator('input')).toHaveCount(authScreens[kind].fields.length);
@@ -146,9 +146,9 @@ test('auth routes, landing CTA alias, history and shared theme remain coherent',
   await expect(page.getByLabel('New password', { exact: true })).toHaveValue('');
   await expect(page.getByRole('alert')).toHaveCount(0);
   expect(await page.evaluate(() => ({ local: { ...localStorage }, session: { ...sessionStorage } }))).toEqual({ local: { 'meddecode-theme': 'dark' }, session: {} });
-  await page.getByRole('button', { name: /Theme preference:/ }).click();
-  await page.getByRole('button', { name: 'Use system theme' }).click();
-  await page.emulateMedia({ colorScheme: 'light' }); await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+  await page.goto('/home'); await page.getByRole('button', { name: 'Use system theme' }).click();
+  await page.goto('/sign-in'); await page.emulateMedia({ colorScheme: 'light' }); await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+  await expect(page.getByRole('button', { name: 'Use system theme' })).toHaveCount(0);
 });
 
 test('320px enlarged text and constrained keyboard viewport retain every form control', async ({ page }) => {

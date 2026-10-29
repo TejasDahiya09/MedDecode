@@ -18,19 +18,19 @@ export const authScreens: Record<AuthScreen, {
   },
   'sign-up': {
     title: 'Create your account.', pageTitle: 'Create Account',
-    description: 'Start your MedDecode journey with the basics.', action: 'Create Account',
+    description: 'Create an account to organize your medicine information.', action: 'Create Account',
     fields: ['fullName', 'email', 'password', 'confirmPassword'],
     unavailable: 'Account creation is not connected yet. No details were sent and no account was created.',
   },
   'forgot-password': {
     title: "Let's get you back in.", pageTitle: 'Forgot Password',
-    description: 'Enter your email address to preview the recovery request form.', action: 'Request reset link',
+    description: 'Enter your email address to request a password reset.', action: 'Request reset link',
     fields: ['email'],
     unavailable: 'Password recovery is not connected yet. No recovery email was sent.',
   },
   'reset-password': {
-    title: 'Choose a new password.', pageTitle: 'Reset Password',
-    description: 'Secure recovery verification and password submission will be connected later.', action: 'Update password',
+    title: 'Set a new password.', pageTitle: 'Reset Password',
+    description: 'Choose a password for your MedDecode account.', action: 'Update password',
     fields: ['password', 'confirmPassword'],
     unavailable: 'Secure recovery verification and password submission are not connected yet. Your password has not changed.',
   },

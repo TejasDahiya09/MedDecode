@@ -1,75 +1,16 @@
-/* CampusConnect public control; auth-specific pill overrides live in auth.css. */
-.md-public-theme {
-  position: relative;
-  display: inline-flex;
-  flex-direction: row-reverse;
-  align-items: center;
-  gap: .25rem;
-  flex: 0 0 auto;
-  color: var(--login-body, var(--cc-landing-body));
+/* CampusConnect public icon variant. Auth pill overrides are in auth.css. */
+.cc-landing-page .cc-public-theme-toggle {
+ display: inline-flex; width: 2.75rem; min-width: 44px; min-height: 44px;
+ align-items: center; justify-content: center; gap: .45rem;
+ border: 1px solid var(--cc-landing-border); border-radius: .8rem; padding: 0;
+ background: var(--cc-landing-surface); color: var(--cc-landing-body);
+ font-size: .75rem; font-weight: 650; cursor: pointer;
+ transition: background 180ms, border-color 180ms;
 }
-.md-public-theme .cc-public-theme-toggle,
-.md-public-theme summary {
-  display: inline-flex;
-  width: 2.75rem;
-  min-width: 2.75rem;
-  min-height: 2.75rem;
-  align-items: center;
-  justify-content: center;
-  gap: .45rem;
-  border: 1px solid var(--login-border, var(--cc-landing-border));
-  border-radius: .8rem;
-  padding: 0;
-  background: var(--login-panel-elevated, var(--cc-landing-surface));
-  color: inherit;
-  font-size: .75rem;
-  font-weight: 650;
-  cursor: pointer;
-  transition: background 180ms, border-color 180ms;
-}
-.md-public-theme .cc-public-theme-toggle span { display: none; }
-.md-public-theme svg { width: 1rem; height: 1rem; }
-.md-public-theme .cc-public-theme-toggle:hover,
-.md-public-theme summary:hover {
-  background: var(--login-panel, var(--cc-landing-tint));
-  border-color: var(--login-primary, var(--cc-landing-primary));
-}
-.md-public-theme :where(button, summary):focus-visible {
-  outline: 3px solid var(--login-primary, var(--cc-landing-primary));
-  outline-offset: 3px;
-}
-.md-theme-preferences { position: static; }
-.md-theme-preferences summary { list-style: none; border-radius: 999px; }
-.md-theme-preferences summary::-webkit-details-marker { display: none; }
-.md-theme-preferences-panel {
-  position: absolute;
-  z-index: 50;
-  top: calc(100% + .5rem);
-  right: 0;
-  width: min(18rem, calc(100vw - 2rem));
-  border: 1px solid var(--login-border, var(--cc-landing-border));
-  border-radius: .8rem;
-  padding: .4rem;
-  background: var(--login-panel-elevated, var(--cc-landing-surface));
-  box-shadow: 0 12px 30px #05070e29;
-}
-.md-public-theme .cc-theme-control { display: flex; flex-wrap: wrap; border: 0; padding: 0; background: transparent; }
-.md-public-theme .cc-theme-option { flex: 1 1 auto; }
-.md-public-theme .cc-theme-option { min-width: 44px; min-height: 44px; }
-.cc-landing-page .md-public-theme { min-height: 54px; }
-@media (max-width: 479px) {
-  /* Keep the source's 44px icon controls compact during text-only enlargement. */
-  .cc-landing-page .cc-public-header .cc-public-theme-toggle,
-  .cc-landing-page .cc-public-header .md-theme-preferences summary,
-  .cc-landing-page .cc-public-header .cc-public-menu-trigger {
-    width: 44px;
-    min-width: 44px;
-    min-height: 44px;
-    padding: 0;
-  }
-  .cc-landing-page .md-public-theme { gap: 4px; }
-  .cc-landing-page .md-theme-preferences-panel { right: calc(-44px - .35rem); }
-}
-@media (prefers-reduced-motion: reduce) {
-  .md-public-theme * { transition: none !important; }
-}
+.cc-landing-page .cc-public-theme-toggle span { display: none; }
+.cc-landing-page .cc-public-theme-toggle svg { width: 1rem; height: 1rem; }
+.cc-landing-page .cc-public-theme-toggle:hover { background: var(--cc-landing-tint); border-color: var(--cc-landing-primary); }
+/* Preserve approved public-header height independently of the replacement control. */
+@media (max-width: 1099px) { .cc-landing-page .cc-public-header .cc-public-header-inner { min-height: 78px; } }
+@media (max-width: 479px) { .cc-landing-page .cc-public-theme-toggle { width: 44px; } }
+@media (prefers-reduced-motion: reduce) { .cc-landing-page .cc-public-theme-toggle { transition: none; } }

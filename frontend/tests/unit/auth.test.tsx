@@ -112,9 +112,8 @@ it('navigates between forms and clears ephemeral values when leaving a form', ()
 
 it('uses existing theme controls without discarding form values', () => {
   mount('/sign-in'); change('Email address', 'preview@example.test');
-  for (const theme of ['dark', 'light', 'system']) {
-    fireEvent.click(screen.getByRole('button', { name: /Theme preference:/ }));
-    fireEvent.click(screen.getByRole('button', { name: `Use ${theme} theme` }));
+  for (const theme of ['dark', 'light', 'dark']) {
+    fireEvent.click(screen.getByRole('button', { name: `Switch to ${theme} mode` }));
     expect(localStorage.getItem('meddecode-theme')).toBe(theme);
     expect((screen.getByLabelText('Email address') as HTMLInputElement).value).toBe('preview@example.test');
   }
@@ -127,4 +126,23 @@ it('renders reset UI without processing recovery query or fragment values', () =
   expect(screen.getByLabelText('New password', { exact: true })).toBeTruthy();
   expect(screen.queryByRole('alert')).toBeNull(); expect(fetch).not.toHaveBeenCalled();
   expect(reads.mock.calls.every(([key]) => key === 'meddecode-theme')).toBe(true);
+});
+
+
+it.each(['sign-in', 'sign-up'] as const)('%s Google presentation announces unavailability without sending or storing credentials', (kind) => {
+ const fetch = vi.fn(); vi.stubGlobal('fetch', fetch); const send = vi.spyOn(XMLHttpRequest.prototype, 'send'); const writes = vi.spyOn(Storage.prototype, 'setItem');
+ mount('/' + kind); fill(kind);
+ expect(screen.getByRole('separator').textContent).toContain('or continue with email');
+ const button = screen.getByRole('button', { name: 'Continue with Google' });
+ expect(button.getAttribute('type')).toBe('button'); expect(button.getAttribute('aria-describedby')).toBe('auth-preview');
+ fireEvent.click(button); expect(screen.getByRole('status').textContent).toBe('Google sign-in is not connected yet. Nothing was sent.');
+ expect(screen.queryByRole('alert')).toBeNull(); expect(fetch).not.toHaveBeenCalled(); expect(send).not.toHaveBeenCalled(); expect(writes).not.toHaveBeenCalled();
+ expect((screen.getByLabelText('Password', { exact: true }) as HTMLInputElement).value).toBe('Preview-only-42!');
+});
+it.each(['light', 'dark'] as const)('public toggle starts from effective System %s and only offers binary switching', (effective) => {
+ vi.stubGlobal('matchMedia', (query: string) => ({ matches: query.includes('prefers-color-scheme') && effective === 'dark', addEventListener: vi.fn(), removeEventListener: vi.fn() }));
+ localStorage.setItem('meddecode-theme', 'system'); mount('/sign-in');
+ const next = effective === 'light' ? 'dark' : 'light'; fireEvent.click(screen.getByRole('button', { name: `Switch to ${next} mode` }));
+ expect(localStorage.getItem('meddecode-theme')).toBe(next); expect(screen.queryByRole('button', { name: /Use system|Theme preference/ })).toBeNull();
+ expect(document.querySelector('details')).toBeNull(); expect(document.querySelectorAll('.cc-public-theme-toggle')).toHaveLength(1);
 });

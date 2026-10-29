@@ -1,4 +1,4 @@
-import { mkdir } from 'node:fs/promises';
+﻿import { mkdir } from 'node:fs/promises';
 import { expect, test } from '@playwright/test';
 
 for (const size of [
@@ -20,13 +20,12 @@ for (const size of [
     await expect(page.getByRole('navigation', { name: 'Mobile navigation', exact: true })).toHaveCount(0);
     await expect(page.locator('input, form')).toHaveCount(0);
     await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
-    await page.getByRole('button', { name: /Theme preference:/ }).click();
-    await expect(page.getByRole('button', { name: 'Use system theme' })).toHaveAttribute('aria-pressed', 'true');
-    for (const name of ['light', 'dark', 'system']) {
-      const box = await page.getByRole('button', { name: `Use ${name} theme` }).boundingBox();
-      expect(box!.width).toBeGreaterThanOrEqual(44); expect(box!.height).toBeGreaterThanOrEqual(44);
-    }
-    await page.getByRole('button', { name: /Theme preference:/ }).click();
+    await expect(page.locator('.cc-public-theme-toggle')).toHaveCount(1);
+    await expect(page.getByRole('button', { name: /Use system|Theme preference/ })).toHaveCount(0);
+    const toggleBox = await page.locator('.cc-public-theme-toggle').boundingBox();
+    expect(toggleBox!.width).toBeGreaterThanOrEqual(44); expect(toggleBox!.height).toBeGreaterThanOrEqual(44);
+    const headerBox = await page.locator('.cc-public-header').boundingBox();
+    expect(headerBox!.height).toBe(size.name === 'desktop' ? 81 : 79);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await expect(page.locator('.cc-journey-steps > li')).toHaveCount(3);
     await expect(page.getByRole('group', { name: 'Explore planned capabilities' }).getByRole('button')).toHaveCount(6);
@@ -88,7 +87,7 @@ test('public CTAs, anchor focus, capability controls, footer and history', async
   await page.locator('header.cc-public-header').getByRole('link', { name: 'Get Started', exact: true }).click();
   await expect(page).toHaveURL(/\/sign-up$/); await expect(page.getByRole('heading', { level: 1 })).toHaveText('Create your account.');
   await expect(page.getByRole('main')).toBeFocused(); await expect(page.getByRole('form', { name: 'Create Account' }).locator('input')).toHaveCount(4);
-  await expect(page.getByText(/Account actions are not connected. Nothing is sent/)).toBeVisible();
+  await expect(page.getByText(/Account access is not connected yet/)).toBeVisible();
   await page.getByRole('link', { name: 'Back to MedDecode' }).click();
   await page.locator('header.cc-public-header').getByRole('link', { name: 'Sign In', exact: true }).click();
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Welcome back.');
@@ -126,9 +125,8 @@ test('public themes persist across workspace routes, reload, OS and real tabs', 
   const second = await context.newPage(); await second.goto('/');
   await page.getByRole('button', { name: 'Use light theme' }).click();
   await expect(second.locator('html')).toHaveAttribute('data-theme', 'light');
-  await second.getByRole('button', { name: /Theme preference:/ }).click();
-  await expect(second.getByRole('button', { name: 'Use light theme' })).toHaveAttribute('aria-pressed', 'true');
-  await page.goto('/'); await page.getByRole('button', { name: /Theme preference:/ }).click(); await page.getByRole('button', { name: 'Use system theme' }).click();
+  await expect(second.getByRole('button', { name: 'Switch to dark mode' })).toBeVisible();
+  await page.getByRole('button', { name: 'Use system theme' }).click(); await page.goto('/');
   await page.emulateMedia({ colorScheme: 'dark' }); await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
   await second.close();
 });

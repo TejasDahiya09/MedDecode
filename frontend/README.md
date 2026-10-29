@@ -1,4 +1,4 @@
-# MedDecode frontend foundation and shell
+﻿# MedDecode frontend foundation and shell
 
 Run all commands from `frontend/`. Verified with Node 24.11.1 and npm 11.6.2; the package engine range is `^22.13.0 || >=24.0.0`.
 
@@ -92,3 +92,14 @@ Ignored rendered screenshots: `playwright-report/b4a/{dev|preview}-{sign-in|sign
 Auth uses the original animated CampusConnect ribbon (SVG path morphs plus CSS drift/highlight/aura), pausing when hidden/offscreen and becoming static for reduced motion. Auth pills and public icon toggles retain the source visual variants. The adjacent preference disclosure exposes Light/Dark/System using the existing provider, persistence key and cross-tab synchronization; the seven-route workspace keeps its existing control. Theme changes preserve form input. All account actions remain presentation-only.
 
 Ignored evidence lives under playwright-report/b4a1: reference/MedDecode desktop/mobile Light/Dark screenshots, focused theme controls, source and MedDecode recordings, time-separated ribbon frames, motion-observations.json and reference/target comparison metrics. Normal auth screenshots retain the b4a filename pattern and are copied into b4a1 for this checkpoint. Browser checks include 320px enlarged text, 390x844, 768x1024, 1440x900, and constrained 390x360 form use. Native phone keyboards and other browser engines are not certified. See SOURCE-REUSE.md for exact source mechanisms and documented differences. Owner visual approval is required before further integration.
+
+
+## Phase B.4a.2 current authentication presentation
+
+This checkpoint supersedes the earlier static-ribbon, font-fallback and public System-disclosure descriptions. Public pages now show only CampusConnect's binary Light/Dark control; an initial internal System preference follows the OS until the first click selects the opposite effective theme. Workspace three-mode controls, initial paint, meddecode-theme storage and synchronization remain unchanged.
+
+Auth uses the verified source Inter binary (Fontsource-variable/inter 5.3.0, exact SHA-256 match) with its supplied Inter-OFL.txt and Inter-PROVENANCE.md. An auth-only font-face alias leaves approved landing/workspace typography untouched. Source Manrope headings, split layout, 29rem/30rem cards, labels, field geometry, registration gaps, Google mark/button/divider and compact navigation are restored. A small footer line states that account access is not connected; activation announces unavailable actions without creating accounts, sessions or requests. Google presentation is restored without OAuth logic.
+
+Client validation rules and ephemeral values are preserved. Concise MedDecode story/form copy replaces campus content; reset heading is Set a new password. The original kinetic ribbon is unchanged from B.4a.1, including SVG morphs, CSS drift, lifecycle cleanup and reduced motion. Mobile retains 16px inputs and a flowing toolbar/footer for enlarged-text and keyboard resilience; primary gradients retain the documented contrast correction.
+
+Ignored evidence: playwright-report/b4a2/COMPARISON.md, audit-before.json, audit-after.json, dev/preview-geometry.json, screen/header PNGs, time-separated ribbon frames, source-target motion comparison and local recordings. Required checks remain typecheck, lint, unit, build, development E2E and preview E2E. Only Chromium and simulated phone viewports/keyboard constraints are verified by these checks. Stop for owner visual approval before any authentication integration.

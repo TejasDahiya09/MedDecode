@@ -25,21 +25,22 @@ export function AuthField({ field, screen, value, error, onChange, onBlur }: {
   const policyHint = field === 'password' && screen !== 'sign-in';
   const descriptions = [policyHint ? `${id}-help` : '', error ? `${id}-error` : ''].filter(Boolean).join(' ') || undefined;
   const input = <input
-    id={id} name={field} value={value} required
+    className={screen === 'sign-in' ? undefined : 'cc-field'} id={id} name={field} value={value} required
     type={isPassword ? (visible ? 'text' : 'password') : field === 'email' ? 'email' : 'text'}
     autoComplete={field === 'fullName' ? 'name' : field === 'email' ? 'email' : screen === 'sign-in' ? 'current-password' : 'new-password'}
+    placeholder={field === 'email' && screen === 'sign-in' ? 'you@example.com' : undefined}
     autoCapitalize={field === 'fullName' ? 'words' : 'none'} spellCheck={false}
     minLength={policyHint ? 8 : undefined} maxLength={isPassword && screen !== 'sign-in' ? 128 : undefined}
     aria-invalid={Boolean(error)} aria-describedby={descriptions}
     onChange={(event) => onChange(event.target.value)} onBlur={onBlur}
   />;
-  return <div className="cc-login-field-group">
-    <div className="cc-login-label-row"><label htmlFor={id}>{label}</label>{field === 'password' && screen === 'sign-in' ? <Link to="/forgot-password">Forgot password?</Link> : null}</div>
+  return <div className={screen === 'sign-in' ? 'cc-login-field-group' : 'cc-login-field-group cc-label'}>
+    {field === 'password' && screen === 'sign-in' ? <div className="cc-login-label-row"><label htmlFor={id}>{label}</label><Link to="/forgot-password">Forgot password?</Link></div> : <label htmlFor={id}>{label}</label>}
     {isPassword ? <div className="cc-login-password-field">{input}<button
       type="button" className="cc-login-password-toggle" aria-label={`${visible ? 'Hide' : 'Show'} ${label.toLowerCase()}`}
       aria-pressed={visible} aria-controls={id} onClick={() => setVisible((current) => !current)}
     ><PasswordVisibilityIcon visible={visible} /></button></div> : input}
-    {policyHint ? <p className="md-auth-help" id={`${id}-help`}>Use 8–128 characters for this preview. The final policy will be confirmed during integration.</p> : null}
+    {policyHint ? <p className="md-auth-help" id={`${id}-help`}>Use 8–128 characters.<span className="sr-only"> Client preview only. The final policy will be confirmed during integration.</span></p> : null}
     {error ? <p className="cc-login-field-error" id={`${id}-error`}>{error}</p> : null}
   </div>;
 }
