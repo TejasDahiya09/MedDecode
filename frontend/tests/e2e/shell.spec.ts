@@ -20,10 +20,13 @@ test('desktop exposes exactly seven routes, focus and browser history', async ({
   await expect(page).toHaveURL(/\/reminders$/);
   await page.goForward();
   await expect(page).toHaveURL(/\/learn-resources$/);
+  // Route focus is scheduled in requestAnimationFrame; wait before testing link focus.
+  await expect(page.getByRole('main')).toBeFocused();
   const focused = navigation.getByRole('link', { name: 'Learn & Resources' });
   await page.keyboard.press('Tab');
   await focused.focus();
-  expect(await focused.evaluate((element) => getComputedStyle(element).outlineStyle)).toBe('solid');
+  await expect(focused).toBeFocused();
+  await expect(focused).toHaveCSS('outline-style', 'solid');
   await mkdir('test-results/evidence', { recursive: true });
   await page.screenshot({ path: `test-results/evidence/${baseURL?.includes(':4174') ? 'preview' : 'dev'}-shell-desktop-navigation-focus.png`, animations: 'disabled' });
 });

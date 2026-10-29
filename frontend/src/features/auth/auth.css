@@ -453,17 +453,6 @@ font-family:
   overflow-y: visible;
 }
 
-.cc-auth-premium-page--register .cc-auth-premium-form h1 {
-  margin-top: 0.4rem;
-  font-size: clamp(2rem, 2.5vw, 2.55rem);
-  line-height: 1;
-}
-
-.cc-auth-premium-page--register .cc-login-intro {
-  margin-top: 0.55rem;
-  line-height: 1.5;
-}
-
 .cc-auth-premium-page--register .cc-login-form-body {
   margin-top: 1rem;
 }
@@ -500,12 +489,6 @@ font-family:
   }
 }
 
-@media (min-width: 1440px) {
-  .cc-auth-premium-page--register .cc-auth-premium-form h1 {
-    white-space: nowrap;
-  }
-}
-
 @media (min-width: 1120px) and (max-height: 820px) {
   .cc-auth-premium-page--register .cc-auth-premium-panel {
     min-height: auto;
@@ -515,19 +498,20 @@ font-family:
 }
 
 .cc-login-form-wrap h1 {
-  margin: 0.55rem 0 0;
+  /* CampusConnect compact registration title, shared across every auth card. */
+  margin: 0.4rem 0 0;
   color: var(--login-text);
-  font-size: clamp(2.25rem, 3.1vw, 3.25rem);
+  font-size: clamp(2rem, 2.5vw, 2.55rem);
   font-weight: 730;
   letter-spacing: -0.055em;
-  line-height: 1.03;
+  line-height: 1;
 }
 
 .cc-login-intro {
-  margin: 0.75rem 0 0;
+  margin: 0.55rem 0 0;
   color: var(--login-muted);
   font-size: 0.9rem;
-  line-height: 1.65;
+  line-height: 1.5;
 }
 
 .cc-login-form-body {
@@ -1112,8 +1096,6 @@ font-family:
  .cc-login-action.cc-button > span:not(.cc-button-spinner) { white-space: normal; overflow: visible; text-overflow: clip; }
 }
 @media (max-width: 359px) { .cc-login-page .cc-login-panel { padding-inline: .9rem; } }
-@media (min-width: 1440px) { .cc-auth-premium-page--register .cc-auth-premium-form h1 { white-space: normal; } }
-
 .md-auth-google { width: 100%; }
 .md-auth-divider { display: flex; align-items: center; gap: .75rem; margin: 1.25rem 0; color: var(--login-muted); font-size: .75rem; line-height: 1rem; }
 .md-auth-divider > span:first-child, .md-auth-divider > span:last-child { height: 1px; flex: 1; background: var(--login-border); }

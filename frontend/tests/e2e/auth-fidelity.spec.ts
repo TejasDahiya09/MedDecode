@@ -46,10 +46,11 @@ test('source ribbon visibly morphs, drifts, pauses offscreen and becomes static 
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await expect(ribbon.locator('animate')).toHaveCount(0);
   expect(await ribbon.locator('.cc-login-ribbon-layer--main').evaluate((el) => getComputedStyle(el).animationName)).toBe('none');
+  // Flush the reduced-motion paint before comparing the static SVG timeline.
+  await page.screenshot({ path: `${folder}/${mode}-ribbon-reduced-motion.png` });
   const reducedFirst = await sample();
   await page.waitForTimeout(300); const reducedSecond = await sample();
   expect(reducedSecond).toEqual(reducedFirst);
-  await page.screenshot({ path: `${folder}/${mode}-ribbon-reduced-motion.png` });
   await writeFile(`${folder}/${mode}-motion-observations.json`, JSON.stringify({ first, second, morph, reducedFirst, reducedSecond }, null, 2));
 });
 
@@ -118,7 +119,8 @@ test('source geometry: desktop cards, source fonts, labels, fields, buttons and 
   expect(row.width).toBe(route === 'sign-in' ? 464 : 480); expect(row.label).toBe('12px'); expect(row.font).toContain('MedDecode Auth Inter');
   expect(await page.evaluate(() => document.fonts.check('16px "MedDecode Auth Inter"'))).toBe(true);
   expect(row.input).toBeCloseTo(route === 'sign-up' ? 46.4 : 50.4, 1); expect(row.button).toBeCloseTo(route === 'sign-up' ? 46.4 : 50.4, 1);
-  if (route === 'sign-in') { expect(row.height).toBeCloseTo(586.71875, 1); expect(row.y).toBeCloseTo(166.640625, 1); }
+  // B.4a.3 shares the source compact heading baseline; its natural card height changes.
+  if (route === 'sign-in') { expect(row.height).toBeCloseTo(568.984375, 1); expect(row.y).toBeCloseTo(175.5078125, 1); }
   if (route === 'sign-up') { expect(Math.abs(row.height - 684.265625)).toBeLessThan(4); expect(row.gap).toBe('12px'); }
   const split=await page.locator('.cc-login-story').boundingBox(); expect(split!.width).toBeCloseTo(809.14,1); rows.push({route,...row});
  }
