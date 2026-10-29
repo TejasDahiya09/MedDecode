@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { Icon } from '../../components/Icon';
-import { ThemeControl } from '../../components/ThemeControl';
+import { PublicThemeToggle } from '../../components/PublicThemeToggle';
 import { safetyDisclaimer } from './landing-content';
 import './landing.css';
 
@@ -65,7 +65,7 @@ function PublicHeader() {
           {publicLinks.map((item) => <Link className="cc-public-nav-link" key={item.path} to={item.path} aria-current={location.pathname === '/' && location.hash === item.path.slice(1) ? 'location' : undefined}>{item.label}</Link>)}
         </nav>
         <div className="md-public-actions">
-          <ThemeControl compact />
+          <PublicThemeToggle />
           <div className="cc-public-desktop-actions"><Link className="cc-public-signin" to="/sign-in">Sign In</Link><Link className="cc-public-get-started" to="/get-started">Get Started</Link></div>
           <button aria-expanded={open} aria-controls="public-mobile-navigation" aria-label={open ? 'Close Explore menu' : 'Open Explore menu'} className="cc-public-menu-trigger" onClick={() => setOpen((value) => !value)} ref={menuButton} type="button"><Icon name={open ? 'close' : 'dashboard'} /><span>{open ? 'Close' : 'Explore'}</span></button>
         </div>

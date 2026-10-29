@@ -147,7 +147,7 @@ max-width: 38rem;
 }
 
 .cc-login-ribbon {
-position: relative;
+  position: relative;
   align-self: stretch;
   width: min(100%, 46rem);
   min-height: clamp(13.5rem, 30vh, 19rem);
@@ -156,8 +156,14 @@ position: relative;
   animation: cc-login-ribbon-in 560ms 140ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
+.cc-login-ribbon--paused *,
+.cc-login-ribbon--paused::before,
+.cc-login-ribbon--paused::after {
+  animation-play-state: paused !important;
+}
+
 .cc-login-ribbon::before {
-position: absolute;
+  position: absolute;
   inset: 17% 8% 1%;
   border-radius: 50%;
   background:
@@ -176,16 +182,17 @@ position: absolute;
 }
 
 .cc-login-ribbon-aura {
-position: absolute;
+  position: absolute;
   inset: 25% 24% 10%;
   border-radius: 50%;
   background: color-mix(in srgb, var(--login-primary) 14%, transparent);
   filter: blur(32px);
   opacity: 0.65;
+  animation: cc-login-ribbon-aura 22s ease-in-out infinite alternate;
 }
 
 .cc-login-ribbon svg {
-position: absolute;
+  position: absolute;
   inset: 1% 0 0;
   width: 100%;
   height: 100%;
@@ -194,33 +201,37 @@ position: absolute;
 }
 
 .cc-login-ribbon-layer {
-transform-box: fill-box;
+  transform-box: fill-box;
   transform-origin: center;
 }
 
 .cc-login-ribbon-layer--back {
-fill: url('#login-ribbon-secondary');
+  fill: url('#login-ribbon-secondary');
   opacity: 0.48;
+  animation: cc-login-ribbon-drift-back 12s ease-in-out infinite alternate;
 }
 
 .cc-login-ribbon-layer--main {
-fill: url('#login-ribbon-primary');
+  fill: url('#login-ribbon-primary');
   opacity: 0.88;
   filter: drop-shadow(0 24px 32px color-mix(in srgb, #312e81 32%, transparent));
+  animation: cc-login-ribbon-flow 9s ease-in-out infinite alternate;
 }
 
 .cc-login-ribbon-layer--fold {
-fill: url('#login-ribbon-secondary');
+  fill: url('#login-ribbon-secondary');
   opacity: 0.65;
+  animation: cc-login-ribbon-drift-fold 11s ease-in-out infinite alternate;
 }
 
 .cc-login-ribbon-highlight {
-fill: none;
+  fill: none;
   stroke: url('#login-ribbon-light');
   stroke-linecap: round;
   stroke-width: 2;
   stroke-dasharray: 36 64;
   opacity: 0.7;
+  animation: cc-login-ribbon-light 6.5s ease-in-out infinite alternate;
 }
 
 .cc-login-panel {
@@ -722,7 +733,7 @@ background: linear-gradient(135deg, #5550e8, #4f46e5);
 .cc-login-page .cc-login-register p { margin: 0; }
 .cc-login-page .cc-login-field-error { margin: 0; font-size: 0.875rem; }
 .cc-login-page .cc-login-submit.cc-button { white-space: normal; }
-.cc-login-page .cc-login-ribbon * { animation: none; }
+
 .md-auth-help { margin: 0; color: var(--login-muted); font-size: 0.875rem; line-height: 1.5; }
 .md-auth-preview { margin: 1rem 0 0; border-left: 2px solid var(--login-primary); padding-left: 0.75rem; color: var(--login-body); font-size: 0.875rem; line-height: 1.6; }
 .md-auth-feedback { margin: 0 0 1rem; border: 1px solid var(--login-border-strong); border-radius: 0.75rem; padding: 0.85rem; color: var(--login-body); background: var(--login-panel-elevated); font-size: 0.875rem; line-height: 1.6; }
@@ -738,4 +749,143 @@ background: linear-gradient(135deg, #5550e8, #4f46e5);
   .cc-login-page .cc-login-panel { padding-inline: 0.9rem; }
   .cc-login-page .cc-login-panel-top { gap: 0.35rem; }
   .cc-login-page .cc-login-intro { font-size: 0.9rem; }
+}
+
+/* B.4a.1: original source motion, brand and contextual toggle composition. */
+.cc-login-story > :where(.cc-public-brand, .cc-login-story-copy) {
+  animation: cc-login-story-in 560ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.cc-login-panel .cc-public-theme-toggle {
+  display: inline-flex;
+  width: auto;
+  min-width: 5.25rem;
+  min-height: 2.75rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  border-color: var(--login-border);
+  border-radius: 999px;
+  padding: 0.55rem 0.78rem;
+  background: color-mix(in srgb, var(--login-panel-elevated) 88%, transparent);
+  color: var(--login-body);
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+  box-shadow: inset 0 1px 0 #ffffff0a;
+  transition:
+    color 180ms ease,
+    border-color 180ms ease,
+    background 180ms ease,
+    transform 180ms ease;
+}
+
+.cc-login-panel .cc-public-theme-toggle svg {
+  width: 1rem;
+  height: 1rem;
+  flex: 0 0 auto;
+}
+
+.cc-login-panel .cc-public-theme-toggle span {
+  display: inline;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.cc-login-panel .cc-public-theme-toggle:hover {
+  border-color: var(--login-border-strong);
+  background: var(--login-panel-elevated);
+  color: var(--login-text);
+  transform: translateY(-1px);
+}
+
+.cc-login-panel .cc-public-theme-toggle:active {
+  transform: translateY(0);
+}
+
+@keyframes cc-login-ribbon-flow {
+  from {
+    transform: translate3d(-0.8%, 1%, 0) rotate(-0.35deg);
+  }
+  to {
+    transform: translate3d(0.9%, -0.8%, 0) rotate(0.3deg);
+  }
+}
+
+@keyframes cc-login-ribbon-drift-back {
+  from {
+    opacity: 0.4;
+    transform: translate3d(1.2%, -1.2%, 0);
+  }
+  to {
+    opacity: 0.58;
+    transform: translate3d(-1%, 1%, 0);
+  }
+}
+
+@keyframes cc-login-ribbon-drift-fold {
+  from {
+    opacity: 0.52;
+    transform: translate3d(-0.7%, 0.8%, 0);
+  }
+  to {
+    opacity: 0.72;
+    transform: translate3d(0.8%, -0.7%, 0);
+  }
+}
+
+@keyframes cc-login-ribbon-light {
+  from {
+    opacity: 0.45;
+    stroke-dashoffset: 8;
+  }
+  to {
+    opacity: 0.78;
+    stroke-dashoffset: -18;
+  }
+}
+
+@keyframes cc-login-ribbon-aura {
+  from {
+    opacity: 0.48;
+    transform: translate3d(-2%, 1%, 0);
+  }
+  to {
+    opacity: 0.72;
+    transform: translate3d(2%, -1%, 0);
+  }
+}
+
+
+.cc-auth-premium-form { width: min(100%, 30rem); }
+.cc-auth-premium-page--register .cc-auth-premium-form { padding: 1.35rem 1.65rem; }
+.cc-auth-premium-page--register .cc-auth-premium-form h1 { margin-top: .4rem; font-size: clamp(2rem, 2.5vw, 2.55rem); line-height: 1; }
+.cc-auth-premium-page--register .cc-auth-premium-form form { gap: .75rem; }
+.cc-auth-premium-form .cc-login-register { display: flex; flex-wrap: wrap; justify-content: center; gap: .25rem 1.25rem; }
+.cc-login-panel-top .md-public-theme { margin-left: auto; }
+@media (min-width: 1120px) { .cc-auth-premium-page--register .cc-login-panel { padding-block: 4.5rem 3.25rem; } }
+@media (max-width: 600px) {
+ .cc-auth-premium-page--register .cc-auth-premium-form { padding: 0; }
+ .cc-login-panel .cc-public-theme-toggle { width: 2.75rem; min-width: 2.75rem; padding: 0; }
+ .cc-login-panel .cc-public-theme-toggle span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+}
+
+.cc-login-story .cc-public-brand,
+.cc-login-mobile-brand .cc-public-brand {
+  color: var(--login-text);
+  font-size: 1.08rem;
+  gap: 0.65rem;
+}
+
+.cc-login-story .cc-public-brand-mark,
+.cc-login-mobile-brand .cc-public-brand-mark {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid #c4b5fd55;
+  background: linear-gradient(145deg, #6366f1, #4338ca);
+  box-shadow:
+    inset 0 1px 0 #ffffff3d,
+    0 9px 22px #4f46e52e;
+  color: #fff;
 }

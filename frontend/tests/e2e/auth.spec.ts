@@ -27,7 +27,7 @@ for (const kind of Object.keys(authScreens) as AuthScreen[]) for (const size of 
     await expect(page.getByRole('alert')).toHaveCount(0);
     await expect(page.getByRole('form').locator('input')).toHaveCount(authScreens[kind].fields.length);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-    if (size.name === 'mobile') {
+    {
       const toolbar = await page.locator('.cc-login-panel-top').boundingBox();
       const form = await page.locator('.cc-login-form-wrap').boundingBox();
       expect(toolbar!.y + toolbar!.height).toBeLessThanOrEqual(form!.y);
@@ -135,7 +135,7 @@ test('auth routes, landing CTA alias, history and shared theme remain coherent',
   await expect(page).toHaveURL(/\/sign-up$/); await expect(page.getByRole('main')).toBeFocused();
   await page.getByRole('link', { name: 'Back to Sign In' }).click();
   await expect(page).toHaveURL(/\/sign-in$/);
-  await page.getByRole('button', { name: 'Use dark theme' }).click();
+  await page.getByRole('button', { name: 'Switch to dark mode' }).click();
   await page.getByRole('link', { name: 'Forgot password?' }).click(); await expect(page).toHaveURL(/\/forgot-password$/);
   await page.goBack(); await expect(page).toHaveURL(/\/sign-in$/);
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
@@ -146,6 +146,7 @@ test('auth routes, landing CTA alias, history and shared theme remain coherent',
   await expect(page.getByLabel('New password', { exact: true })).toHaveValue('');
   await expect(page.getByRole('alert')).toHaveCount(0);
   expect(await page.evaluate(() => ({ local: { ...localStorage }, session: { ...sessionStorage } }))).toEqual({ local: { 'meddecode-theme': 'dark' }, session: {} });
+  await page.getByRole('button', { name: /Theme preference:/ }).click();
   await page.getByRole('button', { name: 'Use system theme' }).click();
   await page.emulateMedia({ colorScheme: 'light' }); await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
 });

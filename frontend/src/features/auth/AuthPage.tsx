@@ -2,7 +2,7 @@ import { useLayoutEffect, useRef, useState, type FormEvent, type ReactNode } fro
 import { Link } from 'react-router-dom';
 import { Button } from '../../components/ui';
 import { Icon } from '../../components/Icon';
-import { ThemeControl } from '../../components/ThemeControl';
+import { PublicThemeToggle } from '../../components/PublicThemeToggle';
 import { PublicBrand } from '../landing/PublicChrome';
 import { AuthRibbon } from './AuthRibbon';
 import { AuthField } from './AuthField';
@@ -20,8 +20,8 @@ function AuthLayout({ screen, children }: { readonly screen: AuthScreen; readonl
       <AuthRibbon />
     </section>
     <section className="cc-login-panel" aria-labelledby="auth-page-title" id="auth-form" tabIndex={-1}>
-      <div className="cc-login-panel-top"><span className="cc-login-mobile-brand"><PublicBrand /></span><ThemeControl compact /></div>
-      <div className="cc-login-form-wrap">
+      <div className="cc-login-panel-top"><span className="cc-login-mobile-brand"><PublicBrand /></span><PublicThemeToggle /></div>
+      <div className={`cc-login-form-wrap${screen !== 'sign-in' ? ' cc-auth-premium-form' : ''}`}>
         <p className="cc-login-kicker">MedDecode account access</p><h1 id="auth-page-title">{content.title}</h1><p className="cc-login-intro">{content.description}</p>
         <p className="md-auth-preview" id="auth-preview">Presentation preview. Account actions are not connected. Nothing is sent.</p>
         <div className="cc-login-form-body">{children}</div>

@@ -113,6 +113,7 @@ it('navigates between forms and clears ephemeral values when leaving a form', ()
 it('uses existing theme controls without discarding form values', () => {
   mount('/sign-in'); change('Email address', 'preview@example.test');
   for (const theme of ['dark', 'light', 'system']) {
+    fireEvent.click(screen.getByRole('button', { name: /Theme preference:/ }));
     fireEvent.click(screen.getByRole('button', { name: `Use ${theme} theme` }));
     expect(localStorage.getItem('meddecode-theme')).toBe(theme);
     expect((screen.getByLabelText('Email address') as HTMLInputElement).value).toBe('preview@example.test');

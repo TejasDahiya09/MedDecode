@@ -20,11 +20,13 @@ for (const size of [
     await expect(page.getByRole('navigation', { name: 'Mobile navigation', exact: true })).toHaveCount(0);
     await expect(page.locator('input, form')).toHaveCount(0);
     await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
+    await page.getByRole('button', { name: /Theme preference:/ }).click();
     await expect(page.getByRole('button', { name: 'Use system theme' })).toHaveAttribute('aria-pressed', 'true');
     for (const name of ['light', 'dark', 'system']) {
       const box = await page.getByRole('button', { name: `Use ${name} theme` }).boundingBox();
       expect(box!.width).toBeGreaterThanOrEqual(44); expect(box!.height).toBeGreaterThanOrEqual(44);
     }
+    await page.getByRole('button', { name: /Theme preference:/ }).click();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await expect(page.locator('.cc-journey-steps > li')).toHaveCount(3);
     await expect(page.getByRole('group', { name: 'Explore planned capabilities' }).getByRole('button')).toHaveCount(6);
@@ -117,14 +119,16 @@ test('public mobile disclosure supports focus, Escape, outside click and navigat
 
 test('public themes persist across workspace routes, reload, OS and real tabs', async ({ page, context }) => {
   await page.emulateMedia({ colorScheme: 'light' }); await page.goto('/');
-  await page.getByRole('button', { name: 'Use dark theme' }).click(); await page.reload();
+  await page.getByRole('button', { name: 'Switch to dark mode' }).click(); await page.reload();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
   await page.getByRole('navigation', { name: 'Footer navigation' }).getByRole('link', { name: 'Workspace preview' }).click();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark'); await expect(page.getByRole('main')).toBeFocused();
   const second = await context.newPage(); await second.goto('/');
   await page.getByRole('button', { name: 'Use light theme' }).click();
+  await expect(second.locator('html')).toHaveAttribute('data-theme', 'light');
+  await second.getByRole('button', { name: /Theme preference:/ }).click();
   await expect(second.getByRole('button', { name: 'Use light theme' })).toHaveAttribute('aria-pressed', 'true');
-  await page.goto('/'); await page.getByRole('button', { name: 'Use system theme' }).click();
+  await page.goto('/'); await page.getByRole('button', { name: /Theme preference:/ }).click(); await page.getByRole('button', { name: 'Use system theme' }).click();
   await page.emulateMedia({ colorScheme: 'dark' }); await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
   await second.close();
 });
