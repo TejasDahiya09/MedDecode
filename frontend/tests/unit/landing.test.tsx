@@ -19,11 +19,12 @@ it('renders the public landing without workspace chrome, forms, records or API c
   expect(screen.getByText(/These capabilities describe the intended product/)).toBeTruthy();
   expect(document.title).toBe('MedDecode | Intelligence Behind Every Prescription');
 });
-it.each(['get-started', 'sign-in'])('provides an honest temporary /%s destination', (intent) => {
+it.each(['get-started', 'sign-in'])('provides an honest authentication UI /%s destination', (intent) => {
   mount('/' + intent);
-  expect(screen.getByRole('heading', { level: 1 }).textContent).toContain('is coming next.');
-  expect(screen.getByText(/No credentials are collected and no session is created/)).toBeTruthy();
-  fireEvent.click(screen.getByRole('link', { name: 'Explore workspace preview' }));
+  expect(screen.getByRole('heading', { level: 1 }).textContent).toBe(intent === 'get-started' ? 'Create your account.' : 'Welcome back.');
+  expect(screen.getByText(/Account actions are not connected. Nothing is sent/)).toBeTruthy();
+  fireEvent.click(screen.getByRole('link', { name: 'Back to MedDecode' }));
+  fireEvent.click(screen.getByRole('link', { name: 'Workspace preview' }));
   expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Home');
 });
 it('adapts the showcase to all six planned capabilities', () => {

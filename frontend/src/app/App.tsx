@@ -1,7 +1,9 @@
 import { useLayoutEffect, useRef } from 'react';
-import { BrowserRouter, Route, Routes, useLocation } from 'react-router-dom';
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { LandingPage } from '../features/landing/LandingPage';
-import { PublicLayout, AccessComingNext } from '../features/landing/PublicChrome';
+import { PublicLayout } from '../features/landing/PublicChrome';
+import { AuthPage } from '../features/auth/AuthPage';
+import { authScreens, type AuthScreen } from '../features/auth/auth-presentation';
 import { AppShell } from './AppShell';
 import { destinations } from './navigation';
 import { NotFound, SectionPlaceholder } from './SectionPlaceholder';
@@ -13,9 +15,9 @@ export function AppRoutes() {
     <Routes>
       <Route element={<PublicLayout />}>
         <Route index element={<LandingPage />} />
-        <Route path="get-started" element={<AccessComingNext intent="get-started" />} />
-        <Route path="sign-in" element={<AccessComingNext intent="sign-in" />} />
       </Route>
+      <Route path="get-started" element={<Navigate replace to="/sign-up" />} />
+      {(Object.keys(authScreens) as AuthScreen[]).map((screen) => <Route key={screen} path={screen} element={<AuthPage key={screen} screen={screen} />} />)}
       <Route element={<AppShell />}>
         {destinations.map((destination) => <Route key={destination.path} path={destination.path} element={<SectionPlaceholder destination={destination} />} />)}
         <Route path="*" element={<NotFound />} />
@@ -32,9 +34,9 @@ function RouteFocus() {
   useLayoutEffect(() => {
     const changed = previous.current !== location.pathname;
     previous.current = location.pathname;
-    if (!changed && !location.hash) return;
+    if (!changed && (location.pathname !== '/' || !location.hash)) return;
     const frame = requestAnimationFrame(() => {
-      const section = location.hash ? document.getElementById(location.hash.slice(1)) : null;
+      const section = location.pathname === '/' && location.hash ? document.getElementById(location.hash.slice(1)) : null;
       const target = section ?? document.querySelector<HTMLElement>('main');
       target?.focus();
       if (section) section.scrollIntoView();

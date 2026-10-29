@@ -11,7 +11,7 @@ const publicLinks = [
   { path: '/#trust', label: 'Responsible use' },
 ] as const;
 
-function PublicBrand() {
+export function PublicBrand() {
   return <Link aria-label="MedDecode home" className="cc-public-brand" to="/"><span aria-hidden="true" className="cc-public-brand-mark"><span>M</span></span><span className="md-public-wordmark">MedDecode</span></Link>;
 }
 
@@ -92,11 +92,7 @@ function PublicFooter() {
 export function PublicLayout() {
   const { pathname } = useLocation();
   useLayoutEffect(() => {
-    document.title = pathname === '/' ? 'MedDecode | Intelligence Behind Every Prescription' : `${pathname === '/sign-in' ? 'Sign In' : 'Get Started'} - Coming next | MedDecode`;
+    document.title = 'MedDecode | Intelligence Behind Every Prescription';
   }, [pathname]);
   return <div className="cc-public-page cc-landing-page"><a className="cc-skip-link" href="#main-content">Skip to main content</a><PublicHeader /><main id="main-content" tabIndex={-1}><Outlet /></main><PublicFooter /></div>;
-}
-
-export function AccessComingNext({ intent }: { readonly intent: 'get-started' | 'sign-in' }) {
-  return <section className="cc-chapter md-access-next" aria-labelledby="access-title"><p className="cc-landing-eyebrow">Frontend preview</p><h1 id="access-title">{intent === 'sign-in' ? 'Sign In' : 'Get Started'} is coming next.</h1><p>Account access is not implemented in this preview. No credentials are collected and no session is created.</p><div className="cc-landing-hero-actions"><Link className="cc-landing-button cc-landing-button--primary" to="/">Back to MedDecode</Link><Link className="cc-landing-button cc-landing-button--secondary" to="/home">Explore workspace preview</Link></div></section>;
 }
