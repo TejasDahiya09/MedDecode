@@ -10,11 +10,12 @@ export default tseslint.config(
   ...tseslint.configs.recommended,
   {
     files: ['**/*.{ts,tsx}'],
-    languageOptions: { globals: { ...globals.browser, ...globals.node } },
     plugins: { 'react-hooks': reactHooks, 'react-refresh': reactRefresh },
     rules: {
       ...reactHooks.configs.recommended.rules,
       'react-refresh/only-export-components': ['error', { allowConstantExport: true }],
     },
   },
+  { files: ['src/**/*.{ts,tsx}', 'public/**/*.js', 'tests/unit/**/*.{ts,tsx}'], languageOptions: { globals: globals.browser } },
+  { files: ['*.config.{js,ts}', 'tests/**/*.{ts,tsx}'], languageOptions: { globals: globals.node } },
 );

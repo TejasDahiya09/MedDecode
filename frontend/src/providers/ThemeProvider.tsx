@@ -9,11 +9,13 @@ export function ThemeProvider({ children }: PropsWithChildren) {
 
   useEffect(() => {
     const media = matchMedia('(prefers-color-scheme: dark)');
+    const synchronizeSystem = () => setSystemDark(media.matches);
     const changed = (event: MediaQueryListEvent) => setSystemDark(event.matches);
     const sync = (event: StorageEvent) => {
       if (event.key === themeStorageKey || event.key === null) updateMode(readThemeMode());
     };
     media.addEventListener('change', changed);
+    synchronizeSystem();
     window.addEventListener('storage', sync);
     return () => {
       media.removeEventListener('change', changed);
@@ -24,7 +26,7 @@ export function ThemeProvider({ children }: PropsWithChildren) {
   useLayoutEffect(() => {
     document.documentElement.dataset.theme = resolvedTheme;
     document.documentElement.style.colorScheme = resolvedTheme;
-    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', resolvedTheme === 'dark' ? '#0d1018' : '#f8f9fc');
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', resolvedTheme === 'dark' ? '#111827' : '#f8fafc');
   }, [resolvedTheme]);
 
   const value = useMemo(() => ({
