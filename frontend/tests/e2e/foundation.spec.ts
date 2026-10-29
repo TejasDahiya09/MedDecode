@@ -19,7 +19,7 @@ for (const viewport of [
       page.on('request', (request) => { if (['fetch', 'xhr'].includes(request.resourceType())) serviceRequests.push(request.url()); });
       await page.setViewportSize(viewport);
       await page.emulateMedia({ colorScheme: theme, reducedMotion: 'reduce' });
-      await page.goto('/');
+      await page.goto('/home');
       await expect(page.getByRole('heading', { name: 'Home', exact: true })).toBeVisible();
       await expect(page.getByRole('link', { name: 'MedDecode home' })).toBeVisible();
       await expect(page.getByText(/Product workflows are not yet implemented/)).toBeVisible();
@@ -63,7 +63,7 @@ for (const viewport of [
 
 test('system preference follows the OS; explicit preferences override it', async ({ page }) => {
   await page.emulateMedia({ colorScheme: 'light' });
-  await page.goto('/');
+  await page.goto('/home');
   await expect(page.getByRole('button', { name: 'Use system theme' })).toHaveAttribute('aria-pressed', 'true');
   await page.emulateMedia({ colorScheme: 'dark' });
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
@@ -74,9 +74,9 @@ test('system preference follows the OS; explicit preferences override it', async
 });
 
 test('synchronizes preferences between real browser tabs', async ({ page, context }) => {
-  await page.goto('/');
+  await page.goto('/home');
   const second = await context.newPage();
-  await second.goto('/');
+  await second.goto('/home');
   await page.getByRole('button', { name: 'Use dark theme' }).click();
   await expect(second.getByRole('button', { name: 'Use dark theme' })).toHaveAttribute('aria-pressed', 'true');
   await expect(second.locator('html')).toHaveAttribute('data-theme', 'dark');
@@ -86,7 +86,7 @@ test('synchronizes preferences between real browser tabs', async ({ page, contex
 test('pre-React initialization works with stored preference', async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('meddecode-theme', 'dark'));
   await page.route(/\/(src\/main\.tsx|assets\/index-[^/]+\.js)(\?.*)?$/, (route) => route.abort());
-  await page.goto('/');
+  await page.goto('/home');
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
   await expect(page.locator('#root')).toBeEmpty();
 });

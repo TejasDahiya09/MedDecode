@@ -19,7 +19,7 @@ function changeSystem(dark: boolean) {
     for (const listener of listeners) listener({ matches: dark } as MediaQueryListEvent);
   });
 }
-function mount() { return render(<StrictMode><AppProviders><App /></AppProviders></StrictMode>); }
+function mount() { window.history.replaceState({}, '', '/home'); return render(<StrictMode><AppProviders><App /></AppProviders></StrictMode>); }
 beforeEach(() => {
   systemDark = false;
   listeners.clear();

@@ -23,7 +23,7 @@ The frontend starts at `http://127.0.0.1:5174` without backend configuration. Po
 | Reminders | `/reminders` |
 | Learn & Resources | `/learn-resources` |
 
-`/` redirects to Home. Unknown routes have an accessible not-found state and a Home link. These are navigation placeholders, not product features or application API routes. There are no login restrictions, patient records, medical examples, predictions, fabricated alerts, or account data.
+`/` renders the public landing described below. Unknown routes have an accessible not-found state and a Home link. These are navigation placeholders, not product features or application API routes. There are no login restrictions, patient records, medical examples, predictions, fabricated alerts, or account data.
 
 At 1200px and wider, a persistent sidebar exposes all seven sections. From 768-1199px, Explore opens the adapted drawer. Below 768px, Home/Upload/Cabinet/More forms the bottom navigation. More exposes all seven sections and retains current-section indication. The drawer supports Escape, focus containment/restoration, inert background, body scroll locking and navigation close. Route changes update the title and focus main content. Bottom clearance includes browser safe-area insets.
 
@@ -59,3 +59,11 @@ Tests retain API/proxy/theme regressions and cover route placeholders, active na
 Screenshots are ignored under `test-results/evidence/`: `{dev|preview}-shell-{mobile|tablet|desktop}-{light|dark}-{width}x{height}.png`, plus `*-shell-mobile-more-open-390x844.png` and `*-shell-desktop-navigation-focus.png`. Animations are completed for stable captures. Development runs clear the default test-results directory; capture both suites before archiving evidence. Screenshots remain subject to owner visual approval and are not committed.
 
 No complete Home page, authentication, prescription, medicine, cabinet, reminder or resource workflow has been implemented. The next phase requires separate approval.
+
+## Phase B.3 public landing
+
+`/` now renders the source-adapted MedDecode public landing, without the workspace sidebar or bottom bar. Sections cover the hero, six planned capabilities, an intended three-step process, responsible use and a closing CTA/footer. Illustrations are static and contain no medical results. Get Started leads to `/get-started`; Sign In leads to `/sign-in`. Both visibly explain that account access is coming next and collect no credentials. They are temporary route elements for Phase B.4, not authentication implementations. `/home` and all established workspace routes remain accessible without guards.
+
+The public header reuses CampusConnect presentation, with the existing three-mode theme control. Below 1100px it uses a nonmodal Explore disclosure with keyboard focus, Escape restoration, normal Tab order, outside/focus departure close and navigation close. Hash links focus labelled sections below the sticky header. Public/workspace route changes preserve theme state and focus the main content.
+
+B.3 evidence lives in ignored `test-results/evidence/`: `{dev|preview}-landing-{mobile|tablet|desktop}-{light|dark}-{full|viewport}.png`, plus `*-landing-mobile-menu-open.png`, `*-landing-desktop-light-cta-focus.png`, `*-landing-desktop-light-process.png` and `*-landing-{desktop|mobile}-light-footer.png`. Full-page captures are complemented by viewport details. All six mandatory checks cover both the prior shell and landing. Only Chromium is verified; 720px available-width testing models 200% reflow without certifying native browser zoom. Owner screenshot review remains required for visual approval.
