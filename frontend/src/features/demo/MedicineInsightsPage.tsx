@@ -1,131 +1,80 @@
-import { useId, useLayoutEffect, useRef, useState } from 'react';
+import { useId, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Badge, Button, EmptyState } from '../../components/ui';
 import { Icon } from '../../components/Icon';
-import { medicines, type Medicine } from './demo-data';
-import { findExampleMedicines, normalizeMedicineQuery } from './medicine-search';
+import { DemoModal } from './DemoModal';
+import { MedicineCategoryNav } from './MedicineCategoryNav';
+import { MedicineCatalogHero, MedicineIllustration } from './MedicineIllustration';
+import { catalogForms, catalogGroups, categoryStrip, discoverCatalog, emptyCatalogFilters, type CatalogFilters, type CatalogMedicine, type CatalogSort } from './catalog-data';
 import './medicine-insights.css';
+
+function MedicineFilters({ value, onApply, onClear }: { value: CatalogFilters; onApply: (value: CatalogFilters) => void; onClear: () => void }) {
+  const [draft, setDraft] = useState(value);
+  const fields = [
+    { key: 'group', label: 'Category', all: 'All categories', options: catalogGroups.map(v => [v, v]) },
+    { key: 'form', label: 'Formulation', all: 'All formulations', options: catalogForms.map(v => [v, v]) },
+    { key: 'ingredient', label: 'Ingredient', all: 'All ingredients', options: ['A', 'B', 'C', 'D'].map(v => [v, `Example ingredient ${v}`]).concat([['unavailable', 'Unavailable in example']]) },
+    { key: 'reference', label: 'Reference data', all: 'All reference layouts', options: ['Overview only', 'Detailed example'].map(v => [v, v]) },
+    { key: 'verification', label: 'Demo verification', all: 'All entries', options: [['fictional', 'Fictional example only']] },
+  ] as const;
+  return <form className="cc-market-filters" onSubmit={event => { event.preventDefault(); onApply(draft); }}>
+    <div className="cc-market-filter-heading"><Icon name="filter" /><h2>Refine your finds</h2></div>
+    {fields.map(field => <label className="cc-label" key={field.key}>{field.label}<select className="cc-field" value={draft[field.key]} data-active={!!draft[field.key]} onChange={event => setDraft({ ...draft, [field.key]: event.target.value })}><option value="">{field.all}</option>{field.options.map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></label>)}
+    <div className="cc-market-filter-actions"><Button type="submit">Apply filters</Button><Button variant="ghost" onClick={onClear}>Clear all</Button></div>
+    <p className="cc-market-hint">Groups describe fictional catalog examples, not treatment uses. Reference detail is a layout label, not clinical verification.</p>
+  </form>;
+}
 
 export function MedicineInsightsPage() {
   const [query, setQuery] = useState('');
-  const [selected, setSelected] = useState<Medicine | null>(medicines[0]!);
-  const [detailsOpen, setDetailsOpen] = useState(false);
-  const [announcement, setAnnouncement] = useState('');
-  const page = useRef<HTMLDivElement>(null);
+  const [filters, setFilters] = useState<CatalogFilters>(emptyCatalogFilters);
+  const [category, setCategory] = useState('');
+  const [sort, setSort] = useState<CatalogSort>('name_asc');
+  const [page, setPage] = useState(1);
+  const [selected, setSelected] = useState<CatalogMedicine | null>(null);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [message, setMessage] = useState('');
   const search = useRef<HTMLInputElement>(null);
-  const heading = useRef<HTMLHeadingElement>(null);
-  const buttons = useRef(new Map<string, HTMLButtonElement>());
-  const origin = useRef<string | null>(null);
-  const focusNext = useRef<'details' | 'origin' | 'search' | null>(null);
-  const compact = useRef(true);
-  const detailFocus = useRef<HTMLElement | null>(null);
+  const results = useRef<HTMLElement>(null);
   const id = useId();
-  const detailId = `${id}-details`, headingId = `${id}-selected`, resultsId = `${id}-results`, countId = `${id}-count`;
-  const matches = findExampleMedicines(query);
-  const normalized = normalizeMedicineQuery(query);
+  const matches = discoverCatalog(query, filters, category, sort);
+  const pages = Math.max(1, Math.ceil(matches.length / 12));
+  const currentPage = Math.min(page, pages);
+  const shown = matches.slice((currentPage - 1) * 12, currentPage * 12);
+  const filterCount = Object.values(filters).filter(Boolean).length;
+  function clearSearch() { setQuery(''); setPage(1); setMessage('Search cleared.'); requestAnimationFrame(() => search.current?.focus()); }
+  function clearAll() { setFilters(emptyCatalogFilters); setCategory(''); setQuery(''); setSort('name_asc'); setPage(1); setFiltersOpen(false); setMessage('All catalog filters cleared.'); requestAnimationFrame(() => search.current?.focus()); }
+  function open(item: CatalogMedicine) { setSelected(item); setMessage(`${item.name} details opened. Fictional example; not clinically verified.`); }
+  function close() { setSelected(null); setMessage('Details closed. Returned to the catalog.'); }
+  function apply(next: CatalogFilters) { setFilters(next); setPage(1); setFiltersOpen(false); setMessage('Catalog filters applied.'); if (!filtersOpen) requestAnimationFrame(() => { results.current?.focus({ preventScroll: true }); results.current?.scrollIntoView({ block: 'nearest' }); }); }
+  function changePage(next: number) { setPage(next); requestAnimationFrame(() => { results.current?.focus(); results.current?.scrollIntoView({ block: 'start' }); }); }
+  const filterForm = <MedicineFilters key={JSON.stringify(filters)} value={filters} onApply={apply} onClear={clearAll} />;
 
-  useLayoutEffect(() => {
-    const node = page.current;
-    if (!node) return;
-    const style = getComputedStyle(node);
-    compact.current = node.clientWidth - parseFloat(style.paddingLeft || '0') - parseFloat(style.paddingRight || '0') < 60 * parseFloat(getComputedStyle(document.documentElement).fontSize || '16');
-    if (typeof ResizeObserver === 'undefined') return;
-    // Match the container query, using content width rather than viewport alone.
-    const observer = new ResizeObserver(entries => {
-      const entry = entries[0];
-      if (!entry) return;
-      const next = entry.contentRect.width < 60 * parseFloat(getComputedStyle(document.documentElement).fontSize);
-      const active = document.activeElement;
-      if (next !== compact.current && active instanceof HTMLElement) {
-        const remembered = detailFocus.current;
-        if (remembered?.isConnected && (active === document.body || node.querySelector('.md-insights-details')?.contains(active))) {
-          if (next) {
-            setDetailsOpen(true);
-            requestAnimationFrame(() => { if (remembered.isConnected) remembered.focus({ preventScroll: true }); });
-          } else if (remembered.classList.contains('md-insights-compact-only')) {
-            requestAnimationFrame(() => heading.current?.focus({ preventScroll: true }));
-          }
-        }
-      }
-      compact.current = next;
-    });
-    observer.observe(node);
-    return () => observer.disconnect();
-  }, []);
-
-  useLayoutEffect(() => {
-    const destination = focusNext.current;
-    focusNext.current = null;
-    if (!destination) return;
-    const frame = requestAnimationFrame(() => {
-      const element = destination === 'details' ? heading.current : destination === 'origin' ? buttons.current.get(origin.current ?? '') ?? search.current : search.current;
-      element?.focus({ preventScroll: true });
-      const surface = destination === 'details' ? element?.closest('.md-insights-details') : element;
-      surface?.scrollIntoView({ block: destination === 'details' ? 'start' : 'nearest' });
-    });
-    return () => cancelAnimationFrame(frame);
-  }, [selected, detailsOpen, query]);
-
-  function select(item: Medicine) {
-    origin.current = item.id;
-    setSelected(item);
-    setAnnouncement(`${item.name} selected. Fictional details shown; clinical verification unavailable.`);
-    if (compact.current) { focusNext.current = 'details'; setDetailsOpen(true); }
-  }
-  function closeDetails() {
-    focusNext.current = 'origin'; setDetailsOpen(false);
-    setAnnouncement('Details closed. Returned to the example directory.');
-  }
-  function clearSearch() {
-    focusNext.current = 'search'; setQuery(''); setDetailsOpen(false);
-    setAnnouncement('Search cleared.');
-  }
-  function clearSelection() {
-    focusNext.current = 'origin'; setSelected(null); setDetailsOpen(false);
-    setAnnouncement('Selection cleared. Choose a fictional example to view its details.');
-  }
-
-  return <div className="md-page md-insights-page" data-detail-open={detailsOpen} ref={page}>
-    <header className="md-insights-intro">
-      <div className="md-insights-heading-row"><h1 className="cc-page-title">Medicine Insights</h1><Badge>Demo Mode</Badge></div>
-      <p className="cc-page-description">Browse fictional medicine examples and inspect their available reference fields.</p>
-      <p className="md-insights-explanation"><Icon name="shield" /><span>Fictional examples only. Medicine information is not clinically verified.</span></p>
-    </header>
-    <div className="md-insights-toolbar">
-      <form className="md-insights-search" role="search" aria-label="Example medicine search" onSubmit={event => { event.preventDefault(); setAnnouncement('Search applied to the fictional directory.'); }}>
-        <label className="sr-only" htmlFor={`${id}-search`}>Search example medicines</label><Icon name="search" />
-        <input id={`${id}-search`} ref={search} type="search" autoComplete="off" maxLength={100} value={query} placeholder="Search names, ingredients or references" aria-controls={resultsId} aria-describedby={countId} onChange={event => setQuery(event.target.value)} />
-        {query !== '' && <button type="button" aria-label="Clear search" title="Clear search" onClick={clearSearch}><Icon name="close" /></button>}
-      </form>
+  return <div className="md-page md-catalog cc-marketplace">
+    <header className="cc-market-header"><div><h1>Medicine Insights</h1><p>Fictional references, thoughtfully organized.</p><p className="md-catalog-disclaimer">Illustrative groups only. No clinical validation or treatment guidance.</p></div><Badge>Demo Mode</Badge></header>
+    <MedicineCatalogHero />
+    <p className="sr-only" role="status" aria-live="polite" aria-atomic="true">{message}</p>
+    <div className="cc-market-layout">
+      <aside className="cc-market-filter-rail" aria-label="Medicine catalog filters">{filterForm}<p className="cc-market-rail-note"><Icon name="shield" />Explore examples. No clinical assessment is performed.</p></aside>
+      <div className="cc-market-workspace">
+        <MedicineCategoryNav categories={categoryStrip} selected={category} onSelect={value => { setCategory(value); setPage(1); }} />
+        <div className="cc-market-toolbar">
+          <form className="cc-market-search" role="search" aria-label="Fictional medicine search" onSubmit={event => { event.preventDefault(); setMessage('Search applied to the fictional catalog.'); }}><label className="sr-only" htmlFor={`${id}-search`}>Search example medicines</label><Icon name="search" /><input id={`${id}-search`} ref={search} type="search" autoComplete="off" maxLength={100} placeholder="Search medicines, ingredients or references" value={query} onChange={event => { setQuery(event.target.value); setPage(1); }} aria-describedby={`${id}-count`} />{query !== '' && <button type="button" aria-label="Clear search" onClick={clearSearch}><Icon name="close" /></button>}</form>
+          <div className="cc-market-toolbar-actions"><Button className="cc-market-filter-trigger" variant="secondary" aria-haspopup="dialog" aria-expanded={filtersOpen} onClick={() => setFiltersOpen(true)}><Icon name="filter" />Filters{filterCount ? <span className="cc-market-filter-count">{filterCount}</span> : null}</Button><label className="cc-market-sort"><span className="sr-only">Sort medicine examples</span><select className="cc-field" value={sort} onChange={event => { setSort(event.target.value as CatalogSort); setPage(1); }}><option value="name_asc">Name A–Z</option><option value="name_desc">Name Z–A</option><option value="category">Category</option><option value="formulation">Formulation</option></select></label></div>
+        </div>
+        {(filterCount || category || query) ? <div className="cc-market-active-filters" aria-label="Applied catalog filters">{category && <button type="button" className="cc-filter-chip" onClick={() => { setCategory(''); setPage(1); }}>Category: {categoryStrip.find(item => item.id === category)?.name}<Icon name="close" /></button>}{Object.entries(filters).filter(([, value]) => value).map(([key, value]) => <button key={key} type="button" className="cc-filter-chip" aria-label={`Remove ${key} filter`} onClick={() => { setFilters({ ...filters, [key]: '' }); setPage(1); }}>{key}: {value}<Icon name="close" /></button>)}<button type="button" className="cc-market-clear" onClick={clearAll}>Clear all filters</button></div> : null}
+        <section className="cc-market-results" ref={results} tabIndex={-1} aria-labelledby={`${id}-results`}>
+          <div className="cc-market-section-heading"><div><h2 id={`${id}-results`}>Explore medicine examples</h2><p id={`${id}-count`} role="status" aria-live="polite" aria-atomic="true">{matches.length} fictional {matches.length === 1 ? 'reference' : 'references'} · Page {currentPage} of {pages}</p></div></div>
+          {shown.length ? <div className="cc-market-grid">{shown.map(item => <article className="cc-market-product" key={item.id}>
+            <button type="button" className="cc-market-product-link md-catalog-open" aria-label={`View details for ${item.name}`} aria-haspopup="dialog" onClick={() => open(item)}><div className="cc-market-product-media"><MedicineIllustration token={item.illustration} code={item.code} /></div><div className="cc-market-product-body"><h3>{item.name}</h3><p className="md-catalog-ingredient">Ingredient: {item.ingredient}</p><p className="cc-market-product-condition">{item.form}<br />{item.group} · Illustrative group</p><span className="md-catalog-reference-status">{item.referenceStatus}</span><span className="md-catalog-view">View reference <Icon name="arrow" /></span></div></button>
+            <div className="cc-market-product-footer"><span>Fictional example</span><Link className="cc-market-share" to="/compare-medicines" aria-label={`Compare ${item.name}`} title="Opens Compare Medicines with default examples"><Icon name="copy" className="size-4" /><span>Compare</span></Link></div>
+          </article>)}</div> : <div className="cc-card"><EmptyState icon="search" title="No examples found" description="Try another term or clear the catalog filters." action={<Button onClick={clearAll}>Clear all filters</Button>} /></div>}
+          <nav className="cc-market-pagination" aria-label="Medicine catalog pages"><Button variant="secondary" disabled={currentPage === 1} onClick={() => changePage(currentPage - 1)}>Previous</Button><span>Page {currentPage} of {pages}</span><Button variant="secondary" disabled={currentPage === pages} onClick={() => changePage(currentPage + 1)}>Next</Button></nav>
+        </section>
+      </div>
     </div>
-    <p className="md-insights-count" id={countId} role="status" aria-live="polite" aria-atomic="true">{matches.length} example {matches.length === 1 ? 'entry' : 'entries'}{normalized ? ` matching “${query.trim().replace(/\s+/g, ' ')}”` : ''}</p>
-    <p className="sr-only" role="status" aria-live="polite" aria-atomic="true">{announcement}</p>
-    <div className="md-insights-workspace">
-      <section className="md-insights-directory" id={resultsId} aria-labelledby={`${id}-directory`}>
-        <h2 className="cc-section-title" id={`${id}-directory`}>Example directory</h2>
-        {matches.length ? <ul className="md-insights-list">{matches.map(item => <li key={item.id}>
-          <button type="button" className={`md-insights-record${selected?.id === item.id ? ' is-selected' : ''}`} aria-pressed={selected?.id === item.id} aria-controls={detailId} ref={node => { if (node) buttons.current.set(item.id, node); else buttons.current.delete(item.id); }} onClick={() => select(item)}>
-            <span className="md-insights-record-icon" aria-hidden="true"><Icon name="inbox" /></span>
-            <span className="md-insights-record-copy"><strong>{item.name}</strong><span>Ingredient: {item.ingredient}</span><small>{item.form}</small></span>
-            <Icon name="arrow" className="md-insights-record-arrow" />
-          </button>
-        </li>)}</ul> : <div className="cc-card"><EmptyState icon="search" title="No examples found" description="Try another sample name, ingredient, formulation or reference code, or clear your search." /></div>}
-      </section>
-      <section className="cc-card md-insights-details" id={detailId} aria-labelledby={selected ? headingId : `${id}-empty`} onFocusCapture={event => { if (event.target instanceof HTMLElement) detailFocus.current = event.target; }} onBlurCapture={event => { if (event.relatedTarget instanceof Node && !event.currentTarget.contains(event.relatedTarget)) detailFocus.current = null; }}>
-        {selected ? <>
-          <button className="md-insights-back md-insights-compact-only" type="button" onClick={closeDetails}><Icon name="arrow" />Back to results</button>
-          <header className="md-insights-identity"><span className="cc-icon-box"><Icon name="inbox" className="size-6" /></span><div><Badge>Fictional example</Badge><h2 id={headingId} tabIndex={-1} ref={heading}>{selected.name}</h2><span className="md-insights-reference">{selected.code}</span></div></header>
-          <div><Badge tone="warning">Clinical verification unavailable</Badge></div>
-          <div className="md-insights-information">
-            <section><h3>Overview</h3><dl className="md-insights-facts"><div><dt>Active ingredient</dt><dd>{selected.ingredient}</dd></div><div><dt>Formulation</dt><dd>{selected.form}</dd></div><div><dt>Category</dt><dd>{selected.category}</dd></div><div><dt>Source</dt><dd>Fictional interface fixture</dd></div></dl></section>
-            <section><h3>General information</h3><p>This card demonstrates the layout of a medicine reference. It is not a verified medicine entry.</p></section>
-            <section><h3>Precautions &amp; interactions</h3><p>Not available in this demo. No safety assessment has been performed.</p></section>
-          </div>
-          <div className="md-insights-detail-actions"><Link className="cc-button cc-button--primary" to="/compare-medicines">Compare Medicines<Icon name="arrow" className="size-4" /></Link><Button variant="ghost" onClick={clearSelection}>Clear selection</Button><button className="cc-button cc-button--secondary md-insights-compact-only" type="button" onClick={closeDetails}>Close details</button></div>
-          <p className="md-insights-help">Opens the comparison demo with its default examples.</p>
-        </> : <div><h2 className="sr-only" id={`${id}-empty`}>No medicine selected</h2><EmptyState icon="inbox" title="Choose an example" description="Select a fictional directory entry to inspect its available fields." /></div>}
-      </section>
-    </div>
-    <p className="md-demo-footnote">In-memory only · No account, cloud saving or background notifications.</p>
+    <p className="md-demo-footnote">In-memory only · Fictional examples · No account, cloud saving or background notifications.</p>
+    {filtersOpen && <DemoModal title="Refine your medicine examples" onClose={() => setFiltersOpen(false)}><div className="md-catalog-modal">{filterForm}</div></DemoModal>}
+    {selected && <DemoModal title={selected.name} onClose={close}><div className="md-catalog-modal md-catalog-details"><div className="md-catalog-detail-art"><MedicineIllustration token={selected.illustration} code={selected.code} /></div><div className="md-catalog-meta"><Badge>Fictional example</Badge><Badge tone="warning">Clinical verification unavailable</Badge><Badge>{selected.code}</Badge></div><p>{selected.shortDescription}</p><section><h3>Overview</h3><dl><div><dt>Active ingredient</dt><dd>{selected.ingredient}</dd></div><div><dt>Formulation</dt><dd>{selected.form}</dd></div><div><dt>Catalog category</dt><dd>{selected.group} (illustrative group)</dd></div><div><dt>Reference layout</dt><dd>{selected.referenceStatus}</dd></div><div><dt>Source</dt><dd>Fictional interface fixture</dd></div></dl></section><section><h3>General information</h3><p>{selected.referenceStatus === 'Overview only' ? 'This overview-only example does not include further reference information. The catalog category is an illustrative grouping.' : 'This reference demonstrates information layout. Categories and illustrations are not treatment indications or real packaging.'}</p></section><section><h3>Precautions &amp; interactions</h3><p>Not available in this demo. No safety assessment has been performed.</p></section><Link className="cc-button cc-button--primary" to="/compare-medicines">Compare Medicines<Icon name="arrow" className="size-4" /></Link><p className="md-catalog-modal-note">Opens the comparison demo with its default examples. This selection is not transferred.</p><Button variant="secondary" onClick={close}>Back to catalog</Button></div></DemoModal>}
   </div>;
 }

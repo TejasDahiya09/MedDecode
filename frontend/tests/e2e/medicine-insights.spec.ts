@@ -1,140 +1,74 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { expect, test, type Page } from '@playwright/test';
-
-const evidence = 'playwright-report/c3b';
-const requests = new WeakMap<Page, string[]>();
-test.beforeEach(({ page }) => {
-  const calls: string[] = []; requests.set(page, calls);
-  page.on('request', request => { if (['fetch', 'xhr'].includes(request.resourceType())) calls.push(request.url()); });
-});
-test.afterEach(({ page }) => { expect(requests.get(page)).toEqual([]); });
+const out = 'playwright-report/c3b1';
+const calls = new WeakMap<Page, string[]>();
+test.beforeEach(({ page }) => { const requests: string[] = []; calls.set(page, requests); page.on('request', r => { if (['fetch', 'xhr'].includes(r.resourceType())) requests.push(r.url()); }); });
+test.afterEach(({ page }) => { expect(calls.get(page)).toEqual([]); });
 
 for (const theme of ['light', 'dark'] as const) for (const width of [1440, 1280, 768, 390, 320]) {
-  test(`medicine explorer ${width} ${theme}: search, selection, focus and source presentation`, async ({ page, baseURL }) => {
+  test(`medicine marketplace ${width} ${theme}: discovery, filters, dialog, compare and evidence`, async ({ page, baseURL }) => {
     await page.setViewportSize({ width, height: width === 1440 ? 900 : width === 1280 ? 800 : width === 768 ? 1024 : 844 });
-    await page.emulateMedia({ colorScheme: theme, reducedMotion: 'reduce' });
-    await page.goto('/medicine-insights'); await page.evaluate(() => document.fonts.ready);
-    const prefix = `${evidence}/${baseURL?.includes(':4174') ? 'preview' : 'dev'}-${width}-${theme}`;
-    await mkdir(evidence, { recursive: true });
-    const capture = async (state: string) => {
-      await page.evaluate(() => scrollTo(0, 0)); await page.mouse.move(0, 0);
-      await page.screenshot({ path: `${prefix}-${state}.png`, fullPage: true });
-      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-    };
-    const search = page.getByRole('searchbox', { name: 'Search example medicines' });
-    await expect(page.getByText('Demo Mode', { exact: true })).toHaveCount(1);
-    await expect(page.locator('.md-insights-record')).toHaveCount(4);
-    if (width >= 1024) await expect(page.getByRole('button', { name: 'Close details', includeHidden: true })).toBeHidden();
-    await capture('initial');
-    const measurements = await page.evaluate(() => Object.fromEntries(['.md-insights-page', '.md-insights-search', '.md-insights-search input', '.md-insights-workspace', '.md-insights-record', '.md-insights-record strong', '.md-insights-record-icon', '.md-insights-details', '.md-insights-identity h2', '.md-insights-information > section', '.md-insights-facts > div'].map(selector => {
-      const node = document.querySelector(selector)!, rect = node.getBoundingClientRect(), css = getComputedStyle(node);
-      return [selector, { x: rect.x, y: rect.y, width: rect.width, height: rect.height, font: css.fontFamily, size: css.fontSize, weight: css.fontWeight, lineHeight: css.lineHeight, radius: css.borderRadius, padding: css.padding, gap: css.gap, columns: css.gridTemplateColumns, display: css.display }];
-    })));
-    await writeFile(`${prefix}-measurements.json`, JSON.stringify(measurements, null, 2));
-    await search.fill('  Aster  ');
-    await expect(search).toHaveValue('  Aster  '); await expect(search).toBeFocused();
-    await expect(page.locator('.md-insights-record')).toHaveCount(1);
-    await expect(page.locator('.md-insights-count')).toContainText('1 example entry');
-    await capture('search-results');
-    await search.fill('no-match-synthetic');
-    await expect(page.getByRole('heading', { name: 'No examples found' })).toBeVisible();
-    await expect(page.locator('.md-insights-count')).toHaveAttribute('role', 'status');
-    await expect(page.locator('.md-insights-count')).toContainText('0 example entries');
-    await capture('no-results');
-    await page.getByRole('button', { name: 'Clear search' }).click();
-    await expect(search).toBeFocused(); await expect(search).toHaveValue('');
-    await expect(page.locator('.md-insights-record')).toHaveCount(4);
-    await expect(page.getByRole('status').filter({ hasText: 'Search cleared.' })).toBeAttached();
-    const dune = page.getByRole('button', { name: /Dune/ });
-    await dune.focus(); await page.keyboard.press('Enter');
-    await expect(dune).toHaveAttribute('aria-pressed', 'true');
-    const title = page.getByRole('heading', { name: 'Dune — Sample 04', exact: true });
-    await expect(title).toBeVisible();
-    await expect(page.getByRole('status').filter({ hasText: /Dune.*selected/ })).toBeAttached();
-    await expect(page.getByText('Not available in this demo', { exact: true })).toBeVisible();
-    await expect(page.getByText('MD / 004', { exact: true })).toBeVisible();
-    if (width < 1024) {
-      await expect(title).toBeFocused();
-      const top = await title.evaluate(e => e.getBoundingClientRect().top);
-      expect(top).toBeGreaterThanOrEqual(75); expect(top).toBeLessThan(300);
-      expect(await page.getByRole('button', { name: 'Back to results' }).evaluate(e => e.getBoundingClientRect().top)).toBeGreaterThanOrEqual(75);
-      await page.screenshot({ path: `${prefix}-selected-viewport.png` });
-    }
-    await capture('selected-details');
-    const compare = page.locator('.md-insights-details').getByRole('link', { name: 'Compare Medicines' });
-    await compare.focus(); await expect(compare).toBeVisible();
-    const clearance = await compare.evaluate(e => {
-      const nav = document.querySelector('.cc-mobile-nav'); const edge = nav && getComputedStyle(nav).display !== 'none' ? nav.getBoundingClientRect().top : innerHeight;
-      return edge - e.getBoundingClientRect().bottom;
-    });
-    expect(clearance).toBeGreaterThanOrEqual(0);
-    await page.screenshot({ path: `${prefix}-compare-action.png` });
-    if (width < 1024) {
-      await page.getByRole('button', { name: 'Close details' }).click();
-      await expect(dune).toBeFocused();
-      await expect(title).toBeHidden();
-      await page.keyboard.press('Space'); await expect(title).toBeFocused();
-      await page.getByRole('button', { name: 'Back to results' }).click(); await expect(dune).toBeFocused();
-      await dune.click();
-    }
-    await compare.click();
-    await expect(page).toHaveURL(/\/compare-medicines$/);
-    await expect(page.getByLabel('First medicine')).toHaveValue('aster');
-    await expect(page.getByLabel('Second medicine')).toHaveValue('birch');
-    await page.goBack(); await expect(page.getByRole('heading', { level: 1 })).toHaveText('Medicine Insights');
+    await page.emulateMedia({ colorScheme: theme, reducedMotion: 'reduce' }); await page.goto('/medicine-insights'); await page.evaluate(() => document.fonts.ready);
+    await mkdir(out, { recursive: true }); const prefix = `${out}/${baseURL?.includes(':4174') ? 'preview' : 'dev'}-${width}-${theme}`;
+    const capture = async (state: string) => { await page.evaluate(() => scrollTo(0, 0)); await page.mouse.move(0, 0); await page.screenshot({ path: `${prefix}-${state}.png`, fullPage: true }); expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true); };
+    await expect(page.getByText('Demo Mode', { exact: true })).toBeVisible(); await expect(page.locator('.cc-market-product')).toHaveCount(12);
+    await expect(page.getByRole('status').filter({ hasText: '16 fictional references' })).toBeVisible();
+    await capture('initial'); await page.screenshot({ path: `${prefix}-viewport.png` });
+    const metrics = await page.evaluate(() => Object.fromEntries(['.md-catalog', '.cc-market-hero', '.cc-market-layout', '.cc-market-filter-rail', '.cc-market-search', '.cc-market-categories', '.cc-market-grid', '.cc-market-product', '.cc-market-product h3'].map(selector => { const node = document.querySelector(selector)!, r = node.getBoundingClientRect(), s = getComputedStyle(node); return [selector, { x: r.x, y: r.y, width: r.width, height: r.height, size: s.fontSize, font: s.fontFamily, radius: s.borderRadius, padding: s.padding, gap: s.gap, columns: s.gridTemplateColumns, display: s.display }]; })));
+    await writeFile(`${prefix}-measurements.json`, JSON.stringify(metrics, null, 2));
+    if (width === 1440) { expect(metrics['.cc-market-hero'].height).toBeLessThan(280); expect(metrics['.cc-market-hero'].height).toBeGreaterThanOrEqual(220); expect(metrics['.cc-market-grid'].y).toBeLessThan(900); }
+    await page.getByRole('button', { name: 'Next', exact: true }).click(); await expect(page.locator('.cc-market-product')).toHaveCount(4); await page.getByRole('button', { name: 'Previous', exact: true }).click();
+    const search = page.getByLabel('Search example medicines'); await search.fill('  Aster  '); await expect(search).toHaveValue('  Aster  '); await expect(search).toBeFocused(); await expect(page.locator('.cc-market-product')).toHaveCount(1); await capture('search');
+    await search.fill('no-match-synthetic'); await expect(page.getByRole('heading', { name: 'No examples found' })).toBeVisible(); await capture('no-results');
+    await page.getByRole('button', { name: 'Clear search', exact: true }).click(); await expect(search).toBeFocused(); await expect(page.locator('.cc-market-product')).toHaveCount(12);
+    const categories = page.getByRole('group', { name: 'Categories', exact: true }); await categories.getByRole('button', { name: 'Capsules', exact: true }).click(); await expect(categories.getByRole('button', { name: 'Capsules', exact: true })).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.locator('.cc-market-product')).toHaveCount(3); await categories.getByRole('button', { name: 'All', exact: true }).click();
+    await categories.getByRole('button', { name: 'Tablets', exact: true }).focus(); await page.keyboard.press('End'); await expect(categories.getByRole('button', { name: 'Daily care', exact: true })).toBeFocused(); await page.keyboard.press('Home'); await expect(categories.getByRole('button', { name: 'All', exact: true })).toBeFocused();
+    let filters = page.getByRole('complementary', { name: 'Medicine catalog filters' });
+    if (width < 1100) { await page.getByRole('button', { name: 'Filters', exact: true }).click(); filters = page.getByRole('dialog'); await expect(filters.getByRole('button', { name: 'Close dialog' })).toBeFocused(); }
+    await filters.getByRole('combobox', { name: 'Formulation', exact: true }).selectOption('Capsule');
+    await expect(page.locator('.cc-market-product')).toHaveCount(12); // Draft does not apply early.
+    await filters.getByRole('button', { name: 'Apply filters' }).click(); await expect(page.locator('.cc-market-product')).toHaveCount(3);
+    if (width < 1100) await expect(page.locator('.cc-market-filter-trigger')).toBeFocused();
+    else await expect(page.locator('.cc-market-results')).toBeFocused();
+    await capture('filtered');
+    await page.getByRole('button', { name: 'Clear all filters', exact: true }).click(); await expect(search).toBeFocused();
+    await page.getByRole('combobox', { name: 'Sort medicine examples' }).selectOption('name_desc'); await expect(page.locator('.cc-market-product h3').first()).toContainText('Pine');
+    await page.getByRole('combobox', { name: 'Sort medicine examples' }).selectOption('category'); await page.getByRole('combobox', { name: 'Sort medicine examples' }).selectOption('formulation'); await page.getByRole('combobox', { name: 'Sort medicine examples' }).selectOption('name_asc');
+    await search.fill('Dune'); const opener = page.getByRole('button', { name: /View details for Dune/ }); await opener.focus(); await page.keyboard.press('Enter');
+    const dialog = page.getByRole('dialog'); await expect(dialog).toHaveAccessibleName('Dune — Sample 04'); await expect(dialog.getByRole('button', { name: 'Close dialog' })).toBeFocused(); await expect(dialog.getByText('Not available in this demo', { exact: true })).toBeVisible();
+    await page.keyboard.press('Shift+Tab'); await expect(dialog.getByRole('button', { name: 'Back to catalog' })).toBeFocused(); await page.keyboard.press('Tab'); await expect(dialog.getByRole('button', { name: 'Close dialog' })).toBeFocused();
+    await page.screenshot({ path: `${prefix}-details.png` });
+    const compare = dialog.getByRole('link', { name: 'Compare Medicines', exact: true }); await compare.focus(); await expect(compare).toBeVisible(); await page.screenshot({ path: `${prefix}-compare.png` });
+    await page.keyboard.press('Escape'); await expect(dialog).toHaveCount(0); await expect(opener).toBeFocused();
+    await page.keyboard.press('Space'); await expect(page.getByRole('dialog')).toBeVisible(); await page.getByRole('dialog').getByRole('link', { name: 'Compare Medicines', exact: true }).click();
+    await expect(page).toHaveURL(/\/compare-medicines$/); await expect(page.getByLabel('First medicine')).toHaveValue('aster'); await expect(page.getByLabel('Second medicine')).toHaveValue('birch');
+    await page.goBack(); await expect(page.getByRole('heading', { level: 1 })).toHaveText('Medicine Insights'); await expect(page.locator('.cc-market-product')).toHaveCount(12);
   });
 }
 
-test('insights uses available container width, retains search selection and stays usable with larger text', async ({ page }) => {
-  await page.setViewportSize({ width: 1440, height: 900 }); await page.goto('/medicine-insights');
-  await page.locator('.md-insights-page').evaluate(node => { (node as HTMLElement).style.maxWidth = '850px'; });
-  await expect(page.locator('.md-insights-details')).toBeHidden();
-  await page.getByRole('button', { name: /Birch/ }).click();
-  await expect(page.getByRole('heading', { name: 'Birch — Sample 02', exact: true })).toBeFocused();
-  const search = page.getByLabel('Search example medicines');
-  await search.fill('Aster'); await expect(search).toBeFocused();
-  await expect(page.getByRole('heading', { name: 'Birch — Sample 02', exact: true })).toBeVisible();
-  await page.getByRole('button', { name: 'Back to results' }).click();
-  await expect(search).toBeFocused(); // Origin is filtered out: safe fallback.
-  await page.getByRole('button', { name: 'Clear search' }).click();
-  await page.locator('.md-insights-page').evaluate(node => { (node as HTMLElement).style.maxWidth = ''; });
-  await page.setViewportSize({ width: 1440, height: 900 });
-  const compare = page.locator('.md-insights-details').getByRole('link', { name: 'Compare Medicines' });
-  await compare.focus();
-  await page.setViewportSize({ width: 768, height: 1024 });
-  await expect(compare).toBeFocused(); await expect(compare).toBeVisible();
-  await page.getByRole('button', { name: 'Close details' }).focus();
-  await page.setViewportSize({ width: 1440, height: 900 });
-  await expect(page.getByRole('heading', { name: 'Birch — Sample 02', exact: true })).toBeFocused();
-  await page.setViewportSize({ width: 768, height: 1024 });
-  expect(await page.locator('.md-insights-workspace').evaluate(node => getComputedStyle(node).gridTemplateColumns.split(' ').length)).toBe(1);
-  await page.getByRole('button', { name: /Cedar/ }).click();
-  await page.getByRole('button', { name: 'Clear selection' }).click();
-  await expect(page.getByRole('button', { name: /Cedar/ })).toBeFocused();
-  await expect(page.getByRole('button', { pressed: true })).toHaveCount(0);
-  for (const width of [960, 1040, 320]) {
-    await page.setViewportSize({ width, height: 844 }); await page.locator('.md-insights-page').evaluate(node => { (node as HTMLElement).style.maxWidth = ''; });
-    await search.fill('  ingredient   A  '); await expect(page.locator('.md-insights-record')).toHaveCount(2);
-    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-  }
-  await page.evaluate(() => { const sizes = [...document.querySelectorAll<HTMLElement>('.md-insights-page *')].map(node => [node, parseFloat(getComputedStyle(node).fontSize)] as const); sizes.forEach(([node, size]) => { node.style.fontSize = `${size * 2}px`; }); });
+test('catalog narrow enlarged text and filter-dialog dismissal preserve keyboard access', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 844 }); await page.goto('/medicine-insights');
+  const trigger = page.getByRole('button', { name: 'Filters', exact: true }); await trigger.click(); await page.keyboard.press('Escape'); await expect(trigger).toBeFocused();
+  await page.getByLabel('Search example medicines').fill('Cedar'); await page.getByRole('button', { name: /View details for Cedar/ }).click();
+  const dialog = page.getByRole('dialog'); await dialog.evaluate(node => { const sizes = [...node.querySelectorAll<HTMLElement>('*')].map(e => [e, parseFloat(getComputedStyle(e).fontSize)] as const); sizes.forEach(([e, size]) => { e.style.fontSize = `${size * 2}px`; }); });
+  expect(await dialog.evaluate(node => node.scrollWidth <= node.clientWidth)).toBe(true); await dialog.getByRole('button', { name: 'Back to catalog' }).click(); await expect(page.getByRole('button', { name: /View details for Cedar/ })).toBeFocused();
+  await page.evaluate(() => { const nodes = [...document.querySelectorAll<HTMLElement>('.md-catalog *')].map(node => [node, parseFloat(getComputedStyle(node).fontSize)] as const); nodes.forEach(([node, size]) => { node.style.fontSize = `${size * 2}px`; }); });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
 
-for (const theme of ['light', 'dark'] as const) test(`insights ${theme}: selected, unselected, hover and keyboard text contrast`, async ({ page }) => {
-  await page.emulateMedia({ colorScheme: theme, reducedMotion: 'reduce' }); await page.goto('/medicine-insights');
-  const values = [];
-  for (const state of ['selected', 'unselected', 'hover', 'focus']) {
-    const row = page.locator('.md-insights-record').nth(state === 'selected' ? 0 : 1);
-    if (state === 'hover') await row.hover(); if (state === 'focus') await row.focus();
-    const contrasts = await row.evaluate(element => {
-      const rgba = (value: string) => { const n = value.match(/[\d.]+/g)!.map(Number); return [...n.slice(0, 3), n.length === 4 ? n[3]! : 1]; };
-      const over = (a: number[], b: number[]) => { const alpha = a[3]! + b[3]! * (1 - a[3]!); return [0, 1, 2].map(i => (a[i]! * a[3]! + b[i]! * b[3]! * (1 - a[3]!)) / alpha).concat(alpha); };
-      const bg = (node: Element | null): number[] => node ? over(rgba(getComputedStyle(node).backgroundColor), bg(node.parentElement)) : [255, 255, 255, 1];
-      const lum = (c: number[]) => c.slice(0, 3).map(v => { v /= 255; return v <= .04045 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4; }).reduce((sum, v, i) => sum + v * [.2126, .7152, .0722][i]!, 0);
-      return [...element.querySelectorAll('.md-insights-record-copy > *')].map(node => { const background = bg(node), a = lum(background), b = lum(over(rgba(getComputedStyle(node).color), background)); return (Math.max(a, b) + .05) / (Math.min(a, b) + .05); });
+for (const theme of ['light', 'dark'] as const) test(`catalog ${theme} text contrast on cards, categories and hover`, async ({ page }) => {
+  await page.emulateMedia({ colorScheme: theme, reducedMotion: 'reduce' }); await page.goto('/medicine-insights'); await page.evaluate(() => document.fonts.ready);
+  const measure = () => page.evaluate(() => {
+    const rgba = (value: string) => { const n = value.match(/[\d.]+/g)!.map(Number); return [...n.slice(0, 3), n.length === 4 ? n[3]! : 1]; };
+    const over = (a: number[], b: number[]) => { const alpha = a[3]! + b[3]! * (1 - a[3]!); return [0, 1, 2].map(i => (a[i]! * a[3]! + b[i]! * b[3]! * (1 - a[3]!)) / alpha).concat(alpha); };
+    const bg = (node: Element | null): number[] => node ? over(rgba(getComputedStyle(node).backgroundColor), bg(node.parentElement)) : [255, 255, 255, 1];
+    const lum = (c: number[]) => c.slice(0, 3).map(v => { v /= 255; return v <= .04045 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4; }).reduce((sum, v, i) => sum + v * [.2126, .7152, .0722][i]!, 0);
+    return [...document.querySelectorAll('.cc-market-product h3,.md-catalog-ingredient,.cc-market-product-condition,.md-catalog-reference-status,.cc-market-product-footer>span,.cc-market-category-label')].map(node => {
+      const background = bg(node), a = lum(background), b = lum(over(rgba(getComputedStyle(node).color), background)); return { text: node.textContent, ratio: (Math.max(a, b) + .05) / (Math.min(a, b) + .05) };
     });
-    contrasts.forEach(ratio => expect(ratio).toBeGreaterThanOrEqual(4.5)); values.push({ state, contrasts });
-  }
-  await mkdir(evidence, { recursive: true }); await writeFile(`${evidence}/contrast-${theme}.json`, JSON.stringify(values, null, 2));
+  });
+  const normal = await measure(); await page.locator('.cc-market-product').first().hover(); const hover = await measure();
+  [...normal, ...hover].forEach(item => expect(item.ratio).toBeGreaterThanOrEqual(4.5));
+  await mkdir(out, { recursive: true }); await writeFile(`${out}/contrast-${theme}.json`, JSON.stringify({ normal, hover }, null, 2));
 });
