@@ -20,7 +20,8 @@ it.each(destinations)('renders the $label demo workspace', (destination) => {
   expect(within(screen.getByRole('navigation', { name: 'Primary navigation' })).getAllByRole('link', { name: destination.label })[0]!.getAttribute('aria-current')).toBe('page');
   expect(screen.queryByText('Not yet implemented')).toBeNull();
   expect(screen.getByText('Demo Mode')).toBeTruthy();
-  expect(screen.getByText(destination.path === '/upload-prescription' ? /Sample analysis is predefined; OCR is not connected/ : /Synthetic examples/)).toBeTruthy();
+  const explanation = destination.path === '/upload-prescription' ? /Sample analysis is predefined; OCR is not connected/ : destination.path === '/medicine-insights' ? /Fictional examples only. Medicine information is not clinically verified/ : /Synthetic examples/;
+  expect(screen.getByText(explanation)).toBeTruthy();
 });
 it('provides a not-found route and Home recovery', () => {
   mount('/missing');
