@@ -25,7 +25,7 @@ it.each(['get-started', 'sign-in'])('provides an honest authentication UI /%s de
   expect(screen.getByText(/Account access is not connected yet/)).toBeTruthy();
   fireEvent.click(screen.getByRole('link', { name: 'Back to MedDecode' }));
   fireEvent.click(screen.getByRole('link', { name: 'Workspace preview' }));
-  expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Home');
+  expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Welcome, Demo User.');
 });
 it('adapts the showcase to all six planned capabilities', () => {
   mount();

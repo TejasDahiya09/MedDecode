@@ -29,8 +29,9 @@ beforeEach(() => {
 it.each(['light', 'dark', 'system'])('renders stored preference %s through providers', (mode) => {
   localStorage.setItem(themeStorageKey, mode);
   mount();
-  expect(screen.getByRole('button', { name: `Use ${mode} theme` }).getAttribute('aria-pressed')).toBe('true');
-  expect(screen.getByRole('heading', { name: 'Home' })).toBeTruthy();
+  expect(document.documentElement.dataset.theme).toBe(mode === 'dark' ? 'dark' : 'light');
+  expect(localStorage.getItem(themeStorageKey)).toBe(mode);
+  expect(screen.getByRole('heading', { name: 'Welcome, Demo User.' })).toBeTruthy();
 });
 it.each([null, 'invalid'])('falls back to system for preference %s', (value) => {
   if (value !== null) localStorage.setItem(themeStorageKey, value);
@@ -43,19 +44,20 @@ it('supports blocked reads and writes with session-only selection', () => {
   vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => { throw new DOMException('Blocked', 'SecurityError'); });
   vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new DOMException('Blocked', 'SecurityError'); });
   mount();
-  fireEvent.click(screen.getByRole('button', { name: 'Use dark theme' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Switch to dark mode' }));
   expect(document.documentElement.dataset.theme).toBe('dark');
 });
 it('selects, persists and resolves light, dark and system modes', () => {
   mount();
-  for (const mode of ['dark', 'light', 'system']) {
-    fireEvent.click(screen.getByRole('button', { name: `Use ${mode} theme` }));
+  for (const mode of ['dark', 'light']) {
+    fireEvent.click(screen.getByRole('button', { name: `Switch to ${mode} mode` }));
     expect(localStorage.getItem(themeStorageKey)).toBe(mode);
-    expect(document.documentElement.dataset.theme).toBe(mode === 'system' ? 'light' : mode);
+    expect(document.documentElement.dataset.theme).toBe(mode);
   }
+  act(() => { localStorage.removeItem(themeStorageKey); window.dispatchEvent(new StorageEvent('storage', { key: themeStorageKey })); });
   changeSystem(true);
   expect(document.documentElement.dataset.theme).toBe('dark');
-  fireEvent.click(screen.getByRole('button', { name: 'Use light theme' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Switch to light mode' }));
   changeSystem(false);
   changeSystem(true);
   expect(document.documentElement.dataset.theme).toBe('light');
@@ -68,7 +70,8 @@ it('synchronizes storage updates and clearing', () => {
   });
   expect(document.documentElement.dataset.theme).toBe('dark');
   act(() => { localStorage.clear(); window.dispatchEvent(new StorageEvent('storage', { key: null })); });
-  expect(screen.getByRole('button', { name: 'Use system theme' }).getAttribute('aria-pressed')).toBe('true');
+  expect(document.documentElement.dataset.theme).toBe('light');
+  expect(localStorage.getItem(themeStorageKey)).toBeNull();
 });
 it('cleans up listeners after Strict Mode and unmount', () => {
   const remove = vi.spyOn(window, 'removeEventListener');
@@ -108,7 +111,7 @@ it('renders a labelled local demo without an API base', () => {
   const fetch = vi.fn();
   vi.stubGlobal('fetch', fetch);
   mount();
-  expect(screen.getByText('Intelligence Behind Every Prescription')).toBeTruthy();
+  expect(screen.getByRole('heading', {name:'Welcome, Demo User.'})).toBeTruthy();
   expect(screen.getByText(/No account, cloud saving or background notifications/)).toBeTruthy();
   expect(fetch).not.toHaveBeenCalled();
 });

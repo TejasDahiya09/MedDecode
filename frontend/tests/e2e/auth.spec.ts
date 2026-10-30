@@ -146,7 +146,7 @@ test('auth routes, landing CTA alias, history and shared theme remain coherent',
   await expect(page.getByLabel('New password', { exact: true })).toHaveValue('');
   await expect(page.getByRole('alert')).toHaveCount(0);
   expect(await page.evaluate(() => ({ local: { ...localStorage }, session: { ...sessionStorage } }))).toEqual({ local: { 'meddecode-theme': 'dark' }, session: {} });
-  await page.goto('/home'); await page.getByRole('button', { name: 'Use system theme' }).click();
+  await page.goto('/home'); await page.evaluate(() => localStorage.removeItem('meddecode-theme')); await page.reload();
   await page.goto('/sign-in'); await page.emulateMedia({ colorScheme: 'light' }); await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
   await expect(page.getByRole('button', { name: 'Use system theme' })).toHaveCount(0);
 });

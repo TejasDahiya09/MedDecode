@@ -19,7 +19,7 @@ for (const theme of ['light','dark'] as const) for (const width of [1440,390]) {
     await mkdir(evidence,{recursive:true});
     for (const item of destinations) {
       await page.goto(item.path); await page.evaluate(() => document.fonts.ready);
-      await expect(page.getByRole('heading',{level:1})).toHaveText(item.label);
+      await expect(page.getByRole('heading',{level:1})).toHaveText(item.path === '/home' ? 'Welcome, Demo User.' : item.label);
       await expect(page.getByText('Demo Mode',{exact:true})).toBeVisible();
       await expect(page.getByText('Not yet implemented')).toHaveCount(0);
       await expect(page.locator('.md-demo-footnote')).toContainText('In-memory only');
@@ -45,7 +45,7 @@ for (const width of [1440,390]) {
     if (width === 1440) await page.getByRole('navigation',{name:'Primary navigation'}).getByRole('link',{name:'Home',exact:true}).click();
     else await page.getByRole('navigation',{name:'Mobile navigation'}).getByRole('link',{name:'Home',exact:true}).click();
     await expect(page.getByText('04',{exact:true})).toBeVisible();
-    if (width === 1440) await page.getByRole('navigation',{name:'Primary navigation'}).getByRole('link',{name:'My Cabinet'}).click();
+    if (width === 1440) await page.getByRole('link',{name:'My Cabinet shortcut'}).click();
     else await page.getByRole('navigation',{name:'Mobile navigation'}).getByRole('link',{name:'Cabinet',exact:true}).click();
     await page.getByRole('button',{name:'Remove Synthetic cabinet test'}).click(); await page.getByRole('button',{name:'Confirm removal'}).click(); await expect(page.getByRole('heading',{name:'Synthetic cabinet test'})).toHaveCount(0);
     await page.getByRole('button',{name:'Add medicine',exact:true}).click(); await page.keyboard.press('Escape'); await expect(page.getByRole('dialog')).toHaveCount(0);
@@ -59,7 +59,7 @@ for (const width of [1440,390]) {
   test(`explorer comparison upload resources ${width}: functional and honest`, async ({ page, baseURL }) => {
     await page.setViewportSize({width,height:844}); await page.goto('/medicine-insights');
     await page.getByLabel('Search example medicines').fill('Dune'); await page.getByRole('button',{name:/Dune/}).click(); await expect(page.getByRole('heading',{name:'Dune — Sample 04'})).toBeVisible(); await expect(page.getByText('Not available in this demo',{exact:true})).toBeVisible();
-    await page.getByLabel('Search example medicines').fill('nomatch'); await expect(page.getByText('No examples found')).toBeVisible(); await page.getByRole('button',{name:'Clear search'}).click(); await expect(page.getByRole('button',{pressed:true})).toHaveCount(2); // selected entry plus System theme
+    await page.getByLabel('Search example medicines').fill('nomatch'); await expect(page.getByText('No examples found')).toBeVisible(); await page.getByRole('button',{name:'Clear search'}).click(); await expect(page.getByRole('button',{pressed:true})).toHaveCount(1); // selected reference entry; compact theme control is not a segmented selector
     await page.goto('/compare-medicines'); await page.getByLabel('First medicine').selectOption('cedar'); await page.getByRole('button',{name:'Swap medicines'}).click(); await expect(page.getByLabel('Second medicine')).toHaveValue('cedar'); await expect(page.getByLabel('First medicine')).toHaveValue('birch'); await page.getByRole('button',{name:'Clear comparison'}).click(); await expect(page.getByText('Select first medicine')).toBeVisible(); await page.getByLabel('Search sample options').fill('nothing'); await expect(page.getByText('No sample options match this search.')).toBeVisible();
     await page.goto('/upload-prescription'); const file = page.getByLabel('Choose prescription file'); await file.setInputFiles({name:'synthetic.pdf',mimeType:'application/pdf',buffer:Buffer.from('%PDF synthetic example')}); await expect(page.getByText('synthetic.pdf',{exact:true})).toBeVisible(); await expect(page.getByRole('region',{name:'Sample analysis'})).toHaveCount(0);
     await page.getByRole('button',{name:'View Sample Analysis'}).click(); await expect(page.getByText('Sample Analysis — predefined example')).toBeVisible(); await expect(page.getByText(/Not an analysis of your selected file/)).toBeVisible();
@@ -71,5 +71,5 @@ for (const width of [1440,390]) {
 }
 test('tablet and narrow demo pages reflow, theme persists and modal traps focus', async ({ page }) => {
   for (const width of [768,320]) { await page.setViewportSize({width,height:1024}); for (const item of destinations) { await page.goto(item.path); expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true); } }
-  await page.goto('/my-cabinet'); await page.getByRole('button',{name:'Use dark theme'}).click(); await page.getByRole('button',{name:'Add medicine',exact:true}).click(); const dialog = page.getByRole('dialog'); await expect(dialog.getByRole('button',{name:'Close dialog'})).toBeFocused(); await page.keyboard.press('Shift+Tab'); await expect(dialog.getByRole('button',{name:'Save cabinet item'})).toBeFocused(); await page.keyboard.press('Tab'); await expect(dialog.getByRole('button',{name:'Close dialog'})).toBeFocused(); await page.keyboard.press('Escape'); await page.reload(); await expect(page.locator('html')).toHaveAttribute('data-theme','dark');
+  await page.goto('/my-cabinet'); await page.getByRole('button',{name:'Switch to dark mode'}).click(); await page.getByRole('button',{name:'Add medicine',exact:true}).click(); const dialog = page.getByRole('dialog'); await expect(dialog.getByRole('button',{name:'Close dialog'})).toBeFocused(); await page.keyboard.press('Shift+Tab'); await expect(dialog.getByRole('button',{name:'Save cabinet item'})).toBeFocused(); await page.keyboard.press('Tab'); await expect(dialog.getByRole('button',{name:'Close dialog'})).toBeFocused(); await page.keyboard.press('Escape'); await page.reload(); await expect(page.locator('html')).toHaveAttribute('data-theme','dark');
 });

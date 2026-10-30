@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type MouseEvent, type RefObject } from 'react';
-import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
+import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { Icon } from '../components/Icon';
-import { ThemeControl } from '../components/ThemeControl';
+import { RouteSearch, WorkspaceHeader } from './WorkspaceHeader';
 import { cn } from '../utils/class-names';
 import { destinations, mobileDestinations } from './navigation';
 import './app-shell.css';
@@ -13,7 +13,7 @@ function NavigationLinks({ onNavigate }: { readonly onNavigate?: () => void }) {
   return destinations.map((item) => (
     <NavLink key={item.path} to={item.path} end onClick={onNavigate} className={({ isActive }) => cn('cc-explore-link', isActive && 'is-active')}>
       <span className="cc-explore-icon"><Icon className="size-5" name={item.icon} /></span>
-      <span>{item.label}</span>
+      <span><strong>{item.label}</strong><small>{item.description}</small></span>
     </NavLink>
   ));
 }
@@ -35,7 +35,7 @@ function ExploreSheet({ onClose, triggerRef }: { readonly onClose: () => void; r
       if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
       else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
     };
-    const desktop = matchMedia('(min-width: 1200px)');
+    const desktop = matchMedia('(min-width: 1340px)');
     const resize = (event: MediaQueryListEvent) => { if (event.matches) onClose(); };
     desktop.addEventListener('change', resize);
     window.addEventListener('keydown', keyboard);
@@ -57,7 +57,7 @@ function ExploreSheet({ onClose, triggerRef }: { readonly onClose: () => void; r
           <div><p className="cc-eyebrow">MedDecode workspace</p><h2 id={titleId}>Explore MedDecode</h2></div>
           <button className="cc-button cc-button--ghost md-close" type="button" aria-label="Close navigation" onClick={onClose}><Icon className="size-5" name="close" /></button>
         </header>
-        <nav className="cc-explore-body" aria-label="All sections"><NavigationLinks onNavigate={onClose} /></nav>
+        <div className="cc-explore-body"><div className="md-mobile-search"><RouteSearch /></div><nav aria-label="All sections"><NavigationLinks onNavigate={onClose} /></nav></div>
       </section>
     </div>
   );
@@ -77,10 +77,11 @@ export function AppShell() {
     document.title = `${title} | MedDecode`;
     const changed = previousPath.current !== null && previousPath.current !== location.pathname;
     previousPath.current = location.pathname;
+    if (changed) close();
     if (!changed) return;
     const frame = requestAnimationFrame(() => { main.current?.focus(); window.scrollTo(0, 0); });
     return () => cancelAnimationFrame(frame);
-  }, [location.pathname, title]);
+  }, [location.pathname, title, close]);
   function open(event: MouseEvent<HTMLButtonElement>, source: 'header' | 'more') { trigger.current = event.currentTarget; setDrawer(source); }
   const inMore = !!destination && !mobileDestinations.some((item) => item.path === location.pathname);
 
@@ -88,17 +89,8 @@ export function AppShell() {
     <div className="cc-app-shell">
       <div className="md-shell-background" inert={drawer !== null}>
         <a className="cc-skip-link" href="#main-content">Skip to main content</a>
-        <header className="cc-top-nav">
-          <div className="cc-top-nav-inner">
-            <Link aria-label="MedDecode home" className="cc-shell-brand" to="/home"><span className="cc-shell-brand-mark">M</span><span className="cc-shell-wordmark">MedDecode</span></Link>
-            <button type="button" className="cc-shell-explore-trigger md-drawer-trigger" aria-label="Explore all sections" aria-haspopup="dialog" aria-controls="workspace-navigation" aria-expanded={drawer === 'header'} onClick={(event) => open(event, 'header')}><Icon name="dashboard" /><span>Explore</span></button>
-            <div className="md-header-theme"><ThemeControl compact /></div>
-          </div>
-        </header>
-        <div className="md-layout">
-          <aside className="md-sidebar"><p className="cc-eyebrow">Your workspace</p><nav aria-label="Primary navigation"><NavigationLinks /></nav><p className="md-tagline">Intelligence Behind Every Prescription</p></aside>
-          <main className="md-main" id="main-content" aria-label={title} tabIndex={-1} ref={main}><Outlet /></main>
-        </div>
+        <WorkspaceHeader onExplore={(event) => open(event, 'header')} expanded={drawer === 'header'} />
+        <main className="md-main" id="main-content" aria-label={title} tabIndex={-1} ref={main}><Outlet /></main>
         <nav className="cc-mobile-nav" aria-label="Mobile navigation">
           {mobileDestinations.map((item) => <NavLink key={item.path} to={item.path} end className={({ isActive }) => cn('cc-mobile-nav-link', isActive && 'cc-mobile-nav-link--active')}><Icon className="size-5" name={item.icon} /><span>{item.label}</span></NavLink>)}
           <button type="button" className={cn('cc-mobile-nav-link', inMore && 'cc-mobile-nav-link--active')} aria-label={inMore ? `More sections, current section: ${title}` : 'More sections'} aria-haspopup="dialog" aria-controls="workspace-navigation" aria-expanded={drawer === 'more'} onClick={(event) => open(event, 'more')}><Icon className="size-5" name="menu" /><span>More</span></button>

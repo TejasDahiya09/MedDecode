@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
+﻿import { fireEvent, render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, expect, it, vi } from 'vitest';
 import { AppRoutes } from '../../src/app/App';
@@ -13,10 +13,11 @@ function mount(path = '/home') { return render(<MemoryRouter initialEntries={[pa
 
 it.each(destinations)('renders the $label demo workspace', (destination) => {
   mount(destination.path);
-  expect(screen.getByRole('heading', { level: 1 }).textContent).toBe(destination.label);
+  expect(screen.getByRole('heading', { level: 1 }).textContent).toBe(destination.path === '/home' ? 'Welcome, Demo User.' : destination.label);
   expect(document.title).toBe(`${destination.label} | MedDecode`);
-  expect(within(screen.getByRole('navigation', { name: 'Primary navigation' })).getAllByRole('link')).toHaveLength(7);
-  expect(within(screen.getByRole('navigation', { name: 'Primary navigation' })).getByRole('link', { name: destination.label }).getAttribute('aria-current')).toBe('page');
+  expect(document.querySelectorAll('.cc-shell-primary-nav > a')).toHaveLength(7);
+  expect(document.querySelector('.md-sidebar')).toBeNull();
+  expect(within(screen.getByRole('navigation', { name: 'Primary navigation' })).getAllByRole('link', { name: destination.label })[0]!.getAttribute('aria-current')).toBe('page');
   expect(screen.queryByText('Not yet implemented')).toBeNull();
   expect(screen.getByText('Demo Mode')).toBeTruthy();
   expect(screen.getByText(/Synthetic examples/)).toBeTruthy();
@@ -25,7 +26,7 @@ it('provides a not-found route and Home recovery', () => {
   mount('/missing');
   expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Page not found');
   fireEvent.click(screen.getByRole('link', { name: 'Return to Home' }));
-  expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Home');
+  expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Welcome, Demo User.');
 });
 it('opens a labelled drawer and isolates the background until Escape', () => {
   mount();
@@ -33,7 +34,7 @@ it('opens a labelled drawer and isolates the background until Escape', () => {
   fireEvent.click(trigger);
   const dialog = screen.getByRole('dialog', { name: 'Explore MedDecode' });
   expect(dialog.getAttribute('aria-modal')).toBe('true');
-  expect(within(dialog).getAllByRole('link')).toHaveLength(7);
+  expect(within(within(dialog).getByRole('navigation', {name:'All sections'})).getAllByRole('link')).toHaveLength(7);
   expect(document.querySelector('.md-shell-background')?.hasAttribute('inert')).toBe(true);
   fireEvent.keyDown(window, { key: 'Escape' });
   expect(screen.queryByRole('dialog')).toBeNull();
@@ -42,10 +43,10 @@ it('opens a labelled drawer and isolates the background until Escape', () => {
 it('closes the drawer after navigation and marks More for other sections', () => {
   mount();
   fireEvent.click(screen.getByRole('button', { name: 'More sections' }));
-  fireEvent.click(within(screen.getByRole('dialog')).getByRole('link', { name: 'Medicine Insights' }));
+  fireEvent.click(within(screen.getByRole('dialog')).getByRole('link', { name: /Compare Medicines/ }));
   expect(screen.queryByRole('dialog')).toBeNull();
-  expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Medicine Insights');
-  expect(screen.getByRole('button', { name: 'More sections, current section: Medicine Insights' }).classList.contains('cc-mobile-nav-link--active')).toBe(true);
+  expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Compare Medicines');
+  expect(screen.getByRole('button', { name: 'More sections, current section: Compare Medicines' }).classList.contains('cc-mobile-nav-link--active')).toBe(true);
 });
 it('reused buttons are non-submit by default, with explicit submit preserved', () => {
   const submit = vi.fn((event: React.FormEvent) => event.preventDefault());

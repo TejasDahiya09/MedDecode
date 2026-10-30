@@ -123,10 +123,10 @@ test('public themes persist across workspace routes, reload, OS and real tabs', 
   await page.getByRole('navigation', { name: 'Footer navigation' }).getByRole('link', { name: 'Workspace preview' }).click();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark'); await expect(page.getByRole('main')).toBeFocused();
   const second = await context.newPage(); await second.goto('/');
-  await page.getByRole('button', { name: 'Use light theme' }).click();
+  await page.getByRole('button', { name: 'Switch to light mode' }).click();
   await expect(second.locator('html')).toHaveAttribute('data-theme', 'light');
   await expect(second.getByRole('button', { name: 'Switch to dark mode' })).toBeVisible();
-  await page.getByRole('button', { name: 'Use system theme' }).click(); await page.goto('/');
+  await page.evaluate(() => localStorage.removeItem('meddecode-theme')); await page.reload(); await page.goto('/');
   await page.emulateMedia({ colorScheme: 'dark' }); await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
   await second.close();
 });

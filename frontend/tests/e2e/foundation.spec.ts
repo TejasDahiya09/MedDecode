@@ -20,18 +20,20 @@ for (const viewport of [
       await page.setViewportSize(viewport);
       await page.emulateMedia({ colorScheme: theme, reducedMotion: 'reduce' });
       await page.goto('/home');
-      await expect(page.getByRole('heading', { name: 'Home', exact: true })).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'Welcome, Demo User.', exact: true })).toBeVisible();
       await expect(page.getByRole('link', { name: 'MedDecode home' })).toBeVisible();
       await expect(page.getByText('Demo Mode', { exact: true })).toBeVisible();
       await expect(page.locator('.md-demo-footnote')).toContainText('No account, cloud saving or background notifications');
-      const control = page.getByRole('button', { name: `Use ${theme} theme` });
+      const opposite = theme === 'light' ? 'dark' : 'light';
+      const control = page.getByRole('button', { name: `Switch to ${opposite} mode` });
       await control.focus();
       await expect(control).toBeFocused();
       expect(await control.evaluate((element) => getComputedStyle(element).outlineStyle)).toBe('solid');
       await page.keyboard.press('Enter');
-      await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
+      await expect(page.locator('html')).toHaveAttribute('data-theme', opposite);
+      await page.getByRole('button', {name:`Switch to ${theme} mode`}).click();
       await page.reload();
-      await expect(control).toHaveAttribute('aria-pressed', 'true');
+      await expect(control).toBeVisible();
       await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
       const box = await control.boundingBox();
@@ -65,12 +67,13 @@ for (const viewport of [
 test('system preference follows the OS; explicit preferences override it', async ({ page }) => {
   await page.emulateMedia({ colorScheme: 'light' });
   await page.goto('/home');
-  await expect(page.getByRole('button', { name: 'Use system theme' })).toHaveAttribute('aria-pressed', 'true');
+  expect(await page.evaluate(() => localStorage.getItem('meddecode-theme'))).toBeNull();
   await page.emulateMedia({ colorScheme: 'dark' });
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
-  await page.getByRole('button', { name: 'Use light theme' }).click();
+  await page.getByRole('button', { name: 'Switch to light mode' }).click();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
-  await page.getByRole('button', { name: 'Use system theme' }).click();
+  await page.evaluate(() => localStorage.removeItem('meddecode-theme'));
+  await page.reload();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
 });
 
@@ -78,8 +81,8 @@ test('synchronizes preferences between real browser tabs', async ({ page, contex
   await page.goto('/home');
   const second = await context.newPage();
   await second.goto('/home');
-  await page.getByRole('button', { name: 'Use dark theme' }).click();
-  await expect(second.getByRole('button', { name: 'Use dark theme' })).toHaveAttribute('aria-pressed', 'true');
+  await page.getByRole('button', { name: 'Switch to dark mode' }).click();
+  await expect(second.getByRole('button', { name: 'Switch to light mode' })).toBeVisible();
   await expect(second.locator('html')).toHaveAttribute('data-theme', 'dark');
   await second.close();
 });

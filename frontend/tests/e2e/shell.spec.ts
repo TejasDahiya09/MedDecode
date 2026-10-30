@@ -7,13 +7,15 @@ test('desktop exposes exactly seven routes, focus and browser history', async ({
   await page.goto('/home');
   const navigation = page.getByRole('navigation', { name: 'Primary navigation' });
   await expect(navigation).toBeVisible();
-  await expect(navigation.getByRole('link')).toHaveCount(7);
+  await expect(navigation.locator(':scope > a:visible')).toHaveCount(3);
+  await expect(page.locator('.md-sidebar')).toHaveCount(0);
   await expect(page.getByRole('navigation', { name: 'Mobile navigation' })).toBeHidden();
   for (const destination of destinations) {
-    await navigation.getByRole('link', { name: destination.label, exact: true }).click();
-    await expect(page.getByRole('heading', { level: 1 })).toHaveText(destination.label);
+    if (destinations.indexOf(destination) > 2) await page.getByText('More', {exact:true}).filter({visible:true}).click();
+    await navigation.getByRole('link', { name: destination.label, exact: true }).filter({visible:true}).click();
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText(destination.path === '/home' ? 'Welcome, Demo User.' : destination.label);
     await expect(page).toHaveTitle(`${destination.label} | MedDecode`);
-    await expect(navigation.getByRole('link', { name: destination.label, exact: true })).toHaveAttribute('aria-current', 'page');
+    await expect(navigation.getByRole('link', { name: destination.label, exact: true, includeHidden:true }).first()).toHaveAttribute('aria-current', 'page');
     if (destination.path !== '/home') await expect(page.getByRole('main')).toBeFocused();
   }
   await page.goBack();
@@ -22,7 +24,8 @@ test('desktop exposes exactly seven routes, focus and browser history', async ({
   await expect(page).toHaveURL(/\/learn-resources$/);
   // Route focus is scheduled in requestAnimationFrame; wait before testing link focus.
   await expect(page.getByRole('main')).toBeFocused();
-  const focused = navigation.getByRole('link', { name: 'Learn & Resources' });
+  await navigation.getByText('More', {exact:true}).click();
+  const focused = navigation.getByRole('link', { name: 'Learn & Resources', exact:true }).filter({visible:true});
   await page.keyboard.press('Tab');
   await focused.focus();
   await expect(focused).toBeFocused();
@@ -45,7 +48,7 @@ for (const width of [390, 768]) {
     const close = dialog.getByRole('button', { name: 'Close navigation' });
     await expect(close).toBeFocused();
     await page.keyboard.press('Shift+Tab');
-    await expect(dialog.getByRole('link', { name: 'Learn & Resources' })).toBeFocused();
+    await expect(dialog.getByRole('link', { name: /Learn & Resources/ })).toBeFocused();
     await page.keyboard.press('Tab');
     await expect(close).toBeFocused();
     if (width === 390) {
@@ -57,11 +60,11 @@ for (const width of [390, 768]) {
     await expect(trigger).toBeFocused();
     await expect(page.locator('.md-shell-background')).not.toHaveAttribute('inert');
     await trigger.click();
-    await dialog.getByRole('link', { name: 'Medicine Insights' }).click();
+    await dialog.getByRole('link', { name: /Compare Medicines/ }).click();
     await expect(dialog).toHaveCount(0);
-    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Medicine Insights');
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Compare Medicines');
     await expect(page.getByRole('main')).toBeFocused();
-    if (width === 390) await expect(page.getByRole('button', { name: 'More sections, current section: Medicine Insights' })).toHaveClass(/cc-mobile-nav-link--active/);
+    if (width === 390) await expect(page.getByRole('button', { name: 'More sections, current section: Compare Medicines' })).toHaveClass(/cc-mobile-nav-link--active/);
   });
 }
 
@@ -69,7 +72,7 @@ test('mobile bottom navigation and scroll clearance remain usable', async ({ pag
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/home');
   const nav = page.getByRole('navigation', { name: 'Mobile navigation' });
-  await expect(nav.getByRole('link')).toHaveText(['Home', 'Upload', 'Cabinet']);
+  await expect(nav.getByRole('link')).toHaveText(['Home', 'Upload', 'Insights', 'Cabinet', 'Reminders']);
   await nav.getByRole('link', { name: 'Upload', exact: true }).click();
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Upload Prescription');
   await nav.getByRole('link', { name: 'Cabinet', exact: true }).click();
@@ -112,9 +115,10 @@ test('Manrope loads, reduced motion disables drawer animation, and palette is sc
   await page.goto('/home');
   await page.evaluate(() => document.fonts.ready);
   expect(await page.evaluate(() => document.fonts.check('16px "Manrope Variable"'))).toBe(true);
-  await page.getByRole('button', { name: 'Use light theme' }).click();
+  await page.getByRole('button', { name: 'Switch to dark mode' }).click();
+  await page.getByRole('button', { name: 'Switch to light mode' }).click();
   expect(await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--cc-bg').trim())).toBe('#f8f9fc');
-  await page.getByRole('button', { name: 'Use dark theme' }).click();
+  await page.getByRole('button', { name: 'Switch to dark mode' }).click();
   expect(await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--cc-bg').trim())).toBe('#0d1018');
   await page.getByRole('button', { name: 'More sections' }).click();
   expect(await page.getByRole('dialog').evaluate((element) => getComputedStyle(element).animationName)).toBe('none');

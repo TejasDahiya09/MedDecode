@@ -21,5 +21,7 @@ export const destinations: readonly Destination[] = [
 export const mobileDestinations = [
   { path: '/home', label: 'Home', icon: 'home' },
   { path: '/upload-prescription', label: 'Upload', icon: 'inbox' },
+  { path: '/medicine-insights', label: 'Insights', icon: 'search' },
   { path: '/my-cabinet', label: 'Cabinet', icon: 'briefcase' },
+  { path: '/reminders', label: 'Reminders', icon: 'calendar' },
 ] as const;
