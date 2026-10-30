@@ -7,11 +7,10 @@ test('desktop exposes exactly seven routes, focus and browser history', async ({
   await page.goto('/home');
   const navigation = page.getByRole('navigation', { name: 'Primary navigation' });
   await expect(navigation).toBeVisible();
-  await expect(navigation.locator(':scope > a:visible')).toHaveCount(3);
+  await expect(navigation.locator(':scope > a:visible')).toHaveCount(7);
   await expect(page.locator('.md-sidebar')).toHaveCount(0);
   await expect(page.getByRole('navigation', { name: 'Mobile navigation' })).toBeHidden();
   for (const destination of destinations) {
-    if (destinations.indexOf(destination) > 2) await page.getByText('More', {exact:true}).filter({visible:true}).click();
     await navigation.getByRole('link', { name: destination.label, exact: true }).filter({visible:true}).click();
     await expect(page.getByRole('heading', { level: 1 })).toHaveText(destination.path === '/home' ? 'Welcome, Demo User.' : destination.label);
     await expect(page).toHaveTitle(`${destination.label} | MedDecode`);
@@ -24,7 +23,6 @@ test('desktop exposes exactly seven routes, focus and browser history', async ({
   await expect(page).toHaveURL(/\/learn-resources$/);
   // Route focus is scheduled in requestAnimationFrame; wait before testing link focus.
   await expect(page.getByRole('main')).toBeFocused();
-  await navigation.getByText('More', {exact:true}).click();
   const focused = navigation.getByRole('link', { name: 'Learn & Resources', exact:true }).filter({visible:true});
   await page.keyboard.press('Tab');
   await focused.focus();
@@ -39,7 +37,7 @@ for (const width of [390, 768]) {
     await page.setViewportSize({ width, height: width === 390 ? 844 : 1024 });
     await page.goto('/home');
     await expect(page.getByRole('navigation', { name: 'Primary navigation' })).toBeHidden();
-    const trigger = width === 390 ? page.getByRole('button', { name: 'More sections', exact: true }) : page.getByRole('button', { name: 'Explore all sections' });
+    const trigger = page.getByRole('button', { name: 'Explore all sections' });
     await trigger.click();
     const dialog = page.getByRole('dialog', { name: 'Explore MedDecode' });
     await expect(dialog).toBeVisible();
@@ -64,7 +62,7 @@ for (const width of [390, 768]) {
     await expect(dialog).toHaveCount(0);
     await expect(page.getByRole('heading', { level: 1 })).toHaveText('Compare Medicines');
     await expect(page.getByRole('main')).toBeFocused();
-    if (width === 390) await expect(page.getByRole('button', { name: 'More sections, current section: Compare Medicines' })).toHaveClass(/cc-mobile-nav-link--active/);
+    await expect(page.getByRole('button',{name:'Explore all sections'})).toHaveAttribute('aria-expanded','false');
   });
 }
 
@@ -72,7 +70,7 @@ test('mobile bottom navigation and scroll clearance remain usable', async ({ pag
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/home');
   const nav = page.getByRole('navigation', { name: 'Mobile navigation' });
-  await expect(nav.getByRole('link')).toHaveText(['Home', 'Upload', 'Insights', 'Cabinet', 'Reminders']);
+  await expect(nav.getByRole('link')).toHaveText(['Home', 'Upload', 'Insights', 'Cabinet', 'Reminders', 'Learn']);
   await nav.getByRole('link', { name: 'Upload', exact: true }).click();
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Upload Prescription');
   await nav.getByRole('link', { name: 'Cabinet', exact: true }).click();
@@ -103,7 +101,7 @@ test('200-percent-equivalent reflow and narrow screens retain navigation', async
     await page.goto('/compare-medicines');
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-    await page.getByRole('button', { name: /More sections/ }).click();
+    await page.getByRole('button', { name: 'Explore all sections' }).click();
     await expect(page.getByRole('dialog').getByRole('link')).toHaveCount(7);
     await page.keyboard.press('Escape');
   }
@@ -120,6 +118,6 @@ test('Manrope loads, reduced motion disables drawer animation, and palette is sc
   expect(await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--cc-bg').trim())).toBe('#f8f9fc');
   await page.getByRole('button', { name: 'Switch to dark mode' }).click();
   expect(await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--cc-bg').trim())).toBe('#0d1018');
-  await page.getByRole('button', { name: 'More sections' }).click();
+  await page.getByRole('button', { name: 'Explore all sections' }).click();
   expect(await page.getByRole('dialog').evaluate((element) => getComputedStyle(element).animationName)).toBe('none');
 });

@@ -901,7 +901,7 @@
 @media(min-width:640px) { .md-page { padding:2rem 1.5rem 1.5rem; } }
 @media(min-width:1024px) { .md-page { padding:2.25rem 2rem 1.5rem; } }
 @media(max-width:767px) { .md-utility-secondary { display:none; } }
-@media(min-width:1920px) { .cc-top-nav-inner { max-width:120rem; } .md-wide-link { display:inline-flex; } .md-desktop-more { display:none!important; } .cc-shell-utility-label { display:none; } }
+
 
 /* Let increased text sizing reflow the source chrome rather than crop controls. */
 @media(max-width:767px) {
@@ -910,3 +910,32 @@
   .cc-mobile-nav-link span { max-width:100%; overflow-wrap:anywhere; text-align:center; }
 }
 @media(max-width:359px) { .cc-shell-utilities { gap:.2rem; } }
+
+/* Allocate width to route labels first; source font/mark/link/control geometry stays intact. */
+.md-compact-utilities { display:none; }
+@media(min-width:1120px) {
+  .cc-top-nav-inner { max-width:120rem; }
+  .cc-shell-primary-nav { display:flex; }
+  .cc-shell-explore-trigger { display:none; }
+  .cc-shell-utility-label { display:none; }
+  .cc-shell-utility:has(.cc-shell-utility-label) { display:inline-grid; width:var(--cc-shell-control-size); padding:0; }
+}
+@media(min-width:1120px) and (max-width:1439px) {
+  .md-direct-utility { display:none!important; }
+  .md-compact-utilities { display:block; }
+}
+@media(min-width:1280px) {
+  .md-wide-link { display:inline-flex; }
+  .cc-shell-primary-nav .md-desktop-more { display:none; }
+}
+@media(min-width:1120px) and (max-width:1679px) {
+  .cc-shell-search { position:absolute; z-index:75; top:calc(100% + .5rem); right:1rem; left:1rem; display:none; width:auto; min-width:0; max-width:none; margin:0; border:1px solid var(--cc-border); border-radius:var(--cc-radius-lg); background:var(--cc-panel); padding:.65rem; box-shadow:var(--cc-shadow-lg); }
+  .cc-shell-search.is-open { display:block; }
+  .cc-shell-search-trigger { display:inline-grid; }
+  .cc-shell-utilities { margin-left:auto; }
+}
+/* Scroll/focus targets can always be brought above the fixed mobile navigation. */
+@media(max-width:767px) {
+  .cc-app-shell main { padding-bottom:calc(var(--cc-mobile-nav-height) + env(safe-area-inset-bottom) + 1rem); }
+  .md-main :is(a,button,input,textarea,select) { scroll-margin-bottom:calc(var(--cc-mobile-nav-height) + env(safe-area-inset-bottom) + 1rem); scroll-margin-top:6rem; }
+}

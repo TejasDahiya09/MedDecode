@@ -30,7 +30,7 @@ it('provides a not-found route and Home recovery', () => {
 });
 it('opens a labelled drawer and isolates the background until Escape', () => {
   mount();
-  const trigger = screen.getByRole('button', { name: 'More sections' });
+  const trigger = screen.getByRole('button', { name: 'Explore all sections' });
   fireEvent.click(trigger);
   const dialog = screen.getByRole('dialog', { name: 'Explore MedDecode' });
   expect(dialog.getAttribute('aria-modal')).toBe('true');
@@ -40,13 +40,13 @@ it('opens a labelled drawer and isolates the background until Escape', () => {
   expect(screen.queryByRole('dialog')).toBeNull();
   expect(document.querySelector('.md-shell-background')?.hasAttribute('inert')).toBe(false);
 });
-it('closes the drawer after navigation and marks More for other sections', () => {
+it('closes the complete directory after navigation and keeps the route active', () => {
   mount();
-  fireEvent.click(screen.getByRole('button', { name: 'More sections' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Explore all sections' }));
   fireEvent.click(within(screen.getByRole('dialog')).getByRole('link', { name: /Compare Medicines/ }));
   expect(screen.queryByRole('dialog')).toBeNull();
   expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Compare Medicines');
-  expect(screen.getByRole('button', { name: 'More sections, current section: Compare Medicines' }).classList.contains('cc-mobile-nav-link--active')).toBe(true);
+  expect(within(screen.getByRole('navigation',{name:'Primary navigation'})).getAllByRole('link',{name:'Compare Medicines'})[0]!.getAttribute('aria-current')).toBe('page');
 });
 it('reused buttons are non-submit by default, with explicit submit preserved', () => {
   const submit = vi.fn((event: React.FormEvent) => event.preventDefault());

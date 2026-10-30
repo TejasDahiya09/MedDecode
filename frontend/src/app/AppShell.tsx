@@ -35,7 +35,7 @@ function ExploreSheet({ onClose, triggerRef }: { readonly onClose: () => void; r
       if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
       else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
     };
-    const desktop = matchMedia('(min-width: 1340px)');
+    const desktop = matchMedia('(min-width: 1120px)');
     const resize = (event: MediaQueryListEvent) => { if (event.matches) onClose(); };
     desktop.addEventListener('change', resize);
     window.addEventListener('keydown', keyboard);
@@ -64,7 +64,7 @@ function ExploreSheet({ onClose, triggerRef }: { readonly onClose: () => void; r
 }
 
 export function AppShell() {
-  const [drawer, setDrawer] = useState<'header' | 'more' | null>(null);
+  const [drawer, setDrawer] = useState<'header' | null>(null);
   const trigger = useRef<HTMLButtonElement | null>(null);
   const main = useRef<HTMLElement>(null);
   const location = useLocation();
@@ -82,8 +82,7 @@ export function AppShell() {
     const frame = requestAnimationFrame(() => { main.current?.focus(); window.scrollTo(0, 0); });
     return () => cancelAnimationFrame(frame);
   }, [location.pathname, title, close]);
-  function open(event: MouseEvent<HTMLButtonElement>, source: 'header' | 'more') { trigger.current = event.currentTarget; setDrawer(source); }
-  const inMore = !!destination && !mobileDestinations.some((item) => item.path === location.pathname);
+  function open(event: MouseEvent<HTMLButtonElement>, source: 'header') { trigger.current = event.currentTarget; setDrawer(source); }
 
   return (
     <div className="cc-app-shell">
@@ -93,7 +92,7 @@ export function AppShell() {
         <main className="md-main" id="main-content" aria-label={title} tabIndex={-1} ref={main}><Outlet /></main>
         <nav className="cc-mobile-nav" aria-label="Mobile navigation">
           {mobileDestinations.map((item) => <NavLink key={item.path} to={item.path} end className={({ isActive }) => cn('cc-mobile-nav-link', isActive && 'cc-mobile-nav-link--active')}><Icon className="size-5" name={item.icon} /><span>{item.label}</span></NavLink>)}
-          <button type="button" className={cn('cc-mobile-nav-link', inMore && 'cc-mobile-nav-link--active')} aria-label={inMore ? `More sections, current section: ${title}` : 'More sections'} aria-haspopup="dialog" aria-controls="workspace-navigation" aria-expanded={drawer === 'more'} onClick={(event) => open(event, 'more')}><Icon className="size-5" name="menu" /><span>More</span></button>
+
         </nav>
       </div>
       {drawer ? <ExploreSheet onClose={close} triggerRef={trigger} /> : null}

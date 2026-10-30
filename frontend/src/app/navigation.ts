@@ -24,4 +24,5 @@ export const mobileDestinations = [
   { path: '/medicine-insights', label: 'Insights', icon: 'search' },
   { path: '/my-cabinet', label: 'Cabinet', icon: 'briefcase' },
   { path: '/reminders', label: 'Reminders', icon: 'calendar' },
+  { path: '/learn-resources', label: 'Learn', icon: 'bookmark' },
 ] as const;
