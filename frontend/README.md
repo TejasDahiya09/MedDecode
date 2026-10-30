@@ -4,6 +4,8 @@ Run all commands from `frontend/`. Verified with Node 24.11.1 and npm 11.6.2; th
 
 ## Installation and development
 
+The current workspace is a complete frontend-only demonstration. Open `/home` after starting Vite. All seven sections work without a backend, database or account. Cabinet/reminder changes are in memory and reset on reload; selected files are neither read nor uploaded. The landing and authentication pages retain their approved presentation. Earlier placeholder descriptions below are historical; see the current demo section at the end.
+
 ```powershell
 npm install --strict-peer-deps
 npm run dev
@@ -103,3 +105,20 @@ Auth uses the verified source Inter binary (Fontsource-variable/inter 5.3.0, exa
 Client validation rules and ephemeral values are preserved. Concise MedDecode story/form copy replaces campus content; reset heading is Set a new password. The original kinetic ribbon is unchanged from B.4a.1, including SVG morphs, CSS drift, lifecycle cleanup and reduced motion. Mobile retains 16px inputs and a flowing toolbar/footer for enlarged-text and keyboard resilience; primary gradients retain the documented contrast correction.
 
 Ignored evidence: playwright-report/b4a2/COMPARISON.md, audit-before.json, audit-after.json, dev/preview-geometry.json, screen/header PNGs, time-separated ribbon frames, source-target motion comparison and local recordings. Required checks remain typecheck, lint, unit, build, development E2E and preview E2E. Only Chromium and simulated phone viewports/keyboard constraints are verified by these checks. Stop for owner visual approval before any authentication integration.
+
+
+## Seven-section demo workspace
+
+- Home: example prescription overview, live cabinet/reminder counts, quick actions and labelled sample activity.
+- Upload Prescription: JPG/PNG/PDF selection/drop (10 MB maximum), filename/size display, removal, errors and View Sample Analysis. File contents are not read, persisted or transmitted. Predefined analysis is independent of any selected file.
+- Medicine Insights: searchable fictional references and explicit unavailable clinical fields.
+- Compare Medicines: searchable selectors, aligned properties, swap/reset and empty states; no clinical equivalence or substitution claim.
+- My Cabinet: in-memory add/edit/remove, search, inventory filters, confirmations and feedback.
+- Reminders: local CRUD and enabled/paused switches; no browser/push/SMS/background scheduling.
+- Learn & Resources: searchable/filterable product walkthroughs and article dialogs; no fabricated medical citations.
+
+Shared types and fixtures: src/features/demo/demo-data.ts. DemoProvider owns cabinet/reminder state for a workspace visit. Reload or leaving the workspace resets those changes. Files remain in their page memory until removal or navigation. The identity Demo User is explicitly synthetic; there is no simulated account, token or session. Ingredient/formulation labels are fictional interface fixtures. Clinical validation, real OCR, real medicine information, server persistence, notification delivery and authentication remain unconnected.
+
+CampusConnect primitives, icons, Manrope/Inter, scoped palette, shell, original welcome styling and modal conventions are retained. Native dialogs add background isolation, source-derived Tab wrapping, Escape and focus restoration. Public pages keep their binary theme toggle; workspace controls retain their existing theme preferences.
+
+Run npm run dev from frontend/ and open http://127.0.0.1:5174/home. No environment configuration is necessary. Verification uses the six commands documented above. Tests/evidence: tests/e2e/demo.spec.ts and ignored playwright-report/demo-sprint/. Browser tests cover all routes, both themes, desktop/mobile screenshots, CRUD, search, comparison, file selection/removal, sample boundaries, narrow/tablet reflow and absence of fetch/XHR calls. Chromium and simulated viewports are verified; physical-device keyboards and clinical functionality are not certified.

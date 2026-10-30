@@ -126,3 +126,12 @@ At 1440px all titles measure 36px/730/36px/-1.98px; at 768px 32px, at 390px 39px
 Preview verification exposed an existing workspace test race: its link-focus assertion ran before the route's requestAnimationFrame focus completed. The test now awaits main focus after browser-history navigation, then asserts link focus and the same solid outline with Playwright's retrying CSS assertion. No workspace implementation or focus styling changed.
 
 A subsequent development run exposed a second existing timing race: the reduced-motion test sampled SVG time after animate nodes disappeared but before Chromium painted the static SVG. Its existing reduced-motion screenshot now precedes the unchanged static-sample comparison to flush that paint. The ribbon implementation and full static-motion assertion remain unchanged.
+
+
+## Seven-section frontend demonstration
+
+The existing MedDecode AppShell, seven-route navigation, shared Button/Card/Badge/PageHeader/SectionHeader/EmptyState, Icon paths and theme infrastructure are reused. Source landing/auth components and CSS are unchanged. Demo styling stays under md-demo classes; demo/welcome.css retains the complete CampusConnect home.css welcome block (before cc-home-primary-grid). The welcome heading is rendered as an h2 because the page retains the existing Home h1. Palette, gradients, borders, radii, typography and line treatment come from the reference.
+
+DemoModal adapts reference components/ui.tsx Modal: 34rem surface, source padding/radius/shadow, blurred overlay, close control, Tab wrapping, Escape and restored focus. A native top-layer dialog adds background inertness without a new dependency. CRUD forms and reference cards extend the existing field/card conventions. New diagrams are inline code-native illustrations of fictional reference cards; no medical records or external/generated assets are used.
+
+A shared in-memory provider supplies cabinet/reminder changes and dashboard counts. All seven pages are explicitly labelled Demo Mode, use synthetic fixtures and distinguish absent clinical verification. No API, Supabase, Prisma, file read/upload, persistent medical state or notification service is invoked. Public theme behavior, the approved authentication layouts and the original shell navigation/breakpoints remain intact. Only obsolete placeholder test expectations change to assert complete demo UI while preserving route, focus, theme and no-request checks.

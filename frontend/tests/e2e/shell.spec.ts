@@ -74,11 +74,11 @@ test('mobile bottom navigation and scroll clearance remain usable', async ({ pag
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Upload Prescription');
   await nav.getByRole('link', { name: 'Cabinet', exact: true }).click();
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('My Cabinet');
-  // Force a short viewport without fabricating product records to check the scrolled bottom.
+  // Force a short viewport to verify the demo footer clears fixed navigation.
   await page.setViewportSize({ width: 390, height: 420 });
-  await page.locator('.md-placeholder-note').scrollIntoViewIfNeeded();
+  await page.locator('.md-demo-footnote').scrollIntoViewIfNeeded();
   await page.evaluate(() => scrollTo(0, document.documentElement.scrollHeight));
-  const note = await page.locator('.md-placeholder-note').boundingBox();
+  const note = await page.locator('.md-demo-footnote').boundingBox();
   const bar = await nav.boundingBox();
   expect(note!.y + note!.height).toBeLessThanOrEqual(bar!.y);
 });

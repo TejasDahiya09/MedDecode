@@ -22,7 +22,8 @@ for (const viewport of [
       await page.goto('/home');
       await expect(page.getByRole('heading', { name: 'Home', exact: true })).toBeVisible();
       await expect(page.getByRole('link', { name: 'MedDecode home' })).toBeVisible();
-      await expect(page.getByText(/Product workflows are not yet implemented/)).toBeVisible();
+      await expect(page.getByText('Demo Mode', { exact: true })).toBeVisible();
+      await expect(page.locator('.md-demo-footnote')).toContainText('No account, cloud saving or background notifications');
       const control = page.getByRole('button', { name: `Use ${theme} theme` });
       await control.focus();
       await expect(control).toBeFocused();
@@ -35,8 +36,8 @@ for (const viewport of [
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
       const box = await control.boundingBox();
       expect(box?.height).toBeGreaterThanOrEqual(44);
-      // Verify actual provisional text/background contrast, not only token declarations.
-      const ratios = await page.locator('h1, .md-placeholder-note, .cc-empty p').evaluateAll((elements) => {
+      // Verify actual demo text/background contrast, not only token declarations.
+      const ratios = await page.locator('h1, .md-demo-footnote, .md-demo-muted, .md-demo-notice p').evaluateAll((elements) => {
         const luminance = (color: string) => {
           const channels = color.match(/[\d.]+/g)!.slice(0, 3).map(Number).map((v) => {
             const c = v / 255; return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;

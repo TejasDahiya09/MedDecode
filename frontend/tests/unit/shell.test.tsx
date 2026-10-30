@@ -11,13 +11,15 @@ beforeEach(() => {
 });
 function mount(path = '/home') { return render(<MemoryRouter initialEntries={[path]}><AppProviders><AppRoutes /></AppProviders></MemoryRouter>); }
 
-it.each(destinations)('renders the $label frontend placeholder', (destination) => {
+it.each(destinations)('renders the $label demo workspace', (destination) => {
   mount(destination.path);
   expect(screen.getByRole('heading', { level: 1 }).textContent).toBe(destination.label);
   expect(document.title).toBe(`${destination.label} | MedDecode`);
   expect(within(screen.getByRole('navigation', { name: 'Primary navigation' })).getAllByRole('link')).toHaveLength(7);
   expect(within(screen.getByRole('navigation', { name: 'Primary navigation' })).getByRole('link', { name: destination.label }).getAttribute('aria-current')).toBe('page');
-  expect(screen.getByText('Not yet implemented')).toBeTruthy();
+  expect(screen.queryByText('Not yet implemented')).toBeNull();
+  expect(screen.getByText('Demo Mode')).toBeTruthy();
+  expect(screen.getByText(/Synthetic examples/)).toBeTruthy();
 });
 it('provides a not-found route and Home recovery', () => {
   mount('/missing');

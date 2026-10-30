@@ -103,12 +103,12 @@ it('initializes safely without a theme-color element and with storage blocked', 
   expect(() => window.eval(readFileSync('public/theme-init.js', 'utf8'))).not.toThrow();
   expect(document.documentElement.dataset.theme).toBe('light');
 });
-it('renders without an API base or fabricated workflows', () => {
+it('renders a labelled local demo without an API base', () => {
   vi.stubEnv('VITE_API_BASE_URL', '');
   const fetch = vi.fn();
   vi.stubGlobal('fetch', fetch);
   mount();
   expect(screen.getByText('Intelligence Behind Every Prescription')).toBeTruthy();
-  expect(screen.getByText(/Product workflows are not yet implemented/)).toBeTruthy();
+  expect(screen.getByText(/No account, cloud saving or background notifications/)).toBeTruthy();
   expect(fetch).not.toHaveBeenCalled();
 });
