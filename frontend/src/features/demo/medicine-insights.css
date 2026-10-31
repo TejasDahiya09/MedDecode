@@ -1116,3 +1116,66 @@
 :is(.md-catalog,.md-catalog-modal) .cc-field:focus { border-color:var(--cc-primary); box-shadow:0 0 0 3px var(--cc-primary-soft); outline:none; }
 :is(.md-catalog,.md-catalog-modal) .cc-field:hover:not(:disabled):not(:focus) { border-color:var(--cc-border-strong); }
 @media(prefers-reduced-motion:reduce) { :is(.md-catalog,.md-catalog-modal) .cc-field { transition:none; } }
+
+/* Catalog-only polish: desktop Marketplace geometry remains unchanged. */
+.md-catalog-form-mobile { display: none; }
+@media (max-width: 699px) {
+  .md-catalog {
+    .cc-market-hero { order: 1; }
+    .cc-market-categories { order: 2; }
+    .cc-market-toolbar { order: 3; }
+    .cc-market-header { gap: .5rem; }
+    .md-catalog-open { display: flex; flex-direction: column; }
+    .cc-market-product-media { width: 100%; flex: 0 0 auto; }
+    .cc-market-product-body { display: flex; flex: 1; flex-direction: column; width: 100%; padding: .75rem .75rem 0; }
+    .cc-market-product h3 { display: block; min-height: 0; overflow: visible; font-size: .9375rem; font-weight: 700; line-height: 1.45; }
+    .md-catalog-ingredient { margin-top: .3rem; font-size: .875rem; line-height: 1.5; }
+    .md-catalog-ingredient-label, .md-catalog-form-desktop, .md-catalog-group,
+    .cc-market-product-condition br, .md-catalog-reference-status, .cc-market-product-footer > span { display: none; }
+    .md-catalog-form-mobile { display: inline; }
+    .cc-market-product-condition { display: block; overflow: visible; margin: .4rem 0; font-size: .875rem; line-height: 1.5; }
+    .md-catalog-view { min-height: 2.75rem; margin: auto 0 0; padding-block: .5rem; font-size: .875rem; line-height: 1.4; }
+    .cc-market-product-footer { display: flex; min-height: 0; padding: .35rem .75rem .75rem; }
+    .cc-market-share { width: 100%; min-width: 0; min-height: 2.75rem; font-size: .875rem; line-height: 1.4; white-space: normal; }
+  }
+}
+
+/* Source Modal surface and <=639px bottom sheet, isolated to this feature.
+   The header is outside the scrollport; visualViewport includes keyboard/pinch changes. */
+.md-demo-dialog.md-catalog-dialog {
+  position: fixed;
+  inset: auto;
+  top: calc(var(--catalog-vv-top, 0px) + var(--catalog-vv-height, 100dvh) / 2);
+  left: calc(var(--catalog-vv-left, 0px) + var(--catalog-vv-width, 100vw) / 2);
+  transform: translate(-50%, -50%);
+  width: min(34rem, calc(var(--catalog-vv-width, 100vw) - 2rem));
+  max-width: none;
+  max-height: calc(var(--catalog-vv-height, 100dvh) - 2rem);
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+.md-catalog-dialog[open] { display: flex; flex-direction: column; }
+.md-catalog-dialog .md-demo-dialog-head { flex: 0 0 auto; align-items: flex-start; margin: 0; padding: 1.25rem; border-bottom: 1px solid var(--cc-border); }
+.md-catalog-dialog .md-demo-dialog-head > div { min-width: 0; }
+.md-catalog-dialog .md-demo-dialog-head h2 { overflow-wrap: anywhere; }
+.md-catalog-dialog .md-demo-dialog-head button { display: grid; place-items: center; flex: 0 0 auto; width: 2.75rem; height: 2.75rem; border-radius: var(--cc-radius-sm); color: var(--cc-muted); background: var(--cc-panel-muted); }
+.md-catalog-dialog .md-demo-dialog-head button:hover { color: var(--cc-primary); background: var(--cc-hover); }
+.md-catalog-dialog-content { min-height: 0; padding: 1.25rem; overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; }
+/* The background skip link is inert during a modal, including its focus transition. */
+.cc-app-shell:has(.md-catalog-dialog[open]) .cc-skip-link { visibility: hidden; }
+@media (max-width: 639px) {
+  .md-demo-dialog.md-catalog-dialog {
+    top: calc(var(--catalog-vv-top, 0px) + var(--catalog-vv-height, 100dvh));
+    transform: translate(-50%, -100%);
+    width: var(--catalog-vv-width, 100vw);
+    max-height: min(calc(var(--catalog-vv-height, 100dvh) * .88), 46rem);
+    border-radius: 1rem 1rem 0 0;
+  }
+  .md-catalog-dialog .md-demo-dialog-head { padding: 1rem; }
+  .md-catalog-dialog-content { padding: 1rem 1rem max(1.25rem, env(safe-area-inset-bottom)); }
+  .md-catalog-details p, .md-catalog-details dl > div { font-size: .9375rem; line-height: 1.6; }
+  .md-catalog-details dl > div { grid-template-columns: minmax(0, 1fr); gap: .2rem; }
+  .md-catalog-details .md-catalog-modal-note { font-size: .875rem; }
+  .md-catalog-details > .cc-button { min-height: 2.75rem; }
+}
