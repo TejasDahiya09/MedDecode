@@ -23,6 +23,8 @@ const secondPrescriptionId = "10000000-0000-4000-8000-000000000001";
 const firstCabinetId = "40000000-0000-4000-8000-000000000004";
 const secondCabinetId = "30000000-0000-4000-8000-000000000003";
 const medicineId = "50000000-0000-4000-8000-000000000005";
+const firstFamilyMemberId = "60000000-0000-4000-8000-000000000006";
+const secondFamilyMemberId = "70000000-0000-4000-8000-000000000007";
 
 function historyItem(
   id = firstPrescriptionId,
@@ -75,6 +77,36 @@ function cabinetItem(
 }
 
 function cabinetList(items: readonly unknown[] = []): SmokeHttpResponse {
+  return {
+    status: 200,
+    body: {
+      items,
+      pagination: {
+        limit: 20,
+        offset: 0,
+        returned: items.length,
+        has_more: false,
+        next_offset: null
+      }
+    }
+  };
+}
+
+function familyMemberItem(
+  id = firstFamilyMemberId,
+  createdAt = "2026-11-10T10:00:00.000Z",
+  relationship: string | null = null
+) {
+  return {
+    id,
+    name: "Synthetic Member",
+    relationship,
+    created_at: createdAt,
+    updated_at: createdAt
+  };
+}
+
+function familyMemberList(items: readonly unknown[] = []): SmokeHttpResponse {
   return {
     status: 200,
     body: {
@@ -192,6 +224,31 @@ function standardResponseFor(
         error: {
           code: "MEDICINE_CABINET_ENTRY_NOT_FOUND",
           message: "Medicine cabinet entry not found."
+        }
+      }
+    };
+  }
+  if (path === "/api/v1/family-members?limit=20&offset=0") {
+    return familyMemberList();
+  }
+  if (path === "/api/v1/family-members/not-a-uuid") {
+    return {
+      status: 400,
+      body: {
+        error: {
+          code: "INVALID_FAMILY_MEMBER_ID",
+          message: "Family member ID must be a valid UUID."
+        }
+      }
+    };
+  }
+  if (path.startsWith("/api/v1/family-members/")) {
+    return {
+      status: 404,
+      body: {
+        error: {
+          code: "FAMILY_MEMBER_NOT_FOUND",
+          message: "Family member not found."
         }
       }
     };
@@ -359,7 +416,7 @@ describe("Authentication smoke-test harness safety", () => {
     assert.equal(probe.createHttpClientCalls, 1);
     assert.equal(probe.createAuthProviderCalls, 1);
     const paths = probe.httpCalls.map(({ path }) => path);
-    assert.deepEqual(paths.slice(0, 12), [
+    assert.deepEqual(paths.slice(0, 14), [
       "/health",
       "/api/v1/auth/me",
       "/api/v1/auth/me",
@@ -367,18 +424,25 @@ describe("Authentication smoke-test harness safety", () => {
       "/api/v1/prescriptions?limit=20&offset=0",
       "/api/v1/medicine-cabinet?limit=20&offset=0",
       "/api/v1/medicine-cabinet?limit=20&offset=0",
+      "/api/v1/family-members?limit=20&offset=0",
+      "/api/v1/family-members?limit=20&offset=0",
       "/api/v1/auth/me",
       "/api/v1/users/me",
       "/api/v1/health-profile/me",
       "/api/v1/prescriptions?limit=20&offset=0",
       "/api/v1/prescriptions/not-a-uuid"
     ]);
-    assert.match(paths[12] ?? "", /^\/api\/v1\/prescriptions\/[0-9a-f-]{36}$/);
-    assert.deepEqual(paths.slice(13, -1), [
+    assert.match(paths[14] ?? "", /^\/api\/v1\/prescriptions\/[0-9a-f-]{36}$/);
+    assert.deepEqual(paths.slice(15, 17), [
       "/api/v1/medicine-cabinet?limit=20&offset=0",
       "/api/v1/medicine-cabinet/not-a-uuid"
     ]);
-    assert.match(paths.at(-1) ?? "", /^\/api\/v1\/medicine-cabinet\/[0-9a-f-]{36}$/);
+    assert.match(paths[17] ?? "", /^\/api\/v1\/medicine-cabinet\/[0-9a-f-]{36}$/);
+    assert.deepEqual(paths.slice(18, 20), [
+      "/api/v1/family-members?limit=20&offset=0",
+      "/api/v1/family-members/not-a-uuid"
+    ]);
+    assert.match(paths[20] ?? "", /^\/api\/v1\/family-members\/[0-9a-f-]{36}$/);
     const historyAuthCalls = probe.httpCalls.filter(
       ({ path }) => path === "/api/v1/prescriptions?limit=20&offset=0"
     );
@@ -391,6 +455,13 @@ describe("Authentication smoke-test harness safety", () => {
     );
     assert.deepEqual(
       cabinetAuthCalls.map(({ accessToken }) => accessToken),
+      [undefined, "meddecode-synthetic-invalid-token", "mock-access-token"]
+    );
+    const familyMemberAuthCalls = probe.httpCalls.filter(
+      ({ path }) => path === "/api/v1/family-members?limit=20&offset=0"
+    );
+    assert.deepEqual(
+      familyMemberAuthCalls.map(({ accessToken }) => accessToken),
       [undefined, "meddecode-synthetic-invalid-token", "mock-access-token"]
     );
     assert.deepEqual(probe.authCalls, [{
@@ -915,6 +986,171 @@ describe("Authentication smoke-test harness safety", () => {
     assert.match(probe.output.join("\n"), /CABINET_CONTRACT_INVALID/);
   });
 
+  it("accepts an empty family member list and safely skips detail", async () => {
+    const { dependencies, probe } = createHarness();
+    const exitCode = await runAuthSmokeHarness(
+      ["--allow-live-auth"],
+      dependencies
+    );
+    const output = probe.output.join("\n");
+
+    assert.equal(exitCode, 0);
+    assert.match(output, /Family members HTTP 200 FAMILY_MEMBERS_EMPTY/);
+    assert.match(output, /\[SKIP\] Family member detail NO_EXISTING_RECORD/);
+  });
+
+  it("validates populated family members, ordering and first owned detail", async () => {
+    const items = [
+      familyMemberItem(firstFamilyMemberId, "2026-11-10T10:00:00.000Z", null),
+      familyMemberItem(secondFamilyMemberId, "2026-11-09T10:00:00.000Z", "Sibling")
+    ];
+    const { dependencies, probe } = createHarness({
+      responseFor: (path, token) => {
+        if (path === "/api/v1/family-members?limit=20&offset=0" &&
+          token === "mock-access-token") return familyMemberList(items);
+        if (path === `/api/v1/family-members/${firstFamilyMemberId}`) {
+          return { status: 200, body: { member: items[0] } };
+        }
+        return standardResponseFor(path, token);
+      }
+    });
+    const exitCode = await runAuthSmokeHarness(
+      ["--allow-live-auth"],
+      dependencies
+    );
+    const output = probe.output.join("\n");
+
+    assert.equal(exitCode, 0);
+    assert.match(output, /Family members HTTP 200 FAMILY_MEMBERS_PRESENT/);
+    assert.match(output, /Family member detail HTTP 200/);
+    for (const privateValue of [
+      firstFamilyMemberId,
+      secondFamilyMemberId,
+      "Synthetic Member",
+      "Sibling"
+    ]) {
+      assert.equal(output.includes(privateValue), false);
+    }
+  });
+
+  for (const [name, response] of [
+    ["malformed JSON", { status: 200, body: undefined }],
+    ["invalid pagination", {
+      status: 200,
+      body: {
+        items: [],
+        pagination: {
+          limit: 20,
+          offset: 0,
+          returned: 1,
+          has_more: false,
+          next_offset: null
+        }
+      }
+    }],
+    ["unexpected status", { status: 500, body: { error: { code: "SAFE" } } }]
+  ] as const) {
+    it(`rejects ${name} from family members`, async () => {
+      const { dependencies, probe } = createHarness({
+        responseFor: (path, token) =>
+          path === "/api/v1/family-members?limit=20&offset=0" &&
+            token === "mock-access-token"
+            ? response
+            : standardResponseFor(path, token)
+      });
+      const exitCode = await runAuthSmokeHarness(
+        ["--allow-live-auth"],
+        dependencies
+      );
+
+      assert.equal(exitCode, 1);
+      assert.match(
+        probe.output.join("\n"),
+        /FAMILY_MEMBER_CONTRACT_INVALID|UNEXPECTED_HTTP_STATUS/
+      );
+    });
+  }
+
+  it("rejects private family-member fields without printing personal values", async () => {
+    const privateValues = [
+      firstFamilyMemberId,
+      "private-user-id",
+      "Synthetic Member",
+      "Private Relationship"
+    ];
+    const exposed = {
+      ...familyMemberItem(
+        firstFamilyMemberId,
+        "2026-11-10T10:00:00.000Z",
+        privateValues[3]
+      ),
+      user_id: privateValues[1]
+    };
+    const { dependencies, probe } = createHarness({
+      responseFor: (path, token) =>
+        path === "/api/v1/family-members?limit=20&offset=0" &&
+          token === "mock-access-token"
+          ? familyMemberList([exposed])
+          : standardResponseFor(path, token)
+    });
+    const exitCode = await runAuthSmokeHarness(
+      ["--allow-live-auth"],
+      dependencies
+    );
+    const output = probe.output.join("\n");
+
+    assert.equal(exitCode, 1);
+    assert.match(output, /FAMILY_MEMBER_CONTRACT_INVALID/);
+    for (const privateValue of privateValues) {
+      assert.equal(output.includes(privateValue), false);
+    }
+  });
+
+  for (const [name, item] of [
+    ["blank name", { ...familyMemberItem(), name: " " }],
+    ["oversized name", { ...familyMemberItem(), name: "x".repeat(101) }],
+    ["numeric relationship", { ...familyMemberItem(), relationship: 4 }],
+    ["blank relationship", { ...familyMemberItem(), relationship: "" }],
+    ["malformed timestamp", { ...familyMemberItem(), created_at: "not-a-date" }]
+  ] as const) {
+    it(`rejects ${name} in family-member metadata`, async () => {
+      const { dependencies, probe } = createHarness({
+        responseFor: (path, token) =>
+          path === "/api/v1/family-members?limit=20&offset=0" &&
+            token === "mock-access-token"
+            ? familyMemberList([item])
+            : standardResponseFor(path, token)
+      });
+      const exitCode = await runAuthSmokeHarness(
+        ["--allow-live-auth"],
+        dependencies
+      );
+
+      assert.equal(exitCode, 1);
+      assert.match(probe.output.join("\n"), /FAMILY_MEMBER_CONTRACT_INVALID/);
+    });
+  }
+
+  it("rejects out-of-order family-member records", async () => {
+    const { dependencies, probe } = createHarness({
+      responseFor: (path, token) =>
+        path === "/api/v1/family-members?limit=20&offset=0" &&
+          token === "mock-access-token"
+          ? familyMemberList([
+              familyMemberItem(secondFamilyMemberId, "2026-11-09T10:00:00.000Z"),
+              familyMemberItem(firstFamilyMemberId, "2026-11-10T10:00:00.000Z")
+            ])
+          : standardResponseFor(path, token)
+    });
+    const exitCode = await runAuthSmokeHarness(
+      ["--allow-live-auth"],
+      dependencies
+    );
+
+    assert.equal(exitCode, 1);
+    assert.match(probe.output.join("\n"), /FAMILY_MEMBER_CONTRACT_INVALID/);
+  });
+
   it("uses only GET endpoint checks and never invokes privileged operations", async () => {
     const { dependencies, probe } = createHarness();
     const exitCode = await runAuthSmokeHarness(
@@ -935,10 +1171,13 @@ describe("Authentication smoke-test harness safety", () => {
         "/api/v1/prescriptions?limit=20&offset=0",
         "/api/v1/prescriptions/not-a-uuid",
         "/api/v1/medicine-cabinet?limit=20&offset=0",
-        "/api/v1/medicine-cabinet/not-a-uuid"
+        "/api/v1/medicine-cabinet/not-a-uuid",
+        "/api/v1/family-members?limit=20&offset=0",
+        "/api/v1/family-members/not-a-uuid"
       ].includes(path) ||
         /^\/api\/v1\/prescriptions\/[0-9a-f-]{36}$/.test(path) ||
-        /^\/api\/v1\/medicine-cabinet\/[0-9a-f-]{36}$/.test(path)),
+        /^\/api\/v1\/medicine-cabinet\/[0-9a-f-]{36}$/.test(path) ||
+        /^\/api\/v1\/family-members\/[0-9a-f-]{36}$/.test(path)),
       true
     );
   });

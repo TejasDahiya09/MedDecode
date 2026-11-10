@@ -19,11 +19,13 @@ type SafeCategory =
   | "PROFILE_CONTRACT_INVALID"
   | "PROFILE_OWNER_MISMATCH"
   | "HISTORY_CONTRACT_INVALID"
-  | "CABINET_CONTRACT_INVALID";
+  | "CABINET_CONTRACT_INVALID"
+  | "FAMILY_MEMBER_CONTRACT_INVALID";
 
 type ProfileReadReason = "PROFILE_PRESENT" | "PROFILE_NOT_FOUND";
 type HistoryReadReason = "HISTORY_EMPTY" | "HISTORY_PRESENT";
 type CabinetReadReason = "CABINET_EMPTY" | "CABINET_PRESENT";
+type FamilyMemberReadReason = "FAMILY_MEMBERS_EMPTY" | "FAMILY_MEMBERS_PRESENT";
 
 const PRESCRIPTION_FILE_TYPES = new Set([
   "image/jpeg",
@@ -58,6 +60,13 @@ const CABINET_ITEM_FIELDS = [
   "expiry_date",
   "refill_date",
   "usage_information",
+  "created_at",
+  "updated_at"
+] as const;
+const FAMILY_MEMBER_ITEM_FIELDS = [
+  "id",
+  "name",
+  "relationship",
   "created_at",
   "updated_at"
 ] as const;
@@ -793,6 +802,133 @@ function passCabinetRead(
   dependencies.output(`[PASS] Medicine cabinet HTTP ${status} ${reason}`);
 }
 
+interface SafeFamilyMemberItem {
+  readonly id: string;
+  readonly createdAt: string;
+}
+
+function familyMemberFailure(testName: string, status?: number): SafeFailure {
+  return new SafeFailure({
+    testName,
+    category: "FAMILY_MEMBER_CONTRACT_INVALID",
+    ...(status === undefined ? {} : { status })
+  });
+}
+
+function isValidFamilyMemberText(value: unknown): value is string {
+  return typeof value === "string" &&
+    value === value.trim() &&
+    value.length >= 1 &&
+    value.length <= 100;
+}
+
+function assertFamilyMemberItem(
+  value: unknown,
+  testName: string,
+  status: number
+): SafeFamilyMemberItem {
+  if (!isRecord(value) || !hasExactKeys(value, FAMILY_MEMBER_ITEM_FIELDS)) {
+    throw familyMemberFailure(testName, status);
+  }
+  if (
+    typeof value.id !== "string" ||
+    !UUID_PATTERN.test(value.id) ||
+    !isValidFamilyMemberText(value.name) ||
+    !(
+      value.relationship === null ||
+      isValidFamilyMemberText(value.relationship)
+    ) ||
+    !isValidTimestamp(value.created_at) ||
+    !isValidTimestamp(value.updated_at)
+  ) {
+    throw familyMemberFailure(testName, status);
+  }
+  return { id: value.id, createdAt: value.created_at };
+}
+
+function compareFamilyMemberOrder(
+  left: SafeFamilyMemberItem,
+  right: SafeFamilyMemberItem
+): number {
+  const timeDifference = Date.parse(right.createdAt) - Date.parse(left.createdAt);
+  if (timeDifference !== 0) return timeDifference;
+  return right.id > left.id ? 1 : right.id < left.id ? -1 : 0;
+}
+
+function assertFamilyMemberListResponse(
+  response: SmokeHttpResponse
+): { readonly reason: FamilyMemberReadReason; readonly firstId?: string } {
+  const testName = "Family members";
+  if (response.status !== 200) {
+    throw new SafeFailure({
+      testName,
+      category: "UNEXPECTED_HTTP_STATUS",
+      status: response.status
+    });
+  }
+  if (!isRecord(response.body) || !hasExactKeys(response.body, ["items", "pagination"])) {
+    throw familyMemberFailure(testName, response.status);
+  }
+  const { items, pagination } = response.body;
+  if (!Array.isArray(items) || !isRecord(pagination) ||
+    !hasExactKeys(pagination, ["limit", "offset", "returned", "has_more", "next_offset"])) {
+    throw familyMemberFailure(testName, response.status);
+  }
+  if (
+    pagination.limit !== 20 ||
+    pagination.offset !== 0 ||
+    !Number.isInteger(pagination.returned) ||
+    (pagination.returned as number) < 0 ||
+    (pagination.returned as number) > 20 ||
+    pagination.returned !== items.length ||
+    typeof pagination.has_more !== "boolean" ||
+    !(pagination.next_offset === null || Number.isInteger(pagination.next_offset)) ||
+    (pagination.has_more ? pagination.next_offset !== 20 : pagination.next_offset !== null)
+  ) {
+    throw familyMemberFailure(testName, response.status);
+  }
+  const safeItems = items.map((item) =>
+    assertFamilyMemberItem(item, testName, response.status)
+  );
+  for (let index = 1; index < safeItems.length; index += 1) {
+    const previous = safeItems[index - 1];
+    const current = safeItems[index];
+    if (!previous || !current || compareFamilyMemberOrder(previous, current) > 0) {
+      throw familyMemberFailure(testName, response.status);
+    }
+  }
+  return safeItems[0]
+    ? { reason: "FAMILY_MEMBERS_PRESENT", firstId: safeItems[0].id }
+    : { reason: "FAMILY_MEMBERS_EMPTY" };
+}
+
+function assertFamilyMemberDetailResponse(
+  response: SmokeHttpResponse,
+  expectedId: string
+): void {
+  const testName = "Family member detail";
+  if (response.status !== 200) {
+    throw new SafeFailure({
+      testName,
+      category: "UNEXPECTED_HTTP_STATUS",
+      status: response.status
+    });
+  }
+  if (!isRecord(response.body) || !hasExactKeys(response.body, ["member"])) {
+    throw familyMemberFailure(testName, response.status);
+  }
+  const item = assertFamilyMemberItem(response.body.member, testName, response.status);
+  if (item.id !== expectedId) throw familyMemberFailure(testName, response.status);
+}
+
+function passFamilyMemberRead(
+  dependencies: SmokeDependencies,
+  status: number,
+  reason: FamilyMemberReadReason
+): void {
+  dependencies.output(`[PASS] Family members HTTP ${status} ${reason}`);
+}
+
 function pass(
   dependencies: SmokeDependencies,
   testName: string,
@@ -885,6 +1021,21 @@ export async function runAuthSmokeHarness(
     );
     assertStatus("Cabinet invalid token", invalidCabinetToken, 401);
     pass(dependencies, "Cabinet invalid token", invalidCabinetToken.status);
+    passed += 1;
+
+    const missingFamilyMemberToken = await http.get(
+      "/api/v1/family-members?limit=20&offset=0"
+    );
+    assertStatus("Family members missing token", missingFamilyMemberToken, 401);
+    pass(dependencies, "Family members missing token", missingFamilyMemberToken.status);
+    passed += 1;
+
+    const invalidFamilyMemberToken = await http.get(
+      "/api/v1/family-members?limit=20&offset=0",
+      "meddecode-synthetic-invalid-token"
+    );
+    assertStatus("Family members invalid token", invalidFamilyMemberToken, 401);
+    pass(dependencies, "Family members invalid token", invalidFamilyMemberToken.status);
     passed += 1;
 
     password = await dependencies.readHiddenPassword();
@@ -1044,7 +1195,6 @@ export async function runAuthSmokeHarness(
       `/api/v1/medicine-cabinet/${randomUUID()}`,
       accessToken
     );
-    accessToken = "";
     assertExactError(
       "Unknown medicine cabinet entry",
       unknownCabinetEntry,
@@ -1052,6 +1202,57 @@ export async function runAuthSmokeHarness(
       "MEDICINE_CABINET_ENTRY_NOT_FOUND"
     );
     pass(dependencies, "Unknown medicine cabinet entry", unknownCabinetEntry.status);
+    passed += 1;
+
+    const familyMembers = await http.get(
+      "/api/v1/family-members?limit=20&offset=0",
+      accessToken
+    );
+    const familyMemberResult = assertFamilyMemberListResponse(familyMembers);
+    passFamilyMemberRead(
+      dependencies,
+      familyMembers.status,
+      familyMemberResult.reason
+    );
+    passed += 1;
+
+    if (familyMemberResult.firstId) {
+      const detail = await http.get(
+        `/api/v1/family-members/${familyMemberResult.firstId}`,
+        accessToken
+      );
+      assertFamilyMemberDetailResponse(detail, familyMemberResult.firstId);
+      pass(dependencies, "Family member detail", detail.status);
+      passed += 1;
+    } else {
+      dependencies.output("[SKIP] Family member detail NO_EXISTING_RECORD");
+    }
+
+    const invalidFamilyMemberId = await http.get(
+      "/api/v1/family-members/not-a-uuid",
+      accessToken
+    );
+    assertExactError(
+      "Invalid family member ID",
+      invalidFamilyMemberId,
+      400,
+      "INVALID_FAMILY_MEMBER_ID"
+    );
+    pass(dependencies, "Invalid family member ID", invalidFamilyMemberId.status);
+    passed += 1;
+
+    const unknownFamilyMember = await http.get(
+      `/api/v1/family-members/${randomUUID()}`,
+      accessToken
+    );
+    accessToken = "";
+    assertExactError(
+      "Unknown family member",
+      unknownFamilyMember,
+      404,
+      "FAMILY_MEMBER_NOT_FOUND"
+    );
+    pass(dependencies, "Unknown family member", unknownFamilyMember.status);
     passed += 1;
 
     dependencies.output(`[SUMMARY] PASS ${passed} checks`);
