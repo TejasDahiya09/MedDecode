@@ -73,6 +73,36 @@ DOSAGE_FORM_PATTERN = re.compile(
     re.IGNORECASE | re.VERBOSE,
 )
 
+DOSAGE_FORM_SUFFIX_PATTERN = re.compile(
+    r"""
+    \s+
+    (?P<form>
+        tab(?:let)?\.?
+        |
+        cap(?:sule)?\.?
+        |
+        syp(?:rup)?\.?
+        |
+        inj(?:ection)?\.?
+        |
+        drop(?:s)?\.?
+        |
+        oint(?:ment)?\.?
+        |
+        cream
+        |
+        gel
+        |
+        lotion
+        |
+        susp(?:ension)?\.?
+        |
+        neb(?:uliser|ulizer)?\.?
+    )
+    \s*$
+    """,
+    re.IGNORECASE | re.VERBOSE,
+)
 
 STRENGTH_PATTERN = re.compile(
     r"""
@@ -163,38 +193,44 @@ def _normalize_text(
 def _extract_dosage_form(
     text: str,
 ) -> tuple[str | None, str]:
-    """
-    Extract a dosage form when explicitly present at the beginning
-    of the medicine entry.
-    """
 
-    match = DOSAGE_FORM_PATTERN.match(
-        text
-    )
+    # First, check whether dosage form appears at the beginning.
+    match = DOSAGE_FORM_PATTERN.match(text)
 
-    if match is None:
-        return None, text
+    if match is not None:
+        raw_form = (
+            match.group("form")
+            .lower()
+            .rstrip(".")
+        )
 
-    raw_form = (
-        match.group("form")
-        .lower()
-        .rstrip(".")
-    )
-
-    canonical_form = (
-        DOSAGE_FORM_ALIASES.get(
+        canonical_form = DOSAGE_FORM_ALIASES.get(
             raw_form
         )
-    )
 
-    remaining_text = (
-        text[match.end():].strip()
-    )
+        remaining_text = text[match.end():].strip()
 
-    return (
-        canonical_form,
-        remaining_text,
-    )
+        return canonical_form, remaining_text
+
+    # If not found at the beginning, check the end.
+    match = DOSAGE_FORM_SUFFIX_PATTERN.search(text)
+
+    if match is not None:
+        raw_form = (
+            match.group("form")
+            .lower()
+            .rstrip(".")
+        )
+
+        canonical_form = DOSAGE_FORM_ALIASES.get(
+            raw_form
+        )
+
+        remaining_text = text[:match.start()].strip()
+
+        return canonical_form, remaining_text
+
+    return None, text
 
 
 def _extract_strength(

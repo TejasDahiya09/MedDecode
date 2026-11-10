@@ -120,6 +120,14 @@ NON_MEDICINE_PATTERNS = [
         r"^\s*(hospital|clinic|medical\s+centre|medical\s+center)\b",
         re.IGNORECASE,
     ),
+        re.compile(
+        r"^\s*(?:synthetic|sample|test)\s+(?:test\s+)?(?:document|prescription|data)\b",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"^\s*not\s+a\s+real\s+(?:patient|prescription)\b",
+        re.IGNORECASE,
+    ),
 ]
 
 

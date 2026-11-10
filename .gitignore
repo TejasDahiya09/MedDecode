@@ -22,3 +22,12 @@ data/raw/openfda_drug_labels_meddecode.csv
 
 # Test cache
 .pytest_cache/
+# macOS
+.DS_Store
+
+# Real prescription data - never commit patient documents
+tests/fixtures/actual_prescription.jpg
+
+# Local diagnostic reports
+meddecode_e2e_interface_details.txt
+pipeline_interface_report.txt
