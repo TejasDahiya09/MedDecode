@@ -10,3 +10,15 @@ __pycache__/
 
 # Test/cache files
 .pytest_cache/
+
+# Large raw datasets
+data/raw/openfda_drug_labels_meddecode.csv
+
+# Backup files
+*.backup
+
+# Python cache directories
+**/__pycache__/
+
+# Test cache
+.pytest_cache/
