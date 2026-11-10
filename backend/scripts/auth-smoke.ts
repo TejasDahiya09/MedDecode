@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import dotenv from "dotenv";
+import { randomUUID } from "node:crypto";
 import type { ReadStream, WriteStream } from "node:tty";
 
 type SafeCategory =
@@ -14,7 +15,54 @@ type SafeCategory =
   | "UNEXPECTED_HTTP_STATUS"
   | "AUTH_SIGN_IN_FAILED"
   | "IDENTITY_MISMATCH"
-  | "UNSAFE_RESPONSE";
+  | "UNSAFE_RESPONSE"
+  | "PROFILE_CONTRACT_INVALID"
+  | "PROFILE_OWNER_MISMATCH"
+  | "HISTORY_CONTRACT_INVALID"
+  | "CABINET_CONTRACT_INVALID";
+
+type ProfileReadReason = "PROFILE_PRESENT" | "PROFILE_NOT_FOUND";
+type HistoryReadReason = "HISTORY_EMPTY" | "HISTORY_PRESENT";
+type CabinetReadReason = "CABINET_EMPTY" | "CABINET_PRESENT";
+
+const PRESCRIPTION_FILE_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "application/pdf"
+]);
+const PRESCRIPTION_STATUSES = new Set([
+  "uploaded",
+  "queued",
+  "processing",
+  "completed",
+  "completed_with_warnings",
+  "failed"
+]);
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const DECIMAL_INTEGER_PATTERN = /^(0|[1-9]\d*)$/;
+const HISTORY_ITEM_FIELDS = [
+  "id",
+  "file_type",
+  "file_size_bytes",
+  "status",
+  "prescription_date",
+  "created_at",
+  "updated_at",
+  "processed_at"
+] as const;
+const CABINET_ITEM_FIELDS = [
+  "id",
+  "medicine_id",
+  "quantity",
+  "purchase_date",
+  "expiry_date",
+  "refill_date",
+  "usage_information",
+  "created_at",
+  "updated_at"
+] as const;
+const DECIMAL_QUANTITY_PATTERN = /^(0|[1-9]\d*)(\.\d+)?$/;
+const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
 interface SafeFailureOptions {
   readonly testName: string;
@@ -258,6 +306,493 @@ function assertSafeIdentityResponse(
   }
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function hasExactKeys(
+  record: Record<string, unknown>,
+  expectedKeys: readonly string[]
+): boolean {
+  const actualKeys = Object.keys(record).sort();
+  const sortedExpected = [...expectedKeys].sort();
+  return actualKeys.length === sortedExpected.length &&
+    actualKeys.every((key, index) => key === sortedExpected[index]);
+}
+
+function isNullableString(value: unknown): value is string | null {
+  return value === null || typeof value === "string";
+}
+
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((item) => typeof item === "string");
+}
+
+function assertExpectedMissingProfile(
+  testName: string,
+  response: SmokeHttpResponse,
+  expectedCode: string
+): ProfileReadReason {
+  if (!isRecord(response.body) || !hasExactKeys(response.body, ["error"])) {
+    throw new SafeFailure({
+      testName,
+      category: "PROFILE_CONTRACT_INVALID",
+      status: response.status
+    });
+  }
+
+  const error = response.body.error;
+  if (
+    !isRecord(error) ||
+    !hasExactKeys(error, ["code", "message"]) ||
+    error.code !== expectedCode ||
+    typeof error.message !== "string"
+  ) {
+    throw new SafeFailure({
+      testName,
+      category: "PROFILE_CONTRACT_INVALID",
+      status: response.status
+    });
+  }
+
+  return "PROFILE_NOT_FOUND";
+}
+
+function assertApplicationProfileResponse(
+  response: SmokeHttpResponse,
+  expectedUserId: string
+): ProfileReadReason {
+  const testName = "Application profile";
+  if (response.status === 404) {
+    return assertExpectedMissingProfile(
+      testName,
+      response,
+      "USER_PROFILE_NOT_FOUND"
+    );
+  }
+
+  if (response.status !== 200) {
+    throw new SafeFailure({
+      testName,
+      category: "UNEXPECTED_HTTP_STATUS",
+      status: response.status
+    });
+  }
+
+  if (!isRecord(response.body) || !hasExactKeys(response.body, ["profile"])) {
+    throw new SafeFailure({
+      testName,
+      category: "PROFILE_CONTRACT_INVALID",
+      status: response.status
+    });
+  }
+
+  const profile = response.body.profile;
+  const fields = ["id", "email", "name", "created_at", "updated_at"];
+  if (
+    !isRecord(profile) ||
+    !hasExactKeys(profile, fields) ||
+    typeof profile.id !== "string" ||
+    !isNullableString(profile.email) ||
+    !isNullableString(profile.name) ||
+    typeof profile.created_at !== "string" ||
+    typeof profile.updated_at !== "string"
+  ) {
+    throw new SafeFailure({
+      testName,
+      category: "PROFILE_CONTRACT_INVALID",
+      status: response.status
+    });
+  }
+
+  if (profile.id !== expectedUserId) {
+    throw new SafeFailure({
+      testName,
+      category: "PROFILE_OWNER_MISMATCH",
+      status: response.status
+    });
+  }
+
+  return "PROFILE_PRESENT";
+}
+
+function assertHealthProfileResponse(
+  response: SmokeHttpResponse,
+  expectedUserId: string
+): ProfileReadReason {
+  const testName = "Health profile";
+  if (response.status === 404) {
+    return assertExpectedMissingProfile(
+      testName,
+      response,
+      "HEALTH_PROFILE_NOT_FOUND"
+    );
+  }
+
+  if (response.status !== 200) {
+    throw new SafeFailure({
+      testName,
+      category: "UNEXPECTED_HTTP_STATUS",
+      status: response.status
+    });
+  }
+
+  if (
+    !isRecord(response.body) ||
+    !hasExactKeys(response.body, ["healthProfile"])
+  ) {
+    throw new SafeFailure({
+      testName,
+      category: "PROFILE_CONTRACT_INVALID",
+      status: response.status
+    });
+  }
+
+  const profile = response.body.healthProfile;
+  const fields = [
+    "id",
+    "user_id",
+    "age",
+    "gender",
+    "allergies",
+    "diabetes",
+    "hypertension",
+    "kidney_disease",
+    "liver_disease",
+    "asthma",
+    "thyroid",
+    "pregnancy",
+    "other_conditions",
+    "created_at",
+    "updated_at"
+  ];
+  if (
+    !isRecord(profile) ||
+    !hasExactKeys(profile, fields) ||
+    typeof profile.id !== "string" ||
+    typeof profile.user_id !== "string" ||
+    !(profile.age === null || Number.isInteger(profile.age)) ||
+    !isNullableString(profile.gender) ||
+    !isStringArray(profile.allergies) ||
+    typeof profile.diabetes !== "boolean" ||
+    typeof profile.hypertension !== "boolean" ||
+    typeof profile.kidney_disease !== "boolean" ||
+    typeof profile.liver_disease !== "boolean" ||
+    typeof profile.asthma !== "boolean" ||
+    typeof profile.thyroid !== "boolean" ||
+    !(profile.pregnancy === null || typeof profile.pregnancy === "boolean") ||
+    !isStringArray(profile.other_conditions) ||
+    typeof profile.created_at !== "string" ||
+    typeof profile.updated_at !== "string"
+  ) {
+    throw new SafeFailure({
+      testName,
+      category: "PROFILE_CONTRACT_INVALID",
+      status: response.status
+    });
+  }
+
+  if (profile.user_id !== expectedUserId) {
+    throw new SafeFailure({
+      testName,
+      category: "PROFILE_OWNER_MISMATCH",
+      status: response.status
+    });
+  }
+
+  return "PROFILE_PRESENT";
+}
+
+interface SafeHistoryItem {
+  readonly id: string;
+  readonly createdAt: string;
+}
+
+function historyFailure(testName: string, status?: number): SafeFailure {
+  return new SafeFailure({
+    testName,
+    category: "HISTORY_CONTRACT_INVALID",
+    ...(status === undefined ? {} : { status })
+  });
+}
+
+function isValidTimestamp(value: unknown): value is string {
+  return typeof value === "string" && value.length > 0 &&
+    Number.isFinite(Date.parse(value));
+}
+
+function assertHistoryItem(
+  value: unknown,
+  testName: string,
+  status: number
+): SafeHistoryItem {
+  if (!isRecord(value) || !hasExactKeys(value, HISTORY_ITEM_FIELDS)) {
+    throw historyFailure(testName, status);
+  }
+
+  if (
+    typeof value.id !== "string" ||
+    !UUID_PATTERN.test(value.id) ||
+    typeof value.file_type !== "string" ||
+    !PRESCRIPTION_FILE_TYPES.has(value.file_type) ||
+    !(
+      value.file_size_bytes === null ||
+      (typeof value.file_size_bytes === "string" &&
+        DECIMAL_INTEGER_PATTERN.test(value.file_size_bytes))
+    ) ||
+    typeof value.status !== "string" ||
+    !PRESCRIPTION_STATUSES.has(value.status) ||
+    !isNullableString(value.prescription_date) ||
+    !isValidTimestamp(value.created_at) ||
+    !isValidTimestamp(value.updated_at) ||
+    !(value.processed_at === null || isValidTimestamp(value.processed_at))
+  ) {
+    throw historyFailure(testName, status);
+  }
+
+  return { id: value.id, createdAt: value.created_at };
+}
+
+function compareHistoryOrder(left: SafeHistoryItem, right: SafeHistoryItem): number {
+  const timeDifference = Date.parse(right.createdAt) - Date.parse(left.createdAt);
+  if (timeDifference !== 0) return timeDifference;
+  return right.id > left.id ? 1 : right.id < left.id ? -1 : 0;
+}
+
+function assertHistoryListResponse(
+  response: SmokeHttpResponse
+): { readonly reason: HistoryReadReason; readonly firstId?: string } {
+  const testName = "Prescription history";
+  if (response.status !== 200) {
+    throw new SafeFailure({
+      testName,
+      category: "UNEXPECTED_HTTP_STATUS",
+      status: response.status
+    });
+  }
+  if (!isRecord(response.body) || !hasExactKeys(response.body, ["items", "pagination"])) {
+    throw historyFailure(testName, response.status);
+  }
+
+  const { items, pagination } = response.body;
+  if (!Array.isArray(items) || !isRecord(pagination) ||
+    !hasExactKeys(pagination, [
+      "limit",
+      "offset",
+      "returned",
+      "has_more",
+      "next_offset"
+    ])) {
+    throw historyFailure(testName, response.status);
+  }
+  if (
+    pagination.limit !== 20 ||
+    pagination.offset !== 0 ||
+    !Number.isInteger(pagination.returned) ||
+    (pagination.returned as number) < 0 ||
+    (pagination.returned as number) > 20 ||
+    pagination.returned !== items.length ||
+    typeof pagination.has_more !== "boolean" ||
+    !(
+      pagination.next_offset === null ||
+      Number.isInteger(pagination.next_offset)
+    ) ||
+    (pagination.has_more
+      ? pagination.next_offset !== 20
+      : pagination.next_offset !== null)
+  ) {
+    throw historyFailure(testName, response.status);
+  }
+
+  const safeItems = items.map((item) =>
+    assertHistoryItem(item, testName, response.status)
+  );
+  for (let index = 1; index < safeItems.length; index += 1) {
+    const previous = safeItems[index - 1];
+    const current = safeItems[index];
+    if (!previous || !current || compareHistoryOrder(previous, current) > 0) {
+      throw historyFailure(testName, response.status);
+    }
+  }
+
+  return safeItems[0]
+    ? { reason: "HISTORY_PRESENT", firstId: safeItems[0].id }
+    : { reason: "HISTORY_EMPTY" };
+}
+
+function assertHistoryDetailResponse(
+  response: SmokeHttpResponse,
+  expectedId: string
+): void {
+  const testName = "Prescription history detail";
+  if (response.status !== 200) {
+    throw new SafeFailure({
+      testName,
+      category: "UNEXPECTED_HTTP_STATUS",
+      status: response.status
+    });
+  }
+  if (!isRecord(response.body) || !hasExactKeys(response.body, ["prescription"])) {
+    throw historyFailure(testName, response.status);
+  }
+  const item = assertHistoryItem(response.body.prescription, testName, response.status);
+  if (item.id !== expectedId) throw historyFailure(testName, response.status);
+}
+
+function assertExactError(
+  testName: string,
+  response: SmokeHttpResponse,
+  expectedStatus: number,
+  expectedCode: string
+): void {
+  assertStatus(testName, response, expectedStatus);
+  if (!isRecord(response.body) || !hasExactKeys(response.body, ["error"]) ||
+    !isRecord(response.body.error) ||
+    !hasExactKeys(response.body.error, ["code", "message"]) ||
+    response.body.error.code !== expectedCode ||
+    typeof response.body.error.message !== "string") {
+    throw historyFailure(testName, response.status);
+  }
+}
+
+function passHistoryRead(
+  dependencies: SmokeDependencies,
+  status: number,
+  reason: HistoryReadReason
+): void {
+  dependencies.output(`[PASS] Prescription history HTTP ${status} ${reason}`);
+}
+
+interface SafeCabinetItem {
+  readonly id: string;
+  readonly createdAt: string;
+}
+
+function cabinetFailure(testName: string, status?: number): SafeFailure {
+  return new SafeFailure({
+    testName,
+    category: "CABINET_CONTRACT_INVALID",
+    ...(status === undefined ? {} : { status })
+  });
+}
+
+function isValidDate(value: unknown): value is string {
+  if (typeof value !== "string" || !ISO_DATE_PATTERN.test(value)) return false;
+  const parsed = new Date(`${value}T00:00:00.000Z`);
+  return Number.isFinite(parsed.getTime()) &&
+    parsed.toISOString().slice(0, 10) === value;
+}
+
+function assertCabinetItem(
+  value: unknown,
+  testName: string,
+  status: number
+): SafeCabinetItem {
+  if (!isRecord(value) || !hasExactKeys(value, CABINET_ITEM_FIELDS)) {
+    throw cabinetFailure(testName, status);
+  }
+  if (
+    typeof value.id !== "string" ||
+    !UUID_PATTERN.test(value.id) ||
+    typeof value.medicine_id !== "string" ||
+    !UUID_PATTERN.test(value.medicine_id) ||
+    !(
+      value.quantity === null ||
+      (typeof value.quantity === "string" &&
+        DECIMAL_QUANTITY_PATTERN.test(value.quantity))
+    ) ||
+    !(value.purchase_date === null || isValidDate(value.purchase_date)) ||
+    !(value.expiry_date === null || isValidDate(value.expiry_date)) ||
+    !(value.refill_date === null || isValidDate(value.refill_date)) ||
+    !isNullableString(value.usage_information) ||
+    !isValidTimestamp(value.created_at) ||
+    !isValidTimestamp(value.updated_at)
+  ) {
+    throw cabinetFailure(testName, status);
+  }
+  return { id: value.id, createdAt: value.created_at };
+}
+
+function compareCabinetOrder(left: SafeCabinetItem, right: SafeCabinetItem): number {
+  const timeDifference = Date.parse(right.createdAt) - Date.parse(left.createdAt);
+  if (timeDifference !== 0) return timeDifference;
+  return right.id > left.id ? 1 : right.id < left.id ? -1 : 0;
+}
+
+function assertCabinetListResponse(
+  response: SmokeHttpResponse
+): { readonly reason: CabinetReadReason; readonly firstId?: string } {
+  const testName = "Medicine cabinet";
+  if (response.status !== 200) {
+    throw new SafeFailure({
+      testName,
+      category: "UNEXPECTED_HTTP_STATUS",
+      status: response.status
+    });
+  }
+  if (!isRecord(response.body) || !hasExactKeys(response.body, ["items", "pagination"])) {
+    throw cabinetFailure(testName, response.status);
+  }
+  const { items, pagination } = response.body;
+  if (!Array.isArray(items) || !isRecord(pagination) ||
+    !hasExactKeys(pagination, ["limit", "offset", "returned", "has_more", "next_offset"])) {
+    throw cabinetFailure(testName, response.status);
+  }
+  if (
+    pagination.limit !== 20 ||
+    pagination.offset !== 0 ||
+    !Number.isInteger(pagination.returned) ||
+    (pagination.returned as number) < 0 ||
+    (pagination.returned as number) > 20 ||
+    pagination.returned !== items.length ||
+    typeof pagination.has_more !== "boolean" ||
+    !(pagination.next_offset === null || Number.isInteger(pagination.next_offset)) ||
+    (pagination.has_more ? pagination.next_offset !== 20 : pagination.next_offset !== null)
+  ) {
+    throw cabinetFailure(testName, response.status);
+  }
+  const safeItems = items.map((item) =>
+    assertCabinetItem(item, testName, response.status)
+  );
+  for (let index = 1; index < safeItems.length; index += 1) {
+    const previous = safeItems[index - 1];
+    const current = safeItems[index];
+    if (!previous || !current || compareCabinetOrder(previous, current) > 0) {
+      throw cabinetFailure(testName, response.status);
+    }
+  }
+  return safeItems[0]
+    ? { reason: "CABINET_PRESENT", firstId: safeItems[0].id }
+    : { reason: "CABINET_EMPTY" };
+}
+
+function assertCabinetDetailResponse(
+  response: SmokeHttpResponse,
+  expectedId: string
+): void {
+  const testName = "Medicine cabinet detail";
+  if (response.status !== 200) {
+    throw new SafeFailure({
+      testName,
+      category: "UNEXPECTED_HTTP_STATUS",
+      status: response.status
+    });
+  }
+  if (!isRecord(response.body) || !hasExactKeys(response.body, ["entry"])) {
+    throw cabinetFailure(testName, response.status);
+  }
+  const item = assertCabinetItem(response.body.entry, testName, response.status);
+  if (item.id !== expectedId) throw cabinetFailure(testName, response.status);
+}
+
+function passCabinetRead(
+  dependencies: SmokeDependencies,
+  status: number,
+  reason: CabinetReadReason
+): void {
+  dependencies.output(`[PASS] Medicine cabinet HTTP ${status} ${reason}`);
+}
+
 function pass(
   dependencies: SmokeDependencies,
   testName: string,
@@ -265,6 +800,15 @@ function pass(
 ): void {
   const suffix = status === undefined ? "" : ` HTTP ${status}`;
   dependencies.output(`[PASS] ${testName}${suffix}`);
+}
+
+function passProfileRead(
+  dependencies: SmokeDependencies,
+  endpointName: string,
+  status: number,
+  reason: ProfileReadReason
+): void {
+  dependencies.output(`[PASS] ${endpointName} HTTP ${status} ${reason}`);
 }
 
 function safeFailure(error: unknown): SafeFailure {
@@ -313,6 +857,36 @@ export async function runAuthSmokeHarness(
     pass(dependencies, "Invalid token", invalidToken.status);
     passed += 1;
 
+    const missingHistoryToken = await http.get(
+      "/api/v1/prescriptions?limit=20&offset=0"
+    );
+    assertStatus("History missing token", missingHistoryToken, 401);
+    pass(dependencies, "History missing token", missingHistoryToken.status);
+    passed += 1;
+
+    const invalidHistoryToken = await http.get(
+      "/api/v1/prescriptions?limit=20&offset=0",
+      "meddecode-synthetic-invalid-token"
+    );
+    assertStatus("History invalid token", invalidHistoryToken, 401);
+    pass(dependencies, "History invalid token", invalidHistoryToken.status);
+    passed += 1;
+
+    const missingCabinetToken = await http.get(
+      "/api/v1/medicine-cabinet?limit=20&offset=0"
+    );
+    assertStatus("Cabinet missing token", missingCabinetToken, 401);
+    pass(dependencies, "Cabinet missing token", missingCabinetToken.status);
+    passed += 1;
+
+    const invalidCabinetToken = await http.get(
+      "/api/v1/medicine-cabinet?limit=20&offset=0",
+      "meddecode-synthetic-invalid-token"
+    );
+    assertStatus("Cabinet invalid token", invalidCabinetToken, 401);
+    pass(dependencies, "Cabinet invalid token", invalidCabinetToken.status);
+    passed += 1;
+
     password = await dependencies.readHiddenPassword();
     if (!password) {
       throw new SafeFailure({
@@ -348,10 +922,136 @@ export async function runAuthSmokeHarness(
     passed += 1;
 
     const verified = await http.get("/api/v1/auth/me", accessToken);
-    accessToken = "";
     assertStatus("Verified identity", verified, 200);
     assertSafeIdentityResponse(verified, expectedIdentity);
     pass(dependencies, "Verified identity", verified.status);
+    passed += 1;
+
+    const applicationProfile = await http.get(
+      "/api/v1/users/me",
+      accessToken
+    );
+    const applicationReason = assertApplicationProfileResponse(
+      applicationProfile,
+      expectedIdentity.userId
+    );
+    passProfileRead(
+      dependencies,
+      "Application profile",
+      applicationProfile.status,
+      applicationReason
+    );
+    passed += 1;
+
+    const healthProfile = await http.get(
+      "/api/v1/health-profile/me",
+      accessToken
+    );
+    const healthReason = assertHealthProfileResponse(
+      healthProfile,
+      expectedIdentity.userId
+    );
+    passProfileRead(
+      dependencies,
+      "Health profile",
+      healthProfile.status,
+      healthReason
+    );
+    passed += 1;
+
+    const history = await http.get(
+      "/api/v1/prescriptions?limit=20&offset=0",
+      accessToken
+    );
+    const historyResult = assertHistoryListResponse(history);
+    passHistoryRead(dependencies, history.status, historyResult.reason);
+    passed += 1;
+
+    if (historyResult.firstId) {
+      const detail = await http.get(
+        `/api/v1/prescriptions/${historyResult.firstId}`,
+        accessToken
+      );
+      assertHistoryDetailResponse(detail, historyResult.firstId);
+      pass(dependencies, "Prescription history detail", detail.status);
+      passed += 1;
+    } else {
+      dependencies.output(
+        "[SKIP] Prescription history detail NO_EXISTING_RECORD"
+      );
+    }
+
+    const invalidPrescriptionId = await http.get(
+      "/api/v1/prescriptions/not-a-uuid",
+      accessToken
+    );
+    assertExactError(
+      "Invalid prescription ID",
+      invalidPrescriptionId,
+      400,
+      "INVALID_PRESCRIPTION_ID"
+    );
+    pass(dependencies, "Invalid prescription ID", invalidPrescriptionId.status);
+    passed += 1;
+
+    const unknownPrescription = await http.get(
+      `/api/v1/prescriptions/${randomUUID()}`,
+      accessToken
+    );
+    assertExactError(
+      "Unknown prescription",
+      unknownPrescription,
+      404,
+      "PRESCRIPTION_NOT_FOUND"
+    );
+    pass(dependencies, "Unknown prescription", unknownPrescription.status);
+    passed += 1;
+
+    const cabinet = await http.get(
+      "/api/v1/medicine-cabinet?limit=20&offset=0",
+      accessToken
+    );
+    const cabinetResult = assertCabinetListResponse(cabinet);
+    passCabinetRead(dependencies, cabinet.status, cabinetResult.reason);
+    passed += 1;
+
+    if (cabinetResult.firstId) {
+      const detail = await http.get(
+        `/api/v1/medicine-cabinet/${cabinetResult.firstId}`,
+        accessToken
+      );
+      assertCabinetDetailResponse(detail, cabinetResult.firstId);
+      pass(dependencies, "Medicine cabinet detail", detail.status);
+      passed += 1;
+    } else {
+      dependencies.output("[SKIP] Medicine cabinet detail NO_EXISTING_RECORD");
+    }
+
+    const invalidCabinetId = await http.get(
+      "/api/v1/medicine-cabinet/not-a-uuid",
+      accessToken
+    );
+    assertExactError(
+      "Invalid medicine cabinet entry ID",
+      invalidCabinetId,
+      400,
+      "INVALID_MEDICINE_CABINET_ENTRY_ID"
+    );
+    pass(dependencies, "Invalid medicine cabinet entry ID", invalidCabinetId.status);
+    passed += 1;
+
+    const unknownCabinetEntry = await http.get(
+      `/api/v1/medicine-cabinet/${randomUUID()}`,
+      accessToken
+    );
+    accessToken = "";
+    assertExactError(
+      "Unknown medicine cabinet entry",
+      unknownCabinetEntry,
+      404,
+      "MEDICINE_CABINET_ENTRY_NOT_FOUND"
+    );
+    pass(dependencies, "Unknown medicine cabinet entry", unknownCabinetEntry.status);
     passed += 1;
 
     dependencies.output(`[SUMMARY] PASS ${passed} checks`);

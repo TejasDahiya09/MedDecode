@@ -4,6 +4,7 @@ import type {
   AuthVerifier,
   VerifiedIdentity
 } from "../services/auth.service.js";
+import type { UserSupabaseClientFactory } from "../config/supabase-user.js";
 import { AppError } from "./error.middleware.js";
 
 const unauthorized = () => new AppError(
@@ -36,17 +37,33 @@ function extractBearerToken(request: Request): string {
 }
 
 export function createAuthenticateMiddleware(
-  verifier: AuthVerifier
+  verifier: AuthVerifier,
+  userClientFactory?: UserSupabaseClientFactory
 ): RequestHandler {
   return async (request, _response, next) => {
+    let accessToken: string;
+    let identity: VerifiedIdentity;
+
     try {
-      const accessToken = extractBearerToken(request);
-      const identity = await verifier.verifyAccessToken(accessToken);
-      request.auth = Object.freeze({ ...identity });
-      next();
+      accessToken = extractBearerToken(request);
+      identity = await verifier.verifyAccessToken(accessToken);
     } catch {
       next(unauthorized());
+      return;
     }
+
+    request.auth = Object.freeze({ ...identity });
+
+    if (userClientFactory) {
+      try {
+        request.userSupabase = userClientFactory(accessToken);
+      } catch (error) {
+        next(error);
+        return;
+      }
+    }
+
+    next();
   };
 }
 

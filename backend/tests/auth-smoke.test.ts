@@ -18,12 +18,193 @@ const approvedEnvironment: SmokeEnvironment = {
   AUTH_SMOKE_TEST_EMAIL: "test-user@example.invalid"
 };
 
+const firstPrescriptionId = "20000000-0000-4000-8000-000000000002";
+const secondPrescriptionId = "10000000-0000-4000-8000-000000000001";
+const firstCabinetId = "40000000-0000-4000-8000-000000000004";
+const secondCabinetId = "30000000-0000-4000-8000-000000000003";
+const medicineId = "50000000-0000-4000-8000-000000000005";
+
+function historyItem(
+  id = firstPrescriptionId,
+  createdAt = "2026-11-10T10:00:00.000Z"
+) {
+  return {
+    id,
+    file_type: "application/pdf",
+    file_size_bytes: "9007199254740993",
+    status: "uploaded",
+    prescription_date: null,
+    created_at: createdAt,
+    updated_at: createdAt,
+    processed_at: null
+  };
+}
+
+function historyList(items: readonly unknown[] = []): SmokeHttpResponse {
+  return {
+    status: 200,
+    body: {
+      items,
+      pagination: {
+        limit: 20,
+        offset: 0,
+        returned: items.length,
+        has_more: false,
+        next_offset: null
+      }
+    }
+  };
+}
+
+function cabinetItem(
+  id = firstCabinetId,
+  createdAt = "2026-11-10T10:00:00.000Z",
+  quantity: string | null = "2.5"
+) {
+  return {
+    id,
+    medicine_id: medicineId,
+    quantity,
+    purchase_date: null,
+    expiry_date: "2027-01-31",
+    refill_date: null,
+    usage_information: null,
+    created_at: createdAt,
+    updated_at: createdAt
+  };
+}
+
+function cabinetList(items: readonly unknown[] = []): SmokeHttpResponse {
+  return {
+    status: 200,
+    body: {
+      items,
+      pagination: {
+        limit: 20,
+        offset: 0,
+        returned: items.length,
+        has_more: false,
+        next_offset: null
+      }
+    }
+  };
+}
+
 interface HarnessProbe {
   readonly output: string[];
   readonly httpCalls: Array<{ path: string; accessToken?: string }>;
   readonly authCalls: Array<{ email: string; password: string }>;
   createHttpClientCalls: number;
   createAuthProviderCalls: number;
+}
+
+function standardResponseFor(
+  path: string,
+  token?: string
+): SmokeHttpResponse {
+  if (path === "/health") {
+    return { status: 200, body: { status: "ok" } };
+  }
+  if (!token || token === "meddecode-synthetic-invalid-token") {
+    return { status: 401, body: { error: { code: "UNAUTHORIZED" } } };
+  }
+  if (path === "/api/v1/users/me") {
+    return {
+      status: 200,
+      body: {
+        profile: {
+          id: "mock-user-id",
+          email: null,
+          name: null,
+          created_at: "2026-11-10T10:00:00.000Z",
+          updated_at: "2026-11-10T10:00:00.000Z"
+        }
+      }
+    };
+  }
+  if (path === "/api/v1/health-profile/me") {
+    return {
+      status: 200,
+      body: {
+        healthProfile: {
+          id: "mock-health-id",
+          user_id: "mock-user-id",
+          age: null,
+          gender: null,
+          allergies: [],
+          diabetes: false,
+          hypertension: false,
+          kidney_disease: false,
+          liver_disease: false,
+          asthma: false,
+          thyroid: false,
+          pregnancy: null,
+          other_conditions: [],
+          created_at: "2026-11-10T10:00:00.000Z",
+          updated_at: "2026-11-10T10:00:00.000Z"
+        }
+      }
+    };
+  }
+  if (path === "/api/v1/prescriptions?limit=20&offset=0") {
+    return historyList();
+  }
+  if (path === "/api/v1/prescriptions/not-a-uuid") {
+    return {
+      status: 400,
+      body: {
+        error: {
+          code: "INVALID_PRESCRIPTION_ID",
+          message: "Prescription ID must be a valid UUID."
+        }
+      }
+    };
+  }
+  if (path.startsWith("/api/v1/prescriptions/")) {
+    return {
+      status: 404,
+      body: {
+        error: {
+          code: "PRESCRIPTION_NOT_FOUND",
+          message: "Prescription not found."
+        }
+      }
+    };
+  }
+  if (path === "/api/v1/medicine-cabinet?limit=20&offset=0") {
+    return cabinetList();
+  }
+  if (path === "/api/v1/medicine-cabinet/not-a-uuid") {
+    return {
+      status: 400,
+      body: {
+        error: {
+          code: "INVALID_MEDICINE_CABINET_ENTRY_ID",
+          message: "Medicine cabinet entry ID must be a valid UUID."
+        }
+      }
+    };
+  }
+  if (path.startsWith("/api/v1/medicine-cabinet/")) {
+    return {
+      status: 404,
+      body: {
+        error: {
+          code: "MEDICINE_CABINET_ENTRY_NOT_FOUND",
+          message: "Medicine cabinet entry not found."
+        }
+      }
+    };
+  }
+  return {
+    status: 200,
+    body: {
+      user: {
+        id: "mock-user-id",
+        email: "test-user@example.invalid"
+      }
+    }
+  };
 }
 
 function createHarness(overrides?: {
@@ -40,23 +221,7 @@ function createHarness(overrides?: {
     createAuthProviderCalls: 0
   };
 
-  const responseFor = overrides?.responseFor ?? ((path, token) => {
-    if (path === "/health") {
-      return { status: 200, body: { status: "ok" } };
-    }
-    if (!token || token === "meddecode-synthetic-invalid-token") {
-      return { status: 401, body: { error: { code: "UNAUTHORIZED" } } };
-    }
-    return {
-      status: 200,
-      body: {
-        user: {
-          id: "mock-user-id",
-          email: "test-user@example.invalid"
-        }
-      }
-    };
-  });
+  const responseFor = overrides?.responseFor ?? standardResponseFor;
 
   const httpClient: SmokeHttpClient = {
     async get(path, accessToken) {
@@ -193,12 +358,41 @@ describe("Authentication smoke-test harness safety", () => {
     assert.equal(exitCode, 0);
     assert.equal(probe.createHttpClientCalls, 1);
     assert.equal(probe.createAuthProviderCalls, 1);
-    assert.deepEqual(probe.httpCalls.map(({ path }) => path), [
+    const paths = probe.httpCalls.map(({ path }) => path);
+    assert.deepEqual(paths.slice(0, 12), [
       "/health",
       "/api/v1/auth/me",
       "/api/v1/auth/me",
-      "/api/v1/auth/me"
+      "/api/v1/prescriptions?limit=20&offset=0",
+      "/api/v1/prescriptions?limit=20&offset=0",
+      "/api/v1/medicine-cabinet?limit=20&offset=0",
+      "/api/v1/medicine-cabinet?limit=20&offset=0",
+      "/api/v1/auth/me",
+      "/api/v1/users/me",
+      "/api/v1/health-profile/me",
+      "/api/v1/prescriptions?limit=20&offset=0",
+      "/api/v1/prescriptions/not-a-uuid"
     ]);
+    assert.match(paths[12] ?? "", /^\/api\/v1\/prescriptions\/[0-9a-f-]{36}$/);
+    assert.deepEqual(paths.slice(13, -1), [
+      "/api/v1/medicine-cabinet?limit=20&offset=0",
+      "/api/v1/medicine-cabinet/not-a-uuid"
+    ]);
+    assert.match(paths.at(-1) ?? "", /^\/api\/v1\/medicine-cabinet\/[0-9a-f-]{36}$/);
+    const historyAuthCalls = probe.httpCalls.filter(
+      ({ path }) => path === "/api/v1/prescriptions?limit=20&offset=0"
+    );
+    assert.deepEqual(
+      historyAuthCalls.map(({ accessToken }) => accessToken),
+      [undefined, "meddecode-synthetic-invalid-token", "mock-access-token"]
+    );
+    const cabinetAuthCalls = probe.httpCalls.filter(
+      ({ path }) => path === "/api/v1/medicine-cabinet?limit=20&offset=0"
+    );
+    assert.deepEqual(
+      cabinetAuthCalls.map(({ accessToken }) => accessToken),
+      [undefined, "meddecode-synthetic-invalid-token", "mock-access-token"]
+    );
     assert.deepEqual(probe.authCalls, [{
       email: "test-user@example.invalid",
       password: "mock-password"
@@ -234,6 +428,493 @@ describe("Authentication smoke-test harness safety", () => {
     assert.match(output, /AUTH_SIGN_IN_FAILED/);
   });
 
+  it("accepts an absent application profile only with its exact 404 code", async () => {
+    const { dependencies, probe } = createHarness({
+      responseFor: (path, token) => {
+        if (path === "/api/v1/users/me") {
+          return {
+            status: 404,
+            body: {
+              error: {
+                code: "USER_PROFILE_NOT_FOUND",
+                message: "User profile not found."
+              }
+            }
+          };
+        }
+        return standardResponseFor(path, token);
+      }
+    });
+    const exitCode = await runAuthSmokeHarness(
+      ["--allow-live-auth"],
+      dependencies
+    );
+
+    assert.equal(exitCode, 0);
+    assert.match(
+      probe.output.join("\n"),
+      /\[PASS\] Application profile HTTP 404 PROFILE_NOT_FOUND/
+    );
+  });
+
+  it("accepts an absent health profile only with its exact 404 code", async () => {
+    const { dependencies, probe } = createHarness({
+      responseFor: (path, token) => path === "/api/v1/health-profile/me"
+        ? {
+            status: 404,
+            body: {
+              error: {
+                code: "HEALTH_PROFILE_NOT_FOUND",
+                message: "Health profile not found."
+              }
+            }
+          }
+        : standardResponseFor(path, token)
+    });
+    const exitCode = await runAuthSmokeHarness(
+      ["--allow-live-auth"],
+      dependencies
+    );
+
+    assert.equal(exitCode, 0);
+    assert.match(
+      probe.output.join("\n"),
+      /\[PASS\] Health profile HTTP 404 PROFILE_NOT_FOUND/
+    );
+  });
+
+  it("rejects a profile 404 carrying the wrong error code", async () => {
+    const { dependencies, probe } = createHarness({
+      responseFor: (path, token) => path === "/api/v1/users/me"
+        ? {
+            status: 404,
+            body: {
+              error: {
+                code: "HEALTH_PROFILE_NOT_FOUND",
+                message: "Wrong route contract."
+              }
+            }
+          }
+        : standardResponseFor(path, token)
+    });
+    const exitCode = await runAuthSmokeHarness(
+      ["--allow-live-auth"],
+      dependencies
+    );
+
+    assert.equal(exitCode, 1);
+    assert.match(probe.output.join("\n"), /PROFILE_CONTRACT_INVALID HTTP 404/);
+  });
+
+  for (const status of [401, 403, 500]) {
+    it(`rejects HTTP ${status} from a profile endpoint`, async () => {
+      const { dependencies, probe } = createHarness({
+        responseFor: (path, token) => path === "/api/v1/users/me"
+          ? { status, body: { error: { code: "SAFE_SYNTHETIC_ERROR" } } }
+          : standardResponseFor(path, token)
+      });
+      const exitCode = await runAuthSmokeHarness(
+        ["--allow-live-auth"],
+        dependencies
+      );
+
+      assert.equal(exitCode, 1);
+      assert.match(
+        probe.output.join("\n"),
+        new RegExp(`UNEXPECTED_HTTP_STATUS HTTP ${status}`)
+      );
+    });
+  }
+
+  it("rejects an application profile owned by another user", async () => {
+    const { dependencies, probe } = createHarness({
+      responseFor: (path, token) => {
+        const response = standardResponseFor(path, token);
+        if (path !== "/api/v1/users/me") return response;
+        return {
+          status: 200,
+          body: {
+            profile: {
+              ...(response.body as { profile: Record<string, unknown> }).profile,
+              id: "different-user-id"
+            }
+          }
+        };
+      }
+    });
+    const exitCode = await runAuthSmokeHarness(
+      ["--allow-live-auth"],
+      dependencies
+    );
+
+    assert.equal(exitCode, 1);
+    assert.match(probe.output.join("\n"), /PROFILE_OWNER_MISMATCH HTTP 200/);
+  });
+
+  it("rejects extra fields that could expose sensitive profile data", async () => {
+    const { dependencies, probe } = createHarness({
+      responseFor: (path, token) => {
+        const response = standardResponseFor(path, token);
+        if (path !== "/api/v1/health-profile/me") return response;
+        return {
+          status: 200,
+          body: {
+            healthProfile: {
+              ...(response.body as {
+                healthProfile: Record<string, unknown>;
+              }).healthProfile,
+              access_token: "must-never-be-returned"
+            }
+          }
+        };
+      }
+    });
+    const exitCode = await runAuthSmokeHarness(
+      ["--allow-live-auth"],
+      dependencies
+    );
+
+    assert.equal(exitCode, 1);
+    const output = probe.output.join("\n");
+    assert.match(output, /PROFILE_CONTRACT_INVALID HTTP 200/);
+    assert.equal(output.includes("must-never-be-returned"), false);
+  });
+
+  it("never prints profile values, identity data or credentials", async () => {
+    const sensitiveValues = [
+      "private-display-name",
+      "private-health-id",
+      "private-allergy",
+      "test-user@example.invalid",
+      "mock-password",
+      "mock-access-token",
+      "public-test-key"
+    ];
+    const { dependencies, probe } = createHarness({
+      responseFor: (path, token) => {
+        const response = standardResponseFor(path, token);
+        if (path === "/api/v1/users/me") {
+          return {
+            status: 200,
+            body: {
+              profile: {
+                ...(response.body as {
+                  profile: Record<string, unknown>;
+                }).profile,
+                name: "private-display-name"
+              }
+            }
+          };
+        }
+        if (path === "/api/v1/health-profile/me") {
+          return {
+            status: 200,
+            body: {
+              healthProfile: {
+                ...(response.body as {
+                  healthProfile: Record<string, unknown>;
+                }).healthProfile,
+                id: "private-health-id",
+                allergies: ["private-allergy"]
+              }
+            }
+          };
+        }
+        return response;
+      }
+    });
+    const exitCode = await runAuthSmokeHarness(
+      ["--allow-live-auth"],
+      dependencies
+    );
+    const output = probe.output.join("\n");
+
+    assert.equal(exitCode, 0);
+    for (const value of sensitiveValues) {
+      assert.equal(output.includes(value), false);
+    }
+    assert.match(output, /Application profile HTTP 200 PROFILE_PRESENT/);
+    assert.match(output, /Health profile HTTP 200 PROFILE_PRESENT/);
+  });
+
+  it("accepts a valid empty prescription history and safely skips detail", async () => {
+    const { dependencies, probe } = createHarness();
+    const exitCode = await runAuthSmokeHarness(
+      ["--allow-live-auth"],
+      dependencies
+    );
+    const output = probe.output.join("\n");
+
+    assert.equal(exitCode, 0);
+    assert.match(output, /Prescription history HTTP 200 HISTORY_EMPTY/);
+    assert.match(output, /\[SKIP\] Prescription history detail NO_EXISTING_RECORD/);
+  });
+
+  it("validates populated history, ordering and the first owned detail", async () => {
+    const items = [
+      historyItem(firstPrescriptionId, "2026-11-10T10:00:00.000Z"),
+      historyItem(secondPrescriptionId, "2026-11-09T10:00:00.000Z")
+    ];
+    const { dependencies, probe } = createHarness({
+      responseFor: (path, token) => {
+        if (path === "/api/v1/prescriptions?limit=20&offset=0" &&
+          token === "mock-access-token") return historyList(items);
+        if (path === `/api/v1/prescriptions/${firstPrescriptionId}`) {
+          return {
+            status: 200,
+            body: { prescription: items[0] }
+          };
+        }
+        return standardResponseFor(path, token);
+      }
+    });
+    const exitCode = await runAuthSmokeHarness(
+      ["--allow-live-auth"],
+      dependencies
+    );
+    const output = probe.output.join("\n");
+
+    assert.equal(exitCode, 0);
+    assert.match(output, /Prescription history HTTP 200 HISTORY_PRESENT/);
+    assert.match(output, /Prescription history detail HTTP 200/);
+    assert.equal(output.includes(firstPrescriptionId), false);
+    assert.equal(output.includes("9007199254740993"), false);
+  });
+
+  for (const [name, response] of [
+    ["malformed JSON", { status: 200, body: undefined }],
+    ["incorrect field set", {
+      status: 200,
+      body: { items: [], pagination: {}, unexpected: true }
+    }],
+    ["unexpected status", { status: 500, body: { error: { code: "SAFE" } } }]
+  ] as const) {
+    it(`rejects ${name} from prescription history`, async () => {
+      const { dependencies, probe } = createHarness({
+        responseFor: (path, token) =>
+          path === "/api/v1/prescriptions?limit=20&offset=0" &&
+            token === "mock-access-token"
+            ? response
+            : standardResponseFor(path, token)
+      });
+      const exitCode = await runAuthSmokeHarness(
+        ["--allow-live-auth"],
+        dependencies
+      );
+
+      assert.equal(exitCode, 1);
+      assert.match(
+        probe.output.join("\n"),
+        /HISTORY_CONTRACT_INVALID|UNEXPECTED_HTTP_STATUS/
+      );
+    });
+  }
+
+  it("rejects private fields and never prints prescription metadata", async () => {
+    const privateValues = [
+      "private/storage/key.pdf",
+      "private-bucket",
+      "private-patient-name",
+      firstPrescriptionId,
+      "9007199254740993"
+    ];
+    const exposed = {
+      ...historyItem(),
+      object_key: privateValues[0],
+      storage_bucket: privateValues[1],
+      patient_name: privateValues[2]
+    };
+    const { dependencies, probe } = createHarness({
+      responseFor: (path, token) =>
+        path === "/api/v1/prescriptions?limit=20&offset=0" &&
+          token === "mock-access-token"
+          ? historyList([exposed])
+          : standardResponseFor(path, token)
+    });
+    const exitCode = await runAuthSmokeHarness(
+      ["--allow-live-auth"],
+      dependencies
+    );
+    const output = probe.output.join("\n");
+
+    assert.equal(exitCode, 1);
+    assert.match(output, /HISTORY_CONTRACT_INVALID/);
+    for (const privateValue of privateValues) {
+      assert.equal(output.includes(privateValue), false);
+    }
+  });
+
+  it("rejects out-of-order history records", async () => {
+    const { dependencies, probe } = createHarness({
+      responseFor: (path, token) =>
+        path === "/api/v1/prescriptions?limit=20&offset=0" &&
+          token === "mock-access-token"
+          ? historyList([
+              historyItem(secondPrescriptionId, "2026-11-09T10:00:00.000Z"),
+              historyItem(firstPrescriptionId, "2026-11-10T10:00:00.000Z")
+            ])
+          : standardResponseFor(path, token)
+    });
+    const exitCode = await runAuthSmokeHarness(
+      ["--allow-live-auth"],
+      dependencies
+    );
+
+    assert.equal(exitCode, 1);
+    assert.match(probe.output.join("\n"), /HISTORY_CONTRACT_INVALID/);
+  });
+
+  it("accepts an empty medicine cabinet and safely skips detail", async () => {
+    const { dependencies, probe } = createHarness();
+    const exitCode = await runAuthSmokeHarness(
+      ["--allow-live-auth"],
+      dependencies
+    );
+    const output = probe.output.join("\n");
+
+    assert.equal(exitCode, 0);
+    assert.match(output, /Medicine cabinet HTTP 200 CABINET_EMPTY/);
+    assert.match(output, /\[SKIP\] Medicine cabinet detail NO_EXISTING_RECORD/);
+  });
+
+  it("validates populated cabinet, nullable fields and first owned detail", async () => {
+    const items = [
+      cabinetItem(firstCabinetId, "2026-11-10T10:00:00.000Z", null),
+      cabinetItem(secondCabinetId, "2026-11-09T10:00:00.000Z", "2.5")
+    ];
+    const { dependencies, probe } = createHarness({
+      responseFor: (path, token) => {
+        if (path === "/api/v1/medicine-cabinet?limit=20&offset=0" &&
+          token === "mock-access-token") return cabinetList(items);
+        if (path === `/api/v1/medicine-cabinet/${firstCabinetId}`) {
+          return { status: 200, body: { entry: items[0] } };
+        }
+        return standardResponseFor(path, token);
+      }
+    });
+    const exitCode = await runAuthSmokeHarness(
+      ["--allow-live-auth"],
+      dependencies
+    );
+    const output = probe.output.join("\n");
+
+    assert.equal(exitCode, 0);
+    assert.match(output, /Medicine cabinet HTTP 200 CABINET_PRESENT/);
+    assert.match(output, /Medicine cabinet detail HTTP 200/);
+    for (const privateValue of [firstCabinetId, medicineId, "2.5", "2027-01-31"]) {
+      assert.equal(output.includes(privateValue), false);
+    }
+  });
+
+  for (const [name, response] of [
+    ["malformed JSON", { status: 200, body: undefined }],
+    ["invalid pagination", {
+      status: 200,
+      body: {
+        items: [],
+        pagination: {
+          limit: 20,
+          offset: 0,
+          returned: 1,
+          has_more: false,
+          next_offset: null
+        }
+      }
+    }],
+    ["unexpected status", { status: 500, body: { error: { code: "SAFE" } } }]
+  ] as const) {
+    it(`rejects ${name} from medicine cabinet`, async () => {
+      const { dependencies, probe } = createHarness({
+        responseFor: (path, token) =>
+          path === "/api/v1/medicine-cabinet?limit=20&offset=0" &&
+            token === "mock-access-token"
+            ? response
+            : standardResponseFor(path, token)
+      });
+      const exitCode = await runAuthSmokeHarness(
+        ["--allow-live-auth"],
+        dependencies
+      );
+
+      assert.equal(exitCode, 1);
+      assert.match(
+        probe.output.join("\n"),
+        /CABINET_CONTRACT_INVALID|UNEXPECTED_HTTP_STATUS/
+      );
+    });
+  }
+
+  it("rejects private cabinet fields without printing sensitive values", async () => {
+    const privateValues = [firstCabinetId, medicineId, "private-user-id", "private-family-id"];
+    const exposed = {
+      ...cabinetItem(),
+      user_id: privateValues[2],
+      family_member_id: privateValues[3]
+    };
+    const { dependencies, probe } = createHarness({
+      responseFor: (path, token) =>
+        path === "/api/v1/medicine-cabinet?limit=20&offset=0" &&
+          token === "mock-access-token"
+          ? cabinetList([exposed])
+          : standardResponseFor(path, token)
+    });
+    const exitCode = await runAuthSmokeHarness(
+      ["--allow-live-auth"],
+      dependencies
+    );
+    const output = probe.output.join("\n");
+
+    assert.equal(exitCode, 1);
+    assert.match(output, /CABINET_CONTRACT_INVALID/);
+    for (const privateValue of privateValues) {
+      assert.equal(output.includes(privateValue), false);
+    }
+  });
+
+  for (const [name, item] of [
+    ["numeric quantity", { ...cabinetItem(), quantity: 2.5 }],
+    ["scientific quantity", { ...cabinetItem(), quantity: "2e1" }],
+    ["invalid date", { ...cabinetItem(), expiry_date: "2027-02-30" }],
+    ["invalid identifier", { ...cabinetItem(), medicine_id: "not-a-uuid" }]
+  ] as const) {
+    it(`rejects ${name} in cabinet metadata`, async () => {
+      const { dependencies, probe } = createHarness({
+        responseFor: (path, token) =>
+          path === "/api/v1/medicine-cabinet?limit=20&offset=0" &&
+            token === "mock-access-token"
+            ? cabinetList([item])
+            : standardResponseFor(path, token)
+      });
+      const exitCode = await runAuthSmokeHarness(
+        ["--allow-live-auth"],
+        dependencies
+      );
+
+      assert.equal(exitCode, 1);
+      assert.match(probe.output.join("\n"), /CABINET_CONTRACT_INVALID/);
+    });
+  }
+
+  it("rejects out-of-order medicine cabinet records", async () => {
+    const { dependencies, probe } = createHarness({
+      responseFor: (path, token) =>
+        path === "/api/v1/medicine-cabinet?limit=20&offset=0" &&
+          token === "mock-access-token"
+          ? cabinetList([
+              cabinetItem(secondCabinetId, "2026-11-09T10:00:00.000Z"),
+              cabinetItem(firstCabinetId, "2026-11-10T10:00:00.000Z")
+            ])
+          : standardResponseFor(path, token)
+    });
+    const exitCode = await runAuthSmokeHarness(
+      ["--allow-live-auth"],
+      dependencies
+    );
+
+    assert.equal(exitCode, 1);
+    assert.match(probe.output.join("\n"), /CABINET_CONTRACT_INVALID/);
+  });
+
   it("uses only GET endpoint checks and never invokes privileged operations", async () => {
     const { dependencies, probe } = createHarness();
     const exitCode = await runAuthSmokeHarness(
@@ -243,8 +924,21 @@ describe("Authentication smoke-test harness safety", () => {
 
     assert.equal(exitCode, 0);
     assert.equal(probe.authCalls.length, 1);
+    assert.equal(probe.createHttpClientCalls, 1);
+    assert.equal(probe.createAuthProviderCalls, 1);
     assert.equal(
-      probe.httpCalls.every(({ path }) => path === "/health" || path === "/api/v1/auth/me"),
+      probe.httpCalls.every(({ path }) => [
+        "/health",
+        "/api/v1/auth/me",
+        "/api/v1/users/me",
+        "/api/v1/health-profile/me",
+        "/api/v1/prescriptions?limit=20&offset=0",
+        "/api/v1/prescriptions/not-a-uuid",
+        "/api/v1/medicine-cabinet?limit=20&offset=0",
+        "/api/v1/medicine-cabinet/not-a-uuid"
+      ].includes(path) ||
+        /^\/api\/v1\/prescriptions\/[0-9a-f-]{36}$/.test(path) ||
+        /^\/api\/v1\/medicine-cabinet\/[0-9a-f-]{36}$/.test(path)),
       true
     );
   });
