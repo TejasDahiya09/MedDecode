@@ -78,15 +78,19 @@ export class LocalPythonIntelligenceClient implements IntelligenceClient {
   constructor(private readonly options: {
     pythonExecutable: string;
     intelligenceDirectory: string;
+    worker?: "synthetic" | "real-layers-offline";
     timeoutMs?: number;
     run?: typeof runJsonSubprocess;
   }) {}
 
   async analyze(request: IntelligenceRequestV1): Promise<IntelligenceResponseV1> {
     const validated = validateIntelligenceRequestV1(request);
+    const workerModule = this.options.worker === "real-layers-offline"
+      ? "app.integration.offline_pipeline_worker"
+      : "app.integration.synthetic_worker";
     const output = await (this.options.run ?? runJsonSubprocess)({
       executable: this.options.pythonExecutable,
-      args: ["-m", "app.integration.synthetic_worker"],
+      args: ["-m", workerModule],
       cwd: this.options.intelligenceDirectory,
       input: JSON.stringify(validated),
       ...(this.options.timeoutMs === undefined ? {} : { timeoutMs: this.options.timeoutMs }),

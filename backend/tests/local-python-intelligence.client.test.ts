@@ -25,6 +25,31 @@ test("performs a real offline Node to Python Contract v1 round trip", async () =
   assert.equal(response.job_id, request.job_id);
   assert.equal(response.prescription_id, request.prescription_id);
 });
+
+test("performs a real Layer 2-5 offline round trip and validates its non-empty result", async () => {
+  const client = new LocalPythonIntelligenceClient({
+    pythonExecutable,
+    intelligenceDirectory,
+    worker: "real-layers-offline",
+  });
+  const response = await client.analyze(request);
+  assert.equal(response.status, "completed_with_warnings");
+  assert.equal(response.job_id, request.job_id);
+  assert.equal(response.prescription_id, request.prescription_id);
+  assert.equal(response.medicines.length, 2);
+  const first = response.medicines[0] as {
+    medicine_match: { status: string; medicine_external_id: string | null };
+  };
+  const second = response.medicines[1] as {
+    medicine_match: { status: string };
+    extraction: { frequency: { type: string } };
+  };
+  assert.equal(first.medicine_match.status, "matched");
+  assert.equal(first.medicine_match.medicine_external_id, null);
+  assert.equal(second.medicine_match.status, "unmatched");
+  assert.equal(second.extraction.frequency.type, "as_needed");
+  assert.ok(response.warnings.some((warning) => warning.code === "PUBLIC_MEDICINE_IDENTIFIER_UNAVAILABLE"));
+});
 test("reports spawn failure without exposing process details", async () => {
   const client = new LocalPythonIntelligenceClient({ pythonExecutable: join(repositoryDirectory, "missing-python.exe"), intelligenceDirectory });
   await assert.rejects(() => client.analyze(request), (error: unknown) => {
