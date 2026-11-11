@@ -42,7 +42,7 @@ for (const theme of ['light', 'dark'] as const) for (const width of [1440, 1280,
     const compare = dialog.getByRole('link', { name: 'Compare Medicines', exact: true }); await compare.focus(); await expect(compare).toBeVisible(); await page.screenshot({ path: `${prefix}-compare.png` });
     await page.keyboard.press('Escape'); await expect(dialog).toHaveCount(0); await expect(opener).toBeFocused();
     await page.keyboard.press('Space'); await expect(page.getByRole('dialog')).toBeVisible(); await page.getByRole('dialog').getByRole('link', { name: 'Compare Medicines', exact: true }).click();
-    await expect(page).toHaveURL(/\/compare-medicines$/); await expect(page.getByLabel('First medicine')).toHaveValue('aster'); await expect(page.getByLabel('Second medicine')).toHaveValue('birch');
+    await expect(page).toHaveURL(/\/compare-medicines\?a=dune$/); await expect(page.getByRole('article', { name: /Medicine A: Dune/ })).toBeVisible(); await expect(page.getByRole('article', { name: /Medicine B: no selection/ })).toBeVisible();
     await page.goBack(); await expect(page.getByRole('heading', { level: 1 })).toHaveText('Medicine Insights'); await expect(page.locator('.cc-market-product')).toHaveCount(12);
   });
 }
