@@ -3,9 +3,10 @@ import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { Icon } from '../components/Icon';
 import { PublicThemeToggle } from '../components/PublicThemeToggle';
 import { destinations } from './navigation';
+import { useAuth } from '../features/auth/AuthProvider';
 
 // CampusConnect AccountMenu dropdown surface and native disclosure semantics.
-function Disclosure({ label, className = '', active = false, children }: PropsWithChildren<{ label: string; className?: string; active?: boolean }>) {
+function Disclosure({ label, className = '', active = false, avatar, children }: PropsWithChildren<{ label: string; className?: string; active?: boolean; avatar?: string }>) {
   const root = useRef<HTMLDetailsElement>(null);
   const location = useLocation();
   useEffect(() => {
@@ -18,7 +19,7 @@ function Disclosure({ label, className = '', active = false, children }: PropsWi
     document.addEventListener('pointerdown', close); document.addEventListener('keydown', escape);
     return () => { document.removeEventListener('pointerdown', close); document.removeEventListener('keydown', escape); };
   }, []);
-  return <details className={`cc-shell-menu-root ${className}`} ref={root}><summary aria-label={label} title={label} className={label === 'Demo User menu' ? 'cc-shell-avatar' : label === 'Workspace shortcuts' ? 'cc-shell-utility' : `cc-shell-nav-link md-more-trigger${active ? ' is-active' : ''}`}>{label === 'Demo User menu' ? 'DU' : label === 'Workspace shortcuts' ? <Icon name="dashboard" /> : <>More <Icon name="chevron" className="size-4" /></>}</summary>{children}</details>;
+  return <details className={`cc-shell-menu-root ${className}`} ref={root}><summary aria-label={label} title={label} className={avatar ? 'cc-shell-avatar' : label === 'Workspace shortcuts' ? 'cc-shell-utility' : `cc-shell-nav-link md-more-trigger${active ? ' is-active' : ''}`}>{avatar ?? (label === 'Workspace shortcuts' ? <Icon name="dashboard" /> : <>More <Icon name="chevron" className="size-4" /></>)}</summary>{children}</details>;
 }
 
 export function RouteSearch({ onNavigate }: { onNavigate?: () => void } = {}) {
@@ -38,6 +39,7 @@ export function RouteSearch({ onNavigate }: { onNavigate?: () => void } = {}) {
 }
 
 export function WorkspaceHeader({ onExplore, expanded }: { onExplore: (event: MouseEvent<HTMLButtonElement>) => void; expanded: boolean }) {
+  const auth = useAuth();
   const { pathname } = useLocation();
   const [searchOpen, setSearchOpen] = useState(false);
   const searchContainer = useRef<HTMLDivElement>(null);
@@ -55,7 +57,7 @@ export function WorkspaceHeader({ onExplore, expanded }: { onExplore: (event: Mo
       <Disclosure label="Workspace shortcuts" className="md-compact-utilities"><nav className="cc-shell-dropdown md-overflow-menu" aria-label="Workspace shortcuts">{destinations.slice(4).map(item => <NavLink key={item.path} aria-label={`${item.label} shortcut`} to={item.path} className="cc-shell-menu-item"><Icon name={item.icon} className="size-4" />{item.label}</NavLink>)}</nav></Disclosure>
       {destinations.filter(item => ['/my-cabinet','/reminders','/learn-resources'].includes(item.path)).map(item => <NavLink key={item.path} aria-label={`${item.label} shortcut`} title={item.label} to={item.path} className={({ isActive }) => `cc-shell-utility md-direct-utility${item.path !== '/reminders' ? ' md-utility-secondary' : ''}${isActive ? ' is-active' : ''}`}><Icon name={item.path === '/reminders' ? 'bell' : item.icon} /><span className="cc-shell-utility-label">{item.path === '/my-cabinet' ? 'Cabinet' : item.path === '/learn-resources' ? 'Resources' : 'Reminders'}</span></NavLink>)}
       <div className="cc-shell-theme"><PublicThemeToggle /></div>
-      <Disclosure label="Demo User menu"><div className="cc-shell-dropdown cc-shell-account-menu"><div className="cc-shell-account-identity"><span className="cc-shell-avatar" aria-hidden="true">DU</span><div><strong>Demo User</strong><small>Demonstration · No account</small></div></div><p className="md-demo-profile-copy">Changes stay in memory and reset on reload. No authenticated session.</p><div className="cc-shell-menu-section"><Link className="cc-shell-menu-item" to="/home"><Icon name="home" className="size-4" />Home</Link><Link className="cc-shell-menu-item" to="/my-cabinet"><Icon name="briefcase" className="size-4" />My Cabinet</Link></div></div></Disclosure>
+      <Disclosure label="Account menu" avatar="MU"><div className="cc-shell-dropdown cc-shell-account-menu"><div className="cc-shell-account-identity"><span className="cc-shell-avatar" aria-hidden="true">MU</span><div><strong>MedDecode User</strong><small>Verified session</small></div></div><p className="md-demo-profile-copy">Signed in to MedDecode. Demo workspace records still stay in memory.</p><div className="cc-shell-menu-section"><Link className="cc-shell-menu-item" to="/home"><Icon name="home" className="size-4" />Home</Link><Link className="cc-shell-menu-item" to="/my-cabinet"><Icon name="briefcase" className="size-4" />My Cabinet</Link><button type="button" className="cc-shell-menu-item" onClick={() => void auth.signOut()}><Icon name="arrow" className="size-4" />Sign out</button></div></div></Disclosure>
     </div>
   </div></header>;
 }

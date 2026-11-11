@@ -1,12 +1,13 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, expect, it, vi } from 'vitest';
 import { AppRoutes } from '../../src/app/App';
 import { AppProviders } from '../../src/providers/AppProviders';
 import { authFieldError, authScreens, type AuthScreen } from '../../src/features/auth/auth-presentation';
+import { createAuthTestClient } from './auth-test-client';
 
 beforeEach(() => vi.stubGlobal('matchMedia', () => ({ matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn() })));
-function mount(path: string) { return render(<AppProviders><MemoryRouter initialEntries={[path]}><AppRoutes /></MemoryRouter></AppProviders>); }
+function mount(path: string) { return render(<AppProviders authClient={createAuthTestClient(null)}><MemoryRouter initialEntries={[path]}><AppRoutes /></MemoryRouter></AppProviders>); }
 function change(label: string, value: string) { fireEvent.change(screen.getByLabelText(label, { exact: true }), { target: { value } }); }
 function fill(kind: AuthScreen) {
   if (kind === 'sign-up') change('Full name', 'Preview Reader');
@@ -47,18 +48,14 @@ it.each(Object.keys(authScreens) as AuthScreen[])('%s announces invalid submissi
   }
 });
 
-it.each(Object.keys(authScreens) as AuthScreen[])('%s submits only an honest unavailable message without requests or persistence', (kind) => {
-  const fetch = vi.fn(); vi.stubGlobal('fetch', fetch);
-  const network = vi.spyOn(XMLHttpRequest.prototype, 'send');
-  const writes = vi.spyOn(Storage.prototype, 'setItem');
-  const log = vi.spyOn(console, 'log');
-  mount('/' + kind); fill(kind);
+it.each(Object.keys(authScreens) as AuthScreen[])('%s submits through the configured auth client', async (kind) => {
+  const client = createAuthTestClient(null);
+  vi.stubEnv('VITE_API_BASE_URL', '/backend');
+  vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ user: { id: '00000000-0000-4000-8000-000000000001', email: 'synthetic@example.test' } }), { headers: { 'Content-Type': 'application/json' } })));
+  render(<AppProviders authClient={client}><MemoryRouter initialEntries={['/' + kind]}><AppRoutes /></MemoryRouter></AppProviders>); fill(kind);
   fireEvent.submit(screen.getByRole('form'));
-  expect(screen.getByRole('status').textContent).toBe(authScreens[kind].unavailable);
-  expect(screen.queryByRole('alert')).toBeNull();
-  expect(fetch).not.toHaveBeenCalled(); expect(network).not.toHaveBeenCalled();
-  expect(writes).not.toHaveBeenCalled(); expect(log).not.toHaveBeenCalled();
-  expect(localStorage.length).toBe(0); expect(sessionStorage.length).toBe(0);
+  const method = kind === 'sign-in' ? client.signIn : kind === 'sign-up' ? client.signUp : kind === 'forgot-password' ? client.requestPasswordReset : client.updatePassword;
+  await waitFor(() => expect(method).toHaveBeenCalledOnce());
 });
 
 it('validates after interaction, keeps input, and clears corrected errors', () => {
@@ -135,8 +132,8 @@ it.each(['sign-in', 'sign-up'] as const)('%s Google presentation announces unava
  expect(screen.getByRole('separator').textContent).toContain('or continue with email');
  const button = screen.getByRole('button', { name: 'Continue with Google' });
  expect(button.getAttribute('type')).toBe('button'); expect(button.getAttribute('aria-describedby')).toBe('auth-preview');
- fireEvent.click(button); expect(screen.getByRole('status').textContent).toBe('Google sign-in is not connected yet. Nothing was sent.');
- expect(screen.queryByRole('alert')).toBeNull(); expect(fetch).not.toHaveBeenCalled(); expect(send).not.toHaveBeenCalled(); expect(writes).not.toHaveBeenCalled();
+ fireEvent.click(button); expect(screen.getByRole('status').textContent).toBe('Google sign-in is not enabled. Use email and password.');
+ expect(screen.getByRole('alert')).toBeTruthy(); expect(fetch).not.toHaveBeenCalled(); expect(send).not.toHaveBeenCalled(); expect(writes).not.toHaveBeenCalled();
  expect((screen.getByLabelText('Password', { exact: true }) as HTMLInputElement).value).toBe('Preview-only-42!');
 });
 it.each(['light', 'dark'] as const)('public toggle starts from effective System %s and only offers binary switching', (effective) => {

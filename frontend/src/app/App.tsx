@@ -9,6 +9,7 @@ import { destinations } from './navigation';
 import { NotFound } from './SectionPlaceholder';
 import { DemoProvider } from '../features/demo/DemoProvider';
 import { DemoWorkspace } from '../features/demo/DemoWorkspace';
+import { ProtectedRoute } from '../features/auth/ProtectedRoute';
 
 export function AppRoutes() {
   return (
@@ -20,10 +21,12 @@ export function AppRoutes() {
       </Route>
       <Route path="get-started" element={<Navigate replace to="/sign-up" />} />
       {(Object.keys(authScreens) as AuthScreen[]).map((screen) => <Route key={screen} path={screen} element={<AuthPage key={screen} screen={screen} />} />)}
-      <Route element={<DemoProvider><AppShell /></DemoProvider>}>
+      <Route element={<ProtectedRoute />}>
+       <Route element={<DemoProvider><AppShell /></DemoProvider>}>
         {destinations.map((destination) => <Route key={destination.path} path={destination.path} element={<DemoWorkspace key={destination.path} path={destination.path} />} />)}
-        <Route path="*" element={<NotFound />} />
+       </Route>
       </Route>
+      <Route path="*" element={<NotFound />} />
     </Routes>
     </>
   );

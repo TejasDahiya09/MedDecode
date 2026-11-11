@@ -12,8 +12,12 @@ function endpointFor(path: string): URL {
   const base = import.meta.env.VITE_API_BASE_URL?.trim();
   if (!base) throw new ApiError('The application API is not configured.', null, 'configuration');
   let endpoint: URL;
-  try { endpoint = new URL(base); }
-  catch { throw new ApiError('The application API base must be an absolute HTTP(S) URL.', null, 'configuration'); }
+  try {
+    endpoint = base.startsWith('/') && !base.startsWith('//')
+      ? new URL(base, window.location.origin)
+      : new URL(base);
+  }
+  catch { throw new ApiError('The application API base must be an HTTP(S) URL or an origin-relative path.', null, 'configuration'); }
   if (!['http:', 'https:'].includes(endpoint.protocol) || endpoint.username || endpoint.password || endpoint.search || endpoint.hash || /[?#]/.test(base)) {
     throw new ApiError('The application API base contains unsupported URL components.', null, 'configuration');
   }
@@ -55,4 +59,12 @@ export async function requestJson<T = unknown>(path: string, init: RequestInit =
     if (error instanceof ApiError) throw error;
     throw new ApiError('The application API could not be reached or read.', null, 'network', { cause: error });
   }
+}
+
+export async function requestAuthenticatedJson<T = unknown>(path: string, accessToken: string, init: RequestInit = {}): Promise<T | undefined> {
+  if (!accessToken.trim()) throw new ApiError('An authenticated session is required.', 401, 'http');
+  const headers = new Headers(init.headers);
+  if (headers.has('Authorization')) throw new ApiError('Authorization is managed by the session transport.', null, 'configuration');
+  headers.set('Authorization', `Bearer ${accessToken}`);
+  return requestJson<T>(path, { ...init, headers });
 }

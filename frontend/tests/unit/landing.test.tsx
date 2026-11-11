@@ -3,10 +3,11 @@ import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, expect, it, vi } from 'vitest';
 import { AppRoutes } from '../../src/app/App';
 import { AppProviders } from '../../src/providers/AppProviders';
+import { createAuthTestClient } from './auth-test-client';
 import { capabilities } from '../../src/features/landing/landing-content';
 
 beforeEach(() => vi.stubGlobal('matchMedia', () => ({ matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn() })));
-function mount(path = '/') { return render(<AppProviders><MemoryRouter initialEntries={[path]}><AppRoutes /></MemoryRouter></AppProviders>); }
+function mount(path = '/') { return render(<AppProviders authClient={createAuthTestClient(null)}><MemoryRouter initialEntries={[path]}><AppRoutes /></MemoryRouter></AppProviders>); }
 
 it('renders the public landing without workspace chrome, forms, records or API calls', () => {
   const fetch = vi.fn(); vi.stubGlobal('fetch', fetch);
@@ -19,13 +20,13 @@ it('renders the public landing without workspace chrome, forms, records or API c
   expect(screen.getByText(/These capabilities describe the intended product/)).toBeTruthy();
   expect(document.title).toBe('MedDecode | Intelligence Behind Every Prescription');
 });
-it.each(['get-started', 'sign-in'])('provides an honest authentication UI /%s destination', (intent) => {
+it.each(['get-started', 'sign-in'])('provides an honest authentication UI /%s destination', async (intent) => {
   mount('/' + intent);
   expect(screen.getByRole('heading', { level: 1 }).textContent).toBe(intent === 'get-started' ? 'Create your account.' : 'Welcome back.');
-  expect(screen.getByText(/Account access is not connected yet/)).toBeTruthy();
+  expect(screen.getByText(/Secure account access/)).toBeTruthy();
   fireEvent.click(screen.getByRole('link', { name: 'Back to MedDecode' }));
   fireEvent.click(screen.getByRole('link', { name: 'Workspace preview' }));
-  expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Welcome, Demo User.');
+  expect((await screen.findByRole('heading', { level: 1 })).textContent).toBe('Welcome back.');
 });
 it('adapts the showcase to all six planned capabilities', () => {
   mount();

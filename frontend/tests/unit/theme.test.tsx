@@ -5,6 +5,7 @@ import { beforeEach, expect, it, vi } from 'vitest';
 import { App } from '../../src/app/App';
 import { AppProviders } from '../../src/providers/AppProviders';
 import { readThemeMode, themeStorageKey } from '../../src/providers/theme';
+import { createAuthTestClient, mockVerifiedIdentity, testSession } from './auth-test-client';
 
 let systemDark = false;
 const listeners = new Set<(event: MediaQueryListEvent) => void>();
@@ -19,7 +20,7 @@ function changeSystem(dark: boolean) {
     for (const listener of listeners) listener({ matches: dark } as MediaQueryListEvent);
   });
 }
-function mount() { window.history.replaceState({}, '', '/home'); return render(<StrictMode><AppProviders><App /></AppProviders></StrictMode>); }
+function mount() { window.history.replaceState({}, '', '/home'); mockVerifiedIdentity(); return render(<StrictMode><AppProviders authClient={createAuthTestClient()} initialAuthSession={testSession}><App /></AppProviders></StrictMode>); }
 beforeEach(() => {
   systemDark = false;
   listeners.clear();
@@ -88,7 +89,7 @@ it('resynchronizes the OS preference when subscribing', () => {
     if (calls > 1) systemDark = true;
     return media;
   });
-  render(<AppProviders><App /></AppProviders>);
+  mockVerifiedIdentity(); render(<AppProviders authClient={createAuthTestClient()} initialAuthSession={testSession}><App /></AppProviders>);
   expect(document.documentElement.dataset.theme).toBe('dark');
 });
 it.each(['light', 'dark', 'system', 'invalid', null])('keeps initializer and provider consistent for %s', (value) => {
@@ -106,12 +107,9 @@ it('initializes safely without a theme-color element and with storage blocked', 
   expect(() => window.eval(readFileSync('public/theme-init.js', 'utf8'))).not.toThrow();
   expect(document.documentElement.dataset.theme).toBe('light');
 });
-it('renders a labelled local demo without an API base', () => {
+it('reports a safe session error without an API base', async () => {
   vi.stubEnv('VITE_API_BASE_URL', '');
-  const fetch = vi.fn();
-  vi.stubGlobal('fetch', fetch);
-  mount();
-  expect(screen.getByRole('heading', {name:'Welcome, Demo User.'})).toBeTruthy();
-  expect(screen.getByText(/No account, cloud saving or background notifications/)).toBeTruthy();
-  expect(fetch).not.toHaveBeenCalled();
+  window.history.replaceState({}, '', '/home');
+  render(<AppProviders authClient={createAuthTestClient()}><App /></AppProviders>);
+  expect(await screen.findByRole('heading', {name:'Session verification unavailable'})).toBeTruthy();
 });

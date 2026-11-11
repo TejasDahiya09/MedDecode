@@ -5,11 +5,13 @@ import { AppRoutes } from '../../src/app/App';
 import { destinations } from '../../src/app/navigation';
 import { AppProviders } from '../../src/providers/AppProviders';
 import { Badge, Button, Card, EmptyState, PageHeader, SectionHeader, Skeleton } from '../../src/components/ui';
+import { createAuthTestClient, mockVerifiedIdentity, testSession } from './auth-test-client';
 
 beforeEach(() => {
   vi.stubGlobal('matchMedia', () => ({ matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn() }));
+  mockVerifiedIdentity();
 });
-function mount(path = '/home') { return render(<MemoryRouter initialEntries={[path]}><AppProviders><AppRoutes /></AppProviders></MemoryRouter>); }
+function mount(path = '/home') { return render(<MemoryRouter initialEntries={[path]}><AppProviders authClient={createAuthTestClient()} initialAuthSession={testSession}><AppRoutes /></AppProviders></MemoryRouter>); }
 
 it.each(destinations)('renders the $label demo workspace', (destination) => {
   mount(destination.path);

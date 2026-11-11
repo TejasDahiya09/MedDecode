@@ -14,25 +14,25 @@ export const authScreens: Record<AuthScreen, {
     title: 'Welcome back.', pageTitle: 'Sign In',
     description: 'Sign in to continue your MedDecode experience.', action: 'Sign In',
     fields: ['email', 'password'],
-    unavailable: 'Sign-in is not connected yet. No credentials were sent and no session was created.',
+    unavailable: 'Authentication requires configured Supabase public settings.',
   },
   'sign-up': {
     title: 'Create your account.', pageTitle: 'Create Account',
     description: 'Create an account to organize your medicine information.', action: 'Create Account',
     fields: ['fullName', 'email', 'password', 'confirmPassword'],
-    unavailable: 'Account creation is not connected yet. No details were sent and no account was created.',
+    unavailable: 'Account creation requires configured Supabase public settings.',
   },
   'forgot-password': {
     title: "Let's get you back in.", pageTitle: 'Forgot Password',
     description: 'Enter your email address to request a password reset.', action: 'Request reset link',
     fields: ['email'],
-    unavailable: 'Password recovery is not connected yet. No recovery email was sent.',
+    unavailable: 'Password recovery requires configured Supabase public settings.',
   },
   'reset-password': {
     title: 'Set a new password.', pageTitle: 'Reset Password',
     description: 'Choose a password for your MedDecode account.', action: 'Update password',
     fields: ['password', 'confirmPassword'],
-    unavailable: 'Secure recovery verification and password submission are not connected yet. Your password has not changed.',
+    unavailable: 'Password update requires a valid recovery session.',
   },
 };
 

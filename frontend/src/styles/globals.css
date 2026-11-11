@@ -1,4 +1,6 @@
 @import "tailwindcss";
+
+.md-auth-route-state { min-height:60vh; display:grid; place-content:center; gap:1rem; padding:2rem; text-align:center; color:var(--cc-text); background:var(--cc-bg); }
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
 @font-face { font-family: 'Manrope Variable'; font-style: normal; font-weight: 200 800; font-display: swap; src: url('../assets/fonts/manrope-latin-wght-normal.woff2') format('woff2-variations'); }

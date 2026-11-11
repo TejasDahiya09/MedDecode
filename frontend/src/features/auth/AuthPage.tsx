@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '../../components/ui';
 import { Icon } from '../../components/Icon';
 import { PublicThemeToggle } from '../../components/PublicThemeToggle';
@@ -9,6 +9,7 @@ import { AuthField } from './AuthField';
 import { AuthGooglePresentation } from './AuthGooglePresentation';
 import { authFieldError, authScreens, type AuthFieldName, type AuthScreen, type AuthValues } from './auth-presentation';
 import './auth.css';
+import { useAuth } from './AuthProvider';
 
 // CampusConnect LoginStory and PremiumAuthLayout, with MedDecode presentation only.
 function AuthLayout({ screen, children, announcement }: { readonly screen: AuthScreen; readonly children: ReactNode; readonly announcement: string }) {
@@ -25,16 +26,20 @@ function AuthLayout({ screen, children, announcement }: { readonly screen: AuthS
     <p className="cc-login-kicker">MedDecode access</p><h1 id="auth-page-title">{content.title}</h1><p className="cc-login-intro">{content.description}</p>
     <div className="cc-login-form-body">{children}</div>
    </div>
-   <div className="cc-login-security"><span id="auth-preview"><Icon name="shield" className="size-4" /> Account access is not connected yet.</span><Link to="/">Back to MedDecode</Link><span className="md-auth-announcement" role="status" aria-live="polite" aria-atomic="true">{announcement}</span></div>
+   <div className="cc-login-security"><span id="auth-preview"><Icon name="shield" className="size-4" /> Secure account access</span><Link to="/">Back to MedDecode</Link><span className="md-auth-announcement" role="status" aria-live="polite" aria-atomic="true">{announcement}</span></div>
   </section>
  </main>;
 }
 
 export function AuthPage({ screen }: { readonly screen: AuthScreen }) {
+  const auth = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
   const [values, setValues] = useState<AuthValues>({ fullName: '', email: '', password: '', confirmPassword: '' });
   const [errors, setErrors] = useState<Partial<Record<AuthFieldName, string>>>({});
   const [touched, setTouched] = useState<Partial<Record<AuthFieldName, boolean>>>({});
-  const [feedback, setFeedback] = useState<'invalid' | 'unavailable' | 'google' | null>(null);
+  const [feedback, setFeedback] = useState<string | null>(null);
+  const [pending, setPending] = useState(false);
   const form = useRef<HTMLFormElement>(null);
   const content = authScreens[screen];
   useLayoutEffect(() => { document.title = `${content.pageTitle} | MedDecode`; }, [content.pageTitle]);
@@ -54,7 +59,7 @@ export function AuthPage({ screen }: { readonly screen: AuthScreen }) {
     setTouched((current) => ({ ...current, [field]: true }));
     setErrors((current) => ({ ...current, [field]: authFieldError(screen, field, values) }));
   };
-  const submit = (event: FormEvent<HTMLFormElement>) => {
+  const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const next: Partial<Record<AuthFieldName, string>> = {};
     for (const field of content.fields) next[field] = authFieldError(screen, field, values);
@@ -62,17 +67,40 @@ export function AuthPage({ screen }: { readonly screen: AuthScreen }) {
     setTouched(Object.fromEntries(content.fields.map((field) => [field, true])));
     const firstInvalid = content.fields.find((field) => next[field]);
     if (firstInvalid) {
-      setFeedback('invalid');
+      setFeedback('Please check the highlighted fields.');
       (form.current?.elements.namedItem(firstInvalid) as HTMLInputElement | null)?.focus();
-    } else setFeedback('unavailable');
+      return;
+    }
+    setPending(true); setFeedback(null);
+    try {
+      if (screen === 'sign-in') {
+        const result = await auth.signIn(values.email.trim(), values.password);
+        if (!result.ok) setFeedback(result.message);
+        else {
+          const requested = (location.state as { from?: unknown } | null)?.from;
+          navigate(typeof requested === 'string' && requested.startsWith('/') && !requested.startsWith('//') ? requested : '/home', { replace: true });
+        }
+      } else if (screen === 'sign-up') {
+        const result = await auth.signUp(values.email.trim(), values.password, values.fullName.trim());
+        if (!result.ok) setFeedback(result.message);
+        else if (result.confirmationRequired) setFeedback('Check your email to confirm your account, then return to sign in.');
+        else navigate('/home', { replace: true });
+      } else if (screen === 'forgot-password') {
+        const result = await auth.requestPasswordReset(values.email.trim());
+        setFeedback(result.ok ? 'If the account exists, a recovery email has been requested.' : result.message);
+      } else {
+        const result = await auth.updatePassword(values.password);
+        if (!result.ok) setFeedback(result.message); else { setFeedback('Password updated. You can continue to your workspace.'); navigate('/home', { replace: true }); }
+      }
+    } finally { setPending(false); }
   };
 
-  return <AuthLayout screen={screen} announcement={feedback === 'unavailable' ? content.unavailable : feedback === 'google' ? 'Google sign-in is not connected yet. Nothing was sent.' : ''}>
-    {feedback === 'invalid' ? <p className="md-auth-feedback" role="alert">Please check the highlighted fields.</p> : null}
-    {screen === 'sign-in' || screen === 'sign-up' ? <AuthGooglePresentation screen={screen} onUnavailable={() => setFeedback('google')} /> : null}
+  return <AuthLayout screen={screen} announcement={feedback ?? ''}>
+    {feedback ? <p className="md-auth-feedback" role="alert">{feedback}</p> : null}
+    {screen === 'sign-in' || screen === 'sign-up' ? <AuthGooglePresentation screen={screen} onUnavailable={() => setFeedback('Google sign-in is not enabled. Use email and password.')} /> : null}
     <form ref={form} noValidate onSubmit={submit} aria-label={content.pageTitle} aria-describedby="auth-preview">
       {content.fields.map((field) => <AuthField key={field} field={field} screen={screen} value={values[field]} error={errors[field]} onChange={(value) => change(field, value)} onBlur={() => blur(field)} />)}
-      <Button type="submit" className="cc-login-action cc-login-submit">{content.action}</Button>
+      <Button type="submit" className="cc-login-action cc-login-submit" disabled={pending}>{pending ? 'Please wait…' : content.action}</Button>
     </form>
     {screen === 'sign-in' ? <p className="cc-login-register">New to MedDecode? <Link to="/sign-up">Create an account</Link></p> : screen === 'sign-up' ? <p className="md-auth-secondary">Already registered? <Link to="/sign-in">Back to Sign In</Link></p> : <Link className="cc-login-recovery-link" to="/sign-in">Back to Sign In</Link>}
     {screen === 'reset-password' ? <Link className="cc-login-recovery-link" to="/forgot-password">Recovery request preview</Link> : null}
