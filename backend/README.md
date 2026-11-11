@@ -498,3 +498,17 @@ These APIs and hardening checks have only mocked offline verification: no live
 family-member read, insert, update, delete, RLS, concurrent-mutation, or foreign
 key action test was performed. They do not access Member 1 medicine data, call
 OCR/NER/matching, or use prescription-extracted patient information.
+
+## Offline Contract v1 transport proof
+
+Phase 5.2 includes an isolated `IntelligenceClient` implementation that sends a
+single Contract v1 JSON request to the fixed Python module
+`app.integration.synthetic_worker`. It is test infrastructure only: it is not
+registered in Express, the prescription-upload flow, persistence, or startup.
+
+The adapter accepts HTTPS `authorized_url` references but the worker never
+dereferences them. `direct_upload` is rejected because Contract v1 does not
+define its binary transport. The subprocess has bounded stdout/stderr, a timeout,
+fixed non-shell arguments, safe transport errors and response-correlation checks.
+On Windows, termination of the direct child is requested on timeout or output
+overflow; termination of an arbitrary descendant process tree is not claimed.

@@ -330,37 +330,43 @@ require a separate explicit approval and credential-safe plan.
 
 ### Current gaps
 
-1. No Member 1 service client or service-authentication mechanism exists.
-2. No versioned TypeScript contract types or runtime validators exist.
-3. No request builder exists for document access or requested analyses.
-4. No response validator, correlation service or state machine exists.
+1. No production Member 1 service client or service-authentication mechanism exists.
+2. Phase 5.2 adds versioned TypeScript types, runtime validators, normative JSON
+   Schema artifacts and an offline-only local subprocess client. It is not wired
+   to an HTTP route, upload flow, persistence layer or production service.
+3. The Phase 5.2 synthetic adapter supports only a non-dereferenced
+   `authorized_url`; the contract's `direct_upload` binary representation remains
+   unspecified and is rejected rather than invented.
+4. Phase 5.2 validates both correlation identifiers and complete success/failure
+   envelopes, but no production job state machine exists.
 5. Prescription upload plus read-only owner-scoped history and medicine-cabinet repositories exist, but no job or intelligence-result repository is present.
 6. Private AWS S3 upload, deterministic multipart termination, conservative ambiguous-insert reconciliation and definite-rejection compensation are offline-tested. No live bucket verification, malware scanning, reconciliation worker or authorized-URL implementation is present.
 7. No verified mapping exists for result persistence into the existing Supabase
    application schema.
-8. No contract-specific tests exist.
-9. Full nested schemas, direct-upload representation, error codes, warning
-   severities, alternative criteria, idempotency and version negotiation require
-   source verification.
+8. Contract-specific TypeScript, Python and real local cross-language tests now
+   cover the synthetic adapter. They do not prove live document access, OCR,
+   persistence, RLS, S3, retry or production process supervision.
+9. Direct-upload representation, production retry/idempotency policy, authorized
+   URL issuance, result persistence and version negotiation remain unresolved.
 
 These are implementation gaps, not permission to modify the database or invent
 contract details.
 
 ### Recommended next actions
 
-1. Obtain an accessible authoritative copy of the contract PDF and verify every
-   field, nested type, optionality rule and example against this register.
+1. Keep the authoritative Contract v1.0 PDF and its reviewed schema artifacts
+   together in the eventual documentation checkpoint; do not silently stage the
+   PDF during implementation review.
 2. Obtain read-only catalog evidence for the existing job, prescription and
    intelligence-result tables and constraints; do not execute migrations.
 3. Resolve every **NEEDS_SOURCE_VERIFICATION** item with Member 1 and record the
    decision/version.
-4. In a separately authorized phase, define versioned transport types and
-   runtime validation without coupling them to database row types.
-5. Add the offline contract fixtures and negative tests listed above before
-   implementing network calls.
-6. Implement a narrow adapter that correlates both Member 2-owned identifiers,
-   uses explicit persistence allowlists and cannot write extracted patient data
-   to authenticated profile tables.
+4. Review the Phase 5.2 transport types and validators independently before any
+   production wiring; keep them decoupled from database row types.
+5. Extend negative fixtures only from verified Contract v1 requirements; do not
+   convert examples or ambiguities into mandatory fields.
+6. In a separately authorized phase, design the production orchestration and
+   persistence allowlists. The synthetic adapter cannot write any data.
 7. Only after offline verification, prepare a separately approved, credential-
    safe integration test against an approved non-patient test environment.
 

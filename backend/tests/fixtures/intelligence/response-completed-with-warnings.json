@@ -1,0 +1,74 @@
+{
+  "schema_version": "1.0",
+  "job_id": "11111111-1111-4111-8111-111111111111",
+  "prescription_id": "22222222-2222-4222-8222-222222222222",
+  "status": "completed_with_warnings",
+  "prescription": {
+    "prescription_date": null,
+    "doctor": { "name": null, "registration_number": null },
+    "facility": { "name": null, "address": null, "phone": null }
+  },
+  "patient": { "name": "Fictional Patient", "age": null, "gender": null },
+  "medicines": [
+    {
+      "sequence_number": 1,
+      "extraction": {
+        "raw_text": "Synthetic Medicine Alpha",
+        "medicine_name": "Synthetic Medicine Alpha",
+        "medicine_name_normalized": "synthetic medicine alpha",
+        "strength": { "value": 10, "unit": "mg" },
+        "dosage_form": "tablet",
+        "frequency": { "type": "unknown" },
+        "timing": null,
+        "duration": { "value": null, "unit": null },
+        "quantity": { "value": null, "unit": null },
+        "instructions": null
+      },
+      "confidence": { "medicine_name": 0.5, "unlisted_future_metric": null },
+      "medicine_match": {
+        "status": "not_attempted",
+        "confidence": null,
+        "medicine_external_id": null,
+        "brand_name": null,
+        "dosage_form": null,
+        "ingredients": []
+      },
+      "derived": { "units_per_day": null, "estimated_total_units": null },
+      "alternatives": []
+    },
+    {
+      "sequence_number": 2,
+      "extraction": {
+        "raw_text": "Synthetic Medicine Beta",
+        "frequency": { "type": "as_needed" },
+        "duration": { "value": null, "unit": null },
+        "quantity": { "value": null, "unit": null }
+      },
+      "confidence": {},
+      "medicine_match": {
+        "status": "unmatched",
+        "confidence": 0,
+        "medicine_external_id": null,
+        "brand_name": null,
+        "dosage_form": null,
+        "ingredients": []
+      },
+      "derived": { "units_per_day": null, "estimated_total_units": null },
+      "alternatives": []
+    }
+  ],
+  "recommendations": [],
+  "warnings": [
+    {
+      "code": "SYNTHETIC_INCOMPLETE_DATA",
+      "severity": "info",
+      "message": "Synthetic fixture contains intentionally unavailable data.",
+      "related_medicine_sequence_number": null
+    }
+  ],
+  "processing_metadata": {
+    "overall_confidence": 0.5,
+    "dataset_version": "synthetic-offline-v1",
+    "model_version": "synthetic-offline-v1"
+  }
+}

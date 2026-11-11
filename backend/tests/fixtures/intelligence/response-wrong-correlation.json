@@ -1,0 +1,11 @@
+{
+  "schema_version": "1.0",
+  "job_id": "33333333-3333-4333-8333-333333333333",
+  "prescription_id": "22222222-2222-4222-8222-222222222222",
+  "status": "failed",
+  "error": {
+    "code": "PROCESSING_FAILED",
+    "message": "Synthetic failure.",
+    "retryable": false
+  }
+}

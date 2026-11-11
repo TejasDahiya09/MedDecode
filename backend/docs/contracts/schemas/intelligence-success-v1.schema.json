@@ -1,0 +1,165 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://meddecode.invalid/contracts/intelligence-success-v1.schema.json",
+  "title": "MedDecode Intelligence Success Result v1",
+  "type": "object",
+  "required": ["schema_version", "job_id", "prescription_id", "status", "prescription", "patient", "medicines", "recommendations", "warnings", "processing_metadata"],
+  "properties": {
+    "schema_version": { "const": "1.0" },
+    "job_id": { "type": "string", "format": "uuid" },
+    "prescription_id": { "type": "string", "format": "uuid" },
+    "status": { "enum": ["completed", "completed_with_warnings"] },
+    "prescription": {
+      "type": "object",
+      "required": ["prescription_date", "doctor", "facility"],
+      "properties": {
+        "prescription_date": { "type": ["string", "null"] },
+        "doctor": {
+          "type": "object",
+          "required": ["name", "registration_number"],
+          "properties": { "name": { "type": ["string", "null"] }, "registration_number": { "type": ["string", "null"] } },
+          "additionalProperties": true
+        },
+        "facility": {
+          "type": "object",
+          "required": ["name", "address", "phone"],
+          "properties": { "name": { "type": ["string", "null"] }, "address": { "type": ["string", "null"] }, "phone": { "type": ["string", "null"] } },
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
+    },
+    "patient": {
+      "type": "object",
+      "required": ["name", "age", "gender"],
+      "properties": { "name": { "type": ["string", "null"] }, "age": { "type": ["integer", "null"] }, "gender": { "type": ["string", "null"] } },
+      "additionalProperties": true
+    },
+    "medicines": { "type": "array", "items": { "$ref": "#/$defs/medicine" } },
+    "recommendations": { "type": "array", "items": { "$ref": "#/$defs/recommendation" } },
+    "warnings": { "type": "array", "items": { "$ref": "#/$defs/warning" } },
+    "processing_metadata": {
+      "type": "object",
+      "required": ["overall_confidence"],
+      "properties": {
+        "overall_confidence": { "$ref": "#/$defs/confidence" },
+        "dataset_version": { "type": "string" },
+        "model_version": { "type": "string" }
+      },
+      "additionalProperties": true
+    }
+  },
+  "$defs": {
+    "confidence": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+    "nullableString": { "type": ["string", "null"] },
+    "nullableNumber": { "type": ["number", "null"] },
+    "medicine": {
+      "type": "object",
+      "required": ["sequence_number", "extraction", "confidence", "medicine_match", "derived", "alternatives"],
+      "properties": {
+        "sequence_number": { "type": "integer", "minimum": 1 },
+        "extraction": {
+          "type": "object",
+          "required": ["raw_text", "frequency", "duration", "quantity"],
+          "properties": {
+            "raw_text": { "type": "string" },
+            "medicine_name": { "$ref": "#/$defs/nullableString" },
+            "medicine_name_normalized": { "$ref": "#/$defs/nullableString" },
+            "strength": { "$ref": "#/$defs/valueUnit" },
+            "dosage_form": { "$ref": "#/$defs/nullableString" },
+            "frequency": {
+              "type": "object",
+              "required": ["type"],
+              "properties": {
+                "type": { "enum": ["scheduled", "as_needed", "unknown"] },
+                "morning": { "$ref": "#/$defs/nullableNumber" },
+                "afternoon": { "$ref": "#/$defs/nullableNumber" },
+                "night": { "$ref": "#/$defs/nullableNumber" },
+                "times_per_day": { "$ref": "#/$defs/nullableNumber" }
+              },
+              "additionalProperties": true
+            },
+            "timing": { "$ref": "#/$defs/nullableString" },
+            "duration": { "$ref": "#/$defs/valueUnit" },
+            "quantity": { "$ref": "#/$defs/valueUnit" },
+            "instructions": { "$ref": "#/$defs/nullableString" }
+          },
+          "additionalProperties": true
+        },
+        "confidence": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/$defs/confidence" }
+        },
+        "medicine_match": {
+          "type": "object",
+          "required": ["status", "confidence", "medicine_external_id", "brand_name", "dosage_form", "ingredients"],
+          "properties": {
+            "status": { "enum": ["matched", "probable_match", "ambiguous", "unmatched", "not_attempted"] },
+            "confidence": { "$ref": "#/$defs/confidence" },
+            "medicine_external_id": { "$ref": "#/$defs/nullableString" },
+            "brand_name": { "$ref": "#/$defs/nullableString" },
+            "dosage_form": { "$ref": "#/$defs/nullableString" },
+            "ingredients": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["name", "strength_value", "strength_unit"],
+                "properties": { "name": { "type": "string" }, "strength_value": { "type": "number" }, "strength_unit": { "type": "string" } },
+                "additionalProperties": true
+              }
+            }
+          },
+          "additionalProperties": true
+        },
+        "derived": {
+          "type": "object",
+          "required": ["units_per_day", "estimated_total_units"],
+          "properties": { "units_per_day": { "$ref": "#/$defs/nullableNumber" }, "estimated_total_units": { "$ref": "#/$defs/nullableNumber" } },
+          "additionalProperties": true
+        },
+        "alternatives": { "type": "array", "items": { "$ref": "#/$defs/alternative" } }
+      },
+      "additionalProperties": true
+    },
+    "valueUnit": {
+      "type": "object",
+      "required": ["value", "unit"],
+      "properties": { "value": { "$ref": "#/$defs/nullableNumber" }, "unit": { "$ref": "#/$defs/nullableString" } },
+      "additionalProperties": true
+    },
+    "alternative": {
+      "type": "object",
+      "required": ["medicine_external_id", "brand_name", "match_basis", "confidence"],
+      "properties": {
+        "medicine_external_id": { "type": "string" }, "brand_name": { "type": "string" },
+        "match_basis": {
+          "type": "object",
+          "required": ["ingredient_equivalent", "strength_compatibility", "dosage_form_compatibility"],
+          "properties": { "ingredient_equivalent": { "type": "boolean" }, "strength_compatibility": { "type": "boolean" }, "dosage_form_compatibility": { "type": "boolean" } },
+          "additionalProperties": true
+        },
+        "price": {
+          "type": "object",
+          "properties": { "value": { "$ref": "#/$defs/nullableNumber" }, "currency": { "$ref": "#/$defs/nullableString" }, "unit_description": { "$ref": "#/$defs/nullableString" } },
+          "additionalProperties": true
+        },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+        "note": { "$ref": "#/$defs/nullableString" }
+      },
+      "additionalProperties": true
+    },
+    "recommendation": {
+      "type": "object",
+      "required": ["type", "title", "message", "related_medicine_sequence_number", "confidence"],
+      "properties": { "type": { "type": "string" }, "title": { "type": "string" }, "message": { "type": "string" }, "related_medicine_sequence_number": { "type": ["integer", "null"], "minimum": 1 }, "confidence": { "$ref": "#/$defs/confidence" } },
+      "additionalProperties": true
+    },
+    "warning": {
+      "type": "object",
+      "required": ["code", "severity", "message", "related_medicine_sequence_number"],
+      "properties": { "code": { "type": "string" }, "severity": { "enum": ["info", "low", "medium", "high"] }, "message": { "type": "string" }, "related_medicine_sequence_number": { "type": ["integer", "null"], "minimum": 1 } },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

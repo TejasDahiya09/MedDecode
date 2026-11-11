@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://meddecode.invalid/contracts/intelligence-request-v1.schema.json",
+  "title": "MedDecode Intelligence Request v1",
+  "type": "object",
+  "required": ["schema_version", "job_id", "prescription_id", "document", "requested_analysis"],
+  "properties": {
+    "schema_version": { "const": "1.0" },
+    "job_id": { "type": "string", "format": "uuid" },
+    "prescription_id": { "type": "string", "format": "uuid" },
+    "document": {
+      "type": "object",
+      "required": ["access_type", "file_type"],
+      "properties": {
+        "access_type": { "enum": ["authorized_url", "direct_upload"] },
+        "file_url": { "type": "string", "format": "uri" },
+        "file_type": { "enum": ["image/jpeg", "image/png", "application/pdf"] },
+        "original_filename": { "type": "string" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "access_type": { "const": "authorized_url" } }, "required": ["access_type"] },
+          "then": { "required": ["file_url"] }
+        }
+      ],
+      "additionalProperties": true
+    },
+    "requested_analysis": {
+      "type": "object",
+      "properties": {
+        "extract_prescription": { "type": "boolean" },
+        "match_medicines": { "type": "boolean" },
+        "find_alternatives": { "type": "boolean" },
+        "generate_recommendations": { "type": "boolean" }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}
