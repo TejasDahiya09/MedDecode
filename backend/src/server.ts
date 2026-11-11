@@ -1,26 +1,19 @@
 import "dotenv/config";
-import express from "express";
-import cors from "cors";
-import helmet from "helmet";
 
+import { app } from "./app.js";
 import { env } from "./config/env.js";
 
-const app = express();
-
-app.use(helmet());
-app.use(cors({
-  origin: env.corsOrigin
-}));
-app.use(express.json());
-
-app.get("/health", (_req, res) => {
-  res.status(200).json({
-    status: "ok",
-    service: "meddecode-backend",
-    version: "1.0.0"
+export function startServer() {
+  const server = app.listen(env.port, () => {
+    console.log(`MedDecode backend running on port ${env.port}`);
   });
-});
 
-app.listen(env.port, () => {
-  console.log(`MedDecode backend running on port ${env.port}`);
-});
+  server.on("error", (error: NodeJS.ErrnoException) => {
+    console.error(`MedDecode backend failed to start (${error.code ?? "UNKNOWN"}).`);
+    process.exitCode = 1;
+  });
+
+  return server;
+}
+
+startServer();
