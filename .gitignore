@@ -1,0 +1,44 @@
+# Virtual environment
+.venv/
+
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Environment variables
+.env
+
+# Test/cache files
+.pytest_cache/
+
+# Shared local configuration; retain committed example templates
+.env.*
+!.env.example
+
+# Node dependencies, build output, coverage, and local logs
+node_modules/
+dist/
+coverage/
+*.log
+
+# Large raw datasets
+intelligence/data/raw/openfda_drug_labels_meddecode.csv
+intelligence/data/raw/sample_medicines.csv
+/datasets/
+/test-results/
+
+# Backup files
+*.backup
+
+# Python cache directories
+**/__pycache__/
+
+# macOS
+.DS_Store
+
+# Real prescription data - never commit patient documents
+intelligence/tests/fixtures/actual_prescription.jpg
+
+# Local diagnostic reports
+intelligence/meddecode_e2e_interface_details.txt
+intelligence/pipeline_interface_report.txt

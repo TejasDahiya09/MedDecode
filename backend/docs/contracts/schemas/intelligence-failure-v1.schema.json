@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://meddecode.invalid/contracts/intelligence-failure-v1.schema.json",
+  "title": "MedDecode Intelligence Failure Result v1",
+  "type": "object",
+  "required": ["schema_version", "job_id", "prescription_id", "status", "error"],
+  "properties": {
+    "schema_version": { "const": "1.0" },
+    "job_id": { "type": "string", "format": "uuid" },
+    "prescription_id": { "type": "string", "format": "uuid" },
+    "status": { "const": "failed" },
+    "error": {
+      "type": "object",
+      "required": ["code", "message", "retryable"],
+      "properties": {
+        "code": { "enum": ["UNSUPPORTED_FILE", "DOCUMENT_ACCESS_FAILED", "INVALID_REQUEST", "PROCESSING_FAILED"] },
+        "message": { "type": "string" },
+        "retryable": { "type": "boolean" }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

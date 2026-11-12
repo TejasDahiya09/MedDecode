@@ -1,0 +1,9 @@
+pillow==12.3.0
+pymupdf==1.28.2
+numpy
+paddleocr
+paddlepaddle
+python-dotenv
+supabase
+boto3
+google-cloud-vision
