@@ -1,0 +1,55 @@
+/* Upload-only adaptations of CampusConnect form/upload, ProfileSection and detail patterns. */
+.md-upload-page { display: grid; gap: 1.5rem; }
+.md-upload-heading-row { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .75rem; }
+.md-upload-intro > .cc-page-description { max-width: 48rem; margin-top: .5rem; font-size: 1rem; line-height: 1.6; }
+.md-upload-explanation { display: flex; align-items: flex-start; gap: .5rem; margin-top: .85rem; color: var(--cc-muted); font-size: .8rem; line-height: 1.6; }
+.md-upload-explanation > svg { width: 1rem; height: 1rem; flex: none; margin-top: .15rem; }
+.md-upload-workspace { display: grid; gap: 1.5rem; align-items: start; }
+.md-upload-form, .md-upload-results { min-width: 0; display: grid; gap: 1.25rem; border: 1px solid var(--cc-border); border-radius: 1.2rem; padding: clamp(1.25rem, 4vw, 2rem); background: var(--cc-panel); box-shadow: var(--cc-shadow-sm); }
+.md-upload-selection { min-width: 0; border-radius: .95rem; }
+.md-upload-drop { width: 100%; display: grid; justify-items: center; gap: .75rem; border: 1px dashed var(--cc-border-strong); border-radius: .95rem; padding: 1.1rem; background: var(--cc-panel-muted); color: var(--cc-text); text-align: center; cursor: pointer; transition: border-color 180ms, background 180ms; }
+.md-upload-drop strong { font-size: 1rem; font-weight: 500; line-height: 1.5; }
+.md-upload-drop-copy { color: var(--cc-muted); font-size: .875rem; line-height: 1.6; }
+.md-upload-drop:hover { border-color: var(--cc-primary); }
+.md-upload-drop:focus-visible { outline: 2px solid var(--cc-primary); outline-offset: 3px; }
+.md-upload-selection.is-dragging .md-upload-drop, .md-upload-selection.is-dragging .md-upload-selected { border-color: var(--cc-primary); background: var(--cc-primary-soft); }
+.md-upload-selected { display: flex; align-items: center; flex-wrap: wrap; gap: .75rem; border: 1px solid var(--cc-border); border-radius: .75rem; padding: .75rem; background: var(--cc-panel-muted); }
+.md-upload-file-copy { min-width: 0; flex: 1 1 12rem; display: grid; justify-items: start; gap: .5rem; }
+.md-upload-file-copy strong { max-width: 100%; overflow-wrap: anywhere; font-size: .875rem; font-weight: 650; }
+.md-upload-file-copy > span:not(.cc-badge) { font-size: .78rem; color: var(--cc-muted); }
+.md-upload-file-actions { display: flex; flex-wrap: wrap; gap: .5rem; }
+.md-upload-help { margin: 0; color: var(--cc-muted); font-size: .78rem; line-height: 1.6; }
+.md-upload-help > span { display: block; margin-top: .25rem; }
+.md-upload-error { display: flex; align-items: flex-start; gap: .65rem; border: 1px solid color-mix(in srgb, var(--cc-danger) 24%, transparent); border-radius: .75rem; padding: 1rem; background: var(--cc-danger-soft); color: var(--cc-danger); font-size: .875rem; line-height: 1.55; }
+.md-upload-error > svg { flex: none; }
+.md-upload-error small { display: block; margin-top: .25rem; font-size: inherit; }
+.md-upload-error a { color: inherit; font-weight: 700; text-decoration: underline; }
+.md-upload-success { display: grid; justify-items: start; gap: .65rem; border: 1px solid color-mix(in srgb, var(--cc-success) 28%, var(--cc-border)); border-radius: .85rem; padding: 1rem; background: color-mix(in srgb, var(--cc-success) 8%, var(--cc-panel)); }
+.md-upload-success h2, .md-upload-success p { margin: 0; }
+.md-upload-success h2 { font-family: var(--cc-font-display); font-size: 1.05rem; }
+.md-upload-success p { color: var(--cc-muted); font-size: .82rem; line-height: 1.55; }
+.md-upload-success code { max-width: 100%; overflow-wrap: anywhere; border-radius: .4rem; padding: .35rem .5rem; background: var(--cc-panel-muted); color: var(--cc-text); font-size: .8rem; }
+.md-upload-demo-entry { min-width: 0; display: grid; justify-items: start; gap: 1rem; padding: 1.25rem; }
+.md-upload-results { gap: 1rem; }
+.md-upload-results > .cc-section-header { flex-wrap: wrap; }
+.md-upload-results h2 { scroll-margin-top: 6rem; }
+.md-upload-results h2:focus-visible { outline: 2px solid var(--cc-primary); outline-offset: 4px; }
+.md-upload-result-meta { display: flex; align-items: center; flex-wrap: wrap; gap: .75rem; }
+.md-upload-medicines { display: grid; gap: 1rem; }
+.md-upload-medicine { min-width: 0; border: 1px solid var(--cc-border); border-radius: .75rem; padding: .9rem; background: var(--cc-panel); }
+.md-upload-medicine h3 { margin: .5rem 0 .75rem; font-family: var(--cc-font-display); font-size: 1rem; font-weight: 750; line-height: 1.5; }
+.md-upload-facts { display: grid; gap: .65rem; margin: 0; font-size: .8125rem; line-height: 1.45; }
+.md-upload-facts > div { display: grid; grid-template-columns: minmax(0, 8rem) minmax(0, 1fr); gap: .4rem; }
+.md-upload-facts dt { color: var(--cc-muted); }
+.md-upload-facts dd { margin: 0; overflow-wrap: anywhere; }
+.md-upload-sample-actions { display: flex; flex-wrap: wrap; gap: .75rem; }
+@media (min-width: 640px) { .md-upload-demo-entry { padding: 1.5rem; } }
+@media (min-width: 980px) { .md-upload-medicines { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 1024px) { .md-upload-workspace { grid-template-columns: minmax(0, 1fr) 22rem; } }
+@media (max-width: 639px) {
+  .md-upload-intro > .cc-page-description { font-size: .875rem; }
+  .md-upload-file-actions { width: 100%; }
+  .md-upload-facts > div { grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); }
+  .md-upload-sample-actions { flex-direction: column; align-items: stretch; }
+}
+@media (prefers-reduced-motion: reduce) { .md-upload-drop { transition: none; } }

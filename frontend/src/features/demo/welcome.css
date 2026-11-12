@@ -1,0 +1,112 @@
+/* CampusConnect home welcome presentation, retained from the local reference. */
+.cc-home-page {
+  width: min(100%, 86rem);
+  display: grid;
+  gap: clamp(1.4rem, 2.4vw, 2.15rem);
+}
+
+.cc-home-welcome {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  min-width: 0;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1.5rem;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--cc-primary) 18%, var(--cc-border));
+  border-radius: clamp(1.15rem, 2vw, 1.6rem);
+  padding: clamp(1.15rem, 2.25vw, 1.7rem);
+  background:
+    radial-gradient(
+      circle at 92% 12%,
+      color-mix(in srgb, var(--cc-primary) 16%, transparent) 0,
+      transparent 34%
+    ),
+    linear-gradient(
+      128deg,
+      color-mix(in srgb, var(--cc-panel) 92%, var(--cc-primary) 8%),
+      var(--cc-panel)
+    );
+  box-shadow: var(--cc-card-shadow);
+}
+.cc-home-welcome::after {
+  position: absolute;
+  z-index: -1;
+  right: 8%;
+  bottom: -4rem;
+  width: 10rem;
+  height: 6rem;
+  border: 1px solid color-mix(in srgb, var(--cc-primary) 18%, transparent);
+  border-radius: 50%;
+  content: '';
+  transform: rotate(-12deg);
+}
+.cc-home-welcome-copy {
+  min-width: 0;
+}
+.cc-home-kicker,
+.cc-home-section-eyebrow {
+  color: var(--cc-primary);
+  font-size: 0.7rem;
+  font-weight: 750;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+.cc-home-kicker {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+.cc-home-kicker > span {
+  width: 1.35rem;
+  height: 1px;
+  background: currentColor;
+}
+.cc-home-welcome h1 {
+  max-width: 48rem;
+  margin-top: 0.6rem;
+  font-family: var(--cc-font-display);
+  font-size: clamp(1.85rem, 3.2vw, 2.7rem);
+  font-weight: 730;
+  line-height: 1.02;
+  letter-spacing: -0.055em;
+  overflow-wrap: anywhere;
+}
+.cc-home-welcome h1 span {
+  color: var(--cc-primary);
+}
+.cc-home-welcome-copy > p:last-child {
+  max-width: 40rem;
+  margin-top: 0.55rem;
+  color: var(--cc-muted);
+  font-size: clamp(0.88rem, 1.2vw, 1rem);
+  line-height: 1.65;
+}
+.cc-home-profile-link,
+.cc-home-section-link {
+  display: inline-flex;
+  min-height: 2.75rem;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 999px;
+  color: var(--cc-primary);
+  font-size: 0.8rem;
+  font-weight: 720;
+  text-decoration: none;
+}
+.cc-home-profile-link {
+  border: 1px solid color-mix(in srgb, var(--cc-primary) 24%, var(--cc-border));
+  padding: 0.6rem 0.9rem;
+  background: color-mix(in srgb, var(--cc-panel-strong) 86%, transparent);
+  box-shadow: var(--cc-shadow-sm);
+}
+.cc-home-section-link {
+  padding-inline: 0.35rem;
+}
+.cc-home-profile-link:hover,
+.cc-home-section-link:hover {
+  color: var(--cc-primary-hover);
+}
