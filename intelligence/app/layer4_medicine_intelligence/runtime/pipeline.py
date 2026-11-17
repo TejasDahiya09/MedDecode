@@ -52,6 +52,15 @@ class MedicineIntelligencePipeline:
 
         query = self._build_query(medicine)
 
+        if not medicine.automatic_identity_eligible:
+            return self._not_attempted_result(
+                query=query,
+                warning=(
+                    "Medicine matching was not attempted because source provenance "
+                    "requires manual identity review."
+                ),
+            )
+
         if not query.medicine_name and not query.normalized_medicine_name:
             return self._not_attempted_result(
                 query=query,

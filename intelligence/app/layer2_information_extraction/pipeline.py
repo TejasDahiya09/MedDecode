@@ -13,6 +13,9 @@ from app.layer2_information_extraction.medicine_extractor import (
 from app.layer2_information_extraction.instruction_extractor import (
     extract_general_instructions,
 )
+from app.layer2_information_extraction.provenance_safety import (
+    exclude_unverified_identity_candidates,
+)
 from app.schemas.ocr import OCRPageResult
 from app.schemas.prescription import (
     ExtractionWarning,
@@ -55,6 +58,21 @@ def extract_prescription_information(
     medicines = extract_medicine_entries(
         context,
         association_warnings=association_warnings,
+    )
+    medicines, excluded_medicines = exclude_unverified_identity_candidates(
+        pages,
+        medicines,
+    )
+    association_warnings.extend(
+        ExtractionWarning(
+            field_name="medicine_identity",
+            message=(
+                "A medicine-like candidate overlapped an unverified numbered OCR row "
+                f"on page {medicine.page_number}; it was retained as review evidence "
+                "and excluded from automatic medicine processing."
+            ),
+        )
+        for medicine in excluded_medicines
     )
 
     general_instructions = (

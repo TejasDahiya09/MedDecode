@@ -313,6 +313,7 @@ def parse_medicine_entry(
             entry.instructions.copy()
         ),
         evidence=entry.evidence.copy(),
+        automatic_identity_eligible=entry.automatic_identity_eligible,
     )
 
 

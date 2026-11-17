@@ -93,6 +93,18 @@ def map_contract_v1(
         ),
         start=1,
     ):
+        if (
+            not raw_medicine.automatic_identity_eligible
+            or not medicine.automatic_identity_eligible
+        ):
+            warnings.append(
+                _contract_warning(
+                    "UNVERIFIED_MEDICINE_IDENTITY_EXCLUDED",
+                    "A review-only OCR candidate was excluded from automatic medicine output.",
+                )
+            )
+            continue
+
         for warning in medicine.warnings:
             warnings.append(
                 _contract_warning(

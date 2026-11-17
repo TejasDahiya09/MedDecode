@@ -88,6 +88,11 @@ class RawMedicineEntry:
         default_factory=list
     )
 
+    # False when source provenance explicitly identifies this extraction as
+    # review-only evidence.  Such entries must not enter automatic medicine
+    # matching, recommendations, or Contract v1 medicines.
+    automatic_identity_eligible: bool = True
+
 
 @dataclass
 class PrescriptionRecord:

@@ -8,8 +8,8 @@
 | Severity | Confirmed open | Suspected/open verification | Fixed but not released |
 |---|---:|---:|---:|
 | Critical | 0 | 0 | 0 |
-| High | 5 | 2 | 1 |
-| Medium | 7 | 3 | 1 |
+| High | 4 | 2 | 2 |
+| Medium | 6 | 3 | 2 |
 | Low | 5 | 0 | 0 |
 
 No critical issue was proven in this audit. That does not mean hosted security is verified; hosted parity was out of scope and is tracked as a high-severity verification blocker.
@@ -39,11 +39,11 @@ No critical issue was proven in this audit. That does not mean hosted security i
 - **Description:** four rows marked `unverified_numbered_rows` also become medicine records in the mapped response.
 - **Reproduction:** `intelligence/.venv/Scripts/python.exe -m pytest intelligence/tests -q`.
 - **Expected:** unverified rows remain evidence/warnings for human correction and are absent from `medicines`.
-- **Actual:** four medicines are emitted, including an `unclear` identity.
+- **Actual:** fixed locally: the four review-only rows remain evidence/warnings and zero medicines are emitted from them.
 - **Root cause:** unverified-row detection annotates OCR pages but does not exclude overlapping extracted medicine entries before Contract mapping.
 - **Impact:** uncertain text can reach matching/recommendation and review as if it were a medicine.
-- **Fix:** reconcile extracted entries against unverified row provenance before Layers 3-5; preserve source evidence and warnings without identity promotion.
-- **Tests:** current failing test; overlapping-coordinate cases; ambiguous labels; multiple valid medicines adjacent to an unverified row; Contract v1 schema.
+- **Fix:** Layer 2 now reconciles page/block provenance before Layers 3-5, fails closed on ambiguous provenance, and carries an internal eligibility invariant through Layer 4 and Contract mapping.
+- **Tests:** original regression plus copied/overlapping evidence, missing provenance, multipage isolation, adjacent valid medicine, legitimate numbered medicines, Layer 4 exclusion, Contract v1 defense, and the full 447-test Python suite.
 - **Dependencies:** Batch 2.
 
 ### AUD-DB-001 — Reminder security integration tests use a cwd-dependent duplicated path
@@ -228,17 +228,17 @@ No critical issue was proven in this audit. That does not mean hosted security i
 
 ### AUD-INT-002 — Manual-review exclusion is not a single invariant
 
-- **State / severity:** CONFIRMED DESIGN GAP / MEDIUM
+- **State / severity:** FIXED LOCALLY / MEDIUM
 - **Module:** intelligence evidence/reconciliation
 - **Location:** numbered-row detection, Layer 2 extraction, Contract mapper
 - **Description:** classification and exclusion are separate operations, allowing the AUD-INT-001 overlap.
 - **Reproduction:** current failing Python test.
 - **Expected:** one provenance-aware invariant controls whether evidence may become a medicine identity.
-- **Actual:** warnings and medicines can describe the same uncertain row.
+- **Actual:** fixed locally: source page/block provenance determines automatic identity eligibility before matching, while mapper and Layer 4 enforce the same fail-closed signal.
 - **Root cause:** pipeline stages communicate lists without stable exclusion linkage.
 - **Impact:** future extractors can reintroduce unsafe promotion.
-- **Fix:** stable evidence/region identifiers and an explicit disposition (`accepted`, `review_required`, `rejected`) consumed by mapping.
-- **Tests:** property/invariant tests across provider combinations.
+- **Fix:** stable page/block indexes plus exact block fingerprints and geometric overlap provide the linkage; `automatic_identity_eligible` is the explicit internal disposition consumed by later layers.
+- **Tests:** provenance intersection, copied evidence, ambiguous provenance, adjacent and multipage separation, and mapper/Layer 4 defense-in-depth regressions.
 - **Dependencies:** Batch 2.
 
 ### AUD-INT-003 — Genuine OCR/resource behavior was not revalidated for this tree

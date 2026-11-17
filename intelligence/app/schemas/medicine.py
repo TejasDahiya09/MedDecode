@@ -184,3 +184,7 @@ class MedicineUsageRecord:
     warnings: list[ExtractionWarning] = field(
         default_factory=list
     )
+
+    # Carries the Layer 2 provenance boundary through later layers.  This is
+    # an internal safety signal and does not change Contract v1.
+    automatic_identity_eligible: bool = True
