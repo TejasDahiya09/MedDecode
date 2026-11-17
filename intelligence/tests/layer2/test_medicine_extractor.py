@@ -89,6 +89,19 @@ def test_extract_medicine_with_capsule_form():
     )
 
 
+def test_extract_medicine_with_spelled_out_syrup_form():
+    context = create_context(
+        [
+            "Syrup Fictionalmed",
+        ]
+    )
+
+    medicines = extract_raw_medicines(context)
+
+    assert len(medicines) == 1
+    assert medicines[0].raw_text == "Syrup Fictionalmed"
+
+
 def test_extract_medicine_with_strength_but_no_form():
 
     context = create_context(
@@ -139,6 +152,38 @@ def test_extract_multiple_medicines():
         medicines[2].raw_text
         == "Tab. Paracetamol 650 mg"
     )
+
+
+def test_associates_numbered_template_name_with_labelled_strength_and_form():
+    context = create_context(
+        [
+            "1. Paracetamol",
+            "Strength: 500 mg Dosage form: Tablet",
+            "2. Amoxicillin",
+            "Strength: 125 mg/5 mL Dosage form: Oral liquid",
+        ]
+    )
+
+    medicines = extract_raw_medicines(context)
+
+    assert [item.raw_text for item in medicines] == [
+        "Paracetamol Strength: 500 mg Dosage form: Tablet",
+        "Amoxicillin Strength: 125 mg/5 mL Dosage form: Oral liquid",
+    ]
+
+
+def test_numbered_template_names_are_preserved_without_inventing_identity():
+    context = create_context(
+        [
+            "1. Fictionalmed",
+            "Strength: Dosage form: Tablet",
+        ]
+    )
+
+    medicines = extract_raw_medicines(context)
+
+    assert len(medicines) == 1
+    assert medicines[0].raw_text == "Fictionalmed Strength: Dosage form: Tablet"
 
 
 def test_doctor_line_is_not_detected_as_medicine():

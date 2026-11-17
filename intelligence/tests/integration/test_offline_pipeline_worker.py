@@ -22,3 +22,4 @@ def test_worker_uses_fixed_internal_fixture_and_never_dereferences_url() -> None
     response = process(request)
     assert len(response["medicines"]) == 2
     assert response["medicines"][0]["extraction"]["medicine_name_normalized"] == "paracetamol"
+    assert response["warnings"][0]["code"] == "OFFLINE_SYNTHETIC_INPUT"

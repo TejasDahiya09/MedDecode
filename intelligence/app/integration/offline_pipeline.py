@@ -132,7 +132,10 @@ def run_offline_pipeline(
             layer5_input = Layer4RecommendationInput(
                 match_status=match.match_status,
                 selected_medicine=Layer4CandidateData(medicine=selected),
-                alternative_candidates=[Layer4CandidateData(medicine=repository.alternative)],
+                alternative_candidates=(
+                    [Layer4CandidateData(medicine=repository.alternative)]
+                    if getattr(repository, "alternative", None) is not None else []
+                ),
                 warnings=list(match.warnings),
             )
         recommendations.append(ranker.rank(layer5_input))

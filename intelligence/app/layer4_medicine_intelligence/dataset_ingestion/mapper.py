@@ -540,25 +540,32 @@ def _build_ingredients(
         raw_ingredients,
     )
 
-    strength_value = _to_decimal(
-        _get_value(
-            data,
-            INGREDIENT_STRENGTH_VALUE_COLUMNS,
-        )
-    )
+    raw_strength_values = _split_multi_value(_get_value(data, INGREDIENT_STRENGTH_VALUE_COLUMNS))
+    raw_strength_units = _split_multi_value(_get_value(data, INGREDIENT_STRENGTH_UNIT_COLUMNS))
 
-    strength_unit = _to_string(
-        _get_value(
-            data,
-            INGREDIENT_STRENGTH_UNIT_COLUMNS,
-        )
-    )
+    # A single medicine-level strength must never be copied across multiple
+    # active ingredients. Per-ingredient values are accepted only when their
+    # cardinality exactly matches the ingredient list.
+    if len(ingredient_names) == 1:
+        strength_values = [_to_decimal(raw_strength_values[0])] if raw_strength_values else [None]
+        strength_units = [_to_string(raw_strength_units[0])] if raw_strength_units else [None]
+    elif len(raw_strength_values) == len(ingredient_names):
+        strength_values = [_to_decimal(value) for value in raw_strength_values]
+        if len(raw_strength_units) == len(ingredient_names):
+            strength_units = [_to_string(value) for value in raw_strength_units]
+        elif len(raw_strength_units) == 1:
+            strength_units = [_to_string(raw_strength_units[0])] * len(ingredient_names)
+        else:
+            strength_units = [None] * len(ingredient_names)
+    else:
+        strength_values = [None] * len(ingredient_names)
+        strength_units = [None] * len(ingredient_names)
 
     ingredients: list[
         MedicineIngredientRecord
     ] = []
 
-    for ingredient_name in ingredient_names:
+    for index, ingredient_name in enumerate(ingredient_names):
 
         ingredient = ActiveIngredientRecord(
             ingredient_name=ingredient_name,
@@ -567,8 +574,8 @@ def _build_ingredients(
         ingredients.append(
             MedicineIngredientRecord(
                 ingredient=ingredient,
-                ingredient_strength_value=strength_value,
-                ingredient_strength_unit=strength_unit,
+                ingredient_strength_value=strength_values[index],
+                ingredient_strength_unit=strength_units[index],
             )
         )
 
@@ -758,6 +765,24 @@ def _build_prices(
             region=region,
             package_description=package_description,
             quantity=quantity,
+            source=_to_string(data.get("price_source")),
+            price_basis=_to_string(data.get("price_basis")),
+            price_unit=_to_string(data.get("price_unit")),
+            package_quantity_unit=_to_string(data.get("price_package_quantity_unit")),
+            notification_number=_to_string(data.get("price_notification_number")),
+            notification_date=_to_string(data.get("price_notification_date")),
+            nlem_version=_to_string(data.get("price_nlem_version")),
+            source_record_id=_to_string(data.get("price_source_record_id")),
+            source_release=_to_string(data.get("price_source_release")),
+            special_feature=data.get("price_special_feature") if isinstance(data.get("price_special_feature"), bool) else None,
+            special_feature_qualifier=_to_string(
+                data.get("price_special_feature_qualifier")
+            ),
+            original_price_text=_to_string(data.get("price_original_text")),
+            previous_price=_to_decimal(data.get("price_previous_value")),
+            previous_price_text=_to_string(data.get("price_previous_original_text")),
+            effective_date=_to_string(data.get("price_effective_date")),
+            publication_date=_to_string(data.get("price_publication_date")),
         )
     ]
 

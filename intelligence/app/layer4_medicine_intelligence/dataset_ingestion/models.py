@@ -118,6 +118,12 @@ class SourceMetadata:
     source_record_id: Optional[str] = None
     source_url: Optional[str] = None
     source_record_hash: Optional[str] = None
+    # Internal provenance retained by offline ingestion. The checked-in
+    # database schema does not currently expose columns for these values, so
+    # the live writer deliberately does not persist them.
+    source_release: Optional[str] = None
+    source_authority: Optional[str] = None
+    jurisdiction: Optional[str] = None
 
 
 @dataclass
@@ -186,7 +192,7 @@ class MedicineAliasRecord:
 
     alias_name: str
 
-    alias_type: Optional[AliasType] = None
+    alias_type: Optional[AliasType | str] = None
     normalized_alias: Optional[str] = None
 
 
@@ -248,6 +254,83 @@ class PriceRecord:
     quantity: Optional[Decimal] = None
 
     source: Optional[str] = None
+
+    # Source-specific regulatory price evidence. These optional fields preserve
+    # official notification context without changing legacy dataset contracts.
+    price_basis: Optional[str] = None
+    price_unit: Optional[str] = None
+    package_quantity_unit: Optional[str] = None
+    notification_number: Optional[str] = None
+    notification_date: Optional[str] = None
+    nlem_version: Optional[str] = None
+    source_record_id: Optional[str] = None
+    source_release: Optional[str] = None
+    special_feature: Optional[bool] = None
+    special_feature_qualifier: Optional[str] = None
+    original_price_text: Optional[str] = None
+    previous_price: Optional[Decimal] = None
+    previous_price_text: Optional[str] = None
+    effective_date: Optional[str] = None
+    publication_date: Optional[str] = None
+
+
+@dataclass
+class RegulatoryApprovalEvent:
+    """Source-scoped regulatory evidence, not a medicine approval flag.
+
+    Historical approval evidence must not be interpreted as current market
+    availability or as approval of brands that are absent from the source.
+    """
+
+    event_id: str
+    event_type: str
+    permission_category: str
+    approved_name: str
+    composition: Optional[str] = None
+    approval_date: Optional[str] = None
+    document_release_date: Optional[str] = None
+    applicant: Optional[str] = None
+    indication: Optional[str] = None
+    dosage_form: Optional[str] = None
+    route: Optional[str] = None
+    ingredients: list[dict[str, Optional[str]]] = field(default_factory=list)
+    official_reference: Optional[str] = None
+    source_page: Optional[int] = None
+    source_row: Optional[int] = None
+    source_document_sha256: Optional[str] = None
+    source_document_title: Optional[str] = None
+    raw_source_text: Optional[str] = None
+    is_fdc: bool = False
+    establishes_current_status: bool = False
+    source: Optional[SourceMetadata] = None
+
+
+@dataclass
+class RegulatoryRestrictionEvent:
+    """Source-scoped restriction evidence, not a current legal-status flag."""
+
+    event_id: str
+    event_type: str
+    regulatory_category: str
+    restricted_name: str
+    effective_date: Optional[str] = None
+    publication_date: Optional[str] = None
+    document_as_of_date: Optional[str] = None
+    notification_reference: Optional[str] = None
+    dosage_form: Optional[str] = None
+    route: Optional[str] = None
+    ingredients: list[dict[str, Optional[str]]] = field(default_factory=list)
+    legal_scope: Optional[str] = None
+    conditions: Optional[str] = None
+    exemptions: Optional[str] = None
+    footnote_marker: Optional[str] = None
+    source_page: Optional[int] = None
+    source_row: Optional[int] = None
+    source_document_sha256: Optional[str] = None
+    source_document_title: Optional[str] = None
+    raw_source_text: Optional[str] = None
+    establishes_current_status: bool = False
+    source: Optional[SourceMetadata] = None
 
 
 # ============================================================

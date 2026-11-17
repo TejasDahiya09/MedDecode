@@ -1,0 +1,29 @@
+{
+  "schema_version": "1.0",
+  "measured_at": "2026-11-14",
+  "scope": "controlled generated fictional printed cases; not clinical accuracy",
+  "hardware": "Windows 11, Intel64 Family 6 Model 191 Stepping 2, CPU only, Python 3.12.10",
+  "models": {"easyocr":"1.7.2","paddleocr":"3.7.0","paddlepaddle":"3.2.2"},
+  "sample_count": 7,
+  "categories": ["clean","multiline","mixed_font","rotated_7_degrees","poor_contrast","small_decimal_strength","combination_medicine"],
+  "easyocr": {
+    "character_error_rate": 0.10714285714285714,
+    "word_error_rate": 0.09523809523809523,
+    "exact_matches": 6,
+    "exact_match_accuracy": 0.8571428571428571,
+    "exact_match_wilson_95": [0.48686549668097007,0.9743210440510253],
+    "average_latency_ms": 2684.8571428571427,
+    "observed_failure": "The rotated sample was read as '10 mg Examplemed' rather than 'Examplemed 10 mg'."
+  },
+  "paddleocr": {
+    "character_error_rate": 0.0,
+    "word_error_rate": 0.0,
+    "exact_matches": 7,
+    "exact_match_accuracy": 1.0,
+    "exact_match_wilson_95": [0.6456611570247934,1.0],
+    "average_latency_ms": 3774.1428571428573
+  },
+  "region_fallback": {"real_paddle_inference":true,"recognized_text":"Examplemed 10 mg","coordinates_preserved":true},
+  "handwriting_samples": 0,
+  "clinical_accuracy_claim": false
+}

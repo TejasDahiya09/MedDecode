@@ -15,8 +15,10 @@ The current source contains five layers:
    utilities.
 5. In-memory recommendation scoring and ranking.
 
-`app/main.py` remains empty. This integration does not establish a running
-HTTP service or the future Member 1 to Member 2 job-processing adapter.
+`app/main.py` remains empty. The production subprocess entry point for real
+PDF processing is `python -m app.integration.local_pdf_worker`; the Node
+worker supplies the input JSON on stdin and consumes exactly one Contract v1
+JSON document from stdout.
 
 ## Python and dependencies
 
@@ -69,7 +71,42 @@ The real-prescription diagnostic can print OCR and extracted medical content.
 Dataset-ingestion utilities can write database records. They require separate
 authorization, safety review, and controlled credentials.
 
-Offline tests must not use production Supabase credentials. The current
-runtime reads `SUPABASE_URL` and the generic `SUPABASE_KEY`; whether that key is
-publishable or privileged is not enforced in code and remains an unresolved
-privilege-boundary concern.
+Offline tests must not use production Supabase credentials. Official catalogue
+reads use the explicit `MEDDECODE_CATALOGUE_*` settings described in
+`.env.example`. The `local_pdf_worker` refuses catalogue processing when the
+environment is missing or invalid; it never falls back to localhost in a
+hosted configuration. Hosted connections require `verify-full` TLS, an
+existing root certificate, and a password or mounted password file.
+
+## Python worker deployment
+
+The real worker command is:
+
+```powershell
+py -3.12 -m app.integration.local_pdf_worker `
+  --local-pdf-path C:\private\prescription.pdf `
+  --official-catalogue `
+  --ocr-provider easyocr `
+  --easyocr-model-directory C:\private\easyocr-models
+```
+
+The Node worker owns the subprocess timeout and cancellation. The Python
+worker validates the Contract v1 request, rejects missing catalogue
+configuration, keeps diagnostics on stderr, and writes no non-JSON content to
+stdout. The catalogue identity must be a dedicated restricted read-only
+account. For the current direct-read provider, the minimum hosted grants are:
+
+```sql
+CREATE ROLE meddecode_catalogue_python_reader
+  LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS;
+GRANT USAGE ON SCHEMA official_catalogue
+  TO meddecode_catalogue_python_reader;
+GRANT SELECT (entity_id, evidence, identity)
+  ON TABLE official_catalogue.catalogue_entities
+  TO meddecode_catalogue_python_reader;
+```
+
+The role must not receive application-table, write, legacy-catalogue, schema
+CREATE, or `auth` privileges. Set its password through the deployment secret
+manager or a mounted passfile; never put credentials in `.env.example`.
+Hosted role creation and grants require separate deployment approval.

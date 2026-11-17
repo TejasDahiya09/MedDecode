@@ -218,3 +218,39 @@ def test_pipeline_processes_multiple_pages():
     assert result.general_instructions == [
         "Drink plenty of water",
     ]
+
+
+def test_repeated_medicine_lines_keep_their_own_instructions():
+    page = create_page(
+        [
+            "Rx",
+            "Tab Paracetamol 500 mg",
+            "1-0-0",
+            "Tab Paracetamol 500 mg",
+            "0-0-1",
+        ]
+    )
+
+    result = extract_prescription_information([page])
+
+    assert [medicine.raw_text for medicine in result.medicines] == [
+        "Tab Paracetamol 500 mg",
+        "Tab Paracetamol 500 mg",
+    ]
+    assert [medicine.instructions for medicine in result.medicines] == [
+        ["1-0-0"],
+        ["0-0-1"],
+    ]
+
+
+def test_pipeline_preserves_ocr_processing_warnings():
+    page = create_page(["Rx", "Tab Examplemed 10 mg"])
+    page.processing_warnings = [
+        "Adaptive OCR quality signal: low confidence OCR regions."
+    ]
+
+    result = extract_prescription_information([page])
+
+    assert [(warning.field_name, warning.message) for warning in result.warnings] == [
+        ("ocr", "Adaptive OCR quality signal: low confidence OCR regions."),
+    ]

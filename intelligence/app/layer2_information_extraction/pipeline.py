@@ -15,6 +15,7 @@ from app.layer2_information_extraction.instruction_extractor import (
 )
 from app.schemas.ocr import OCRPageResult
 from app.schemas.prescription import (
+    ExtractionWarning,
     PrescriptionRecord,
 )
 
@@ -50,8 +51,10 @@ def extract_prescription_information(
         context
     )
 
+    association_warnings: list[ExtractionWarning] = []
     medicines = extract_medicine_entries(
-        context
+        context,
+        association_warnings=association_warnings,
     )
 
     general_instructions = (
@@ -67,4 +70,14 @@ def extract_prescription_information(
         patient=patient,
         medicines=medicines,
         general_instructions=general_instructions,
+        warnings=association_warnings + [
+            ExtractionWarning(field_name="ocr", message=warning)
+            for page in pages
+            for warning in page.processing_warnings
+        ],
+        unverified_numbered_rows=[
+            row
+            for page in pages
+            for row in page.unverified_numbered_rows
+        ],
     )

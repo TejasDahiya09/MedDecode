@@ -23,6 +23,19 @@ class Strength:
 
 
 @dataclass
+class IngredientStrength:
+    """An explicitly written component strength in a combination product.
+
+    This is extraction evidence, not a claim that the component is a
+    canonical ingredient.  Layer 4 still performs the identity decision.
+    """
+
+    name: str
+    value: Optional[float] = None
+    unit: Optional[str] = None
+
+
+@dataclass
 class DosageSchedule:
     """
     Structured daily dosage schedule.
@@ -79,6 +92,8 @@ class InstructionParseResult:
         default_factory=DosageSchedule
     )
 
+    frequency_times_per_day: Optional[float] = None
+
     timing: Optional[str] = None
 
     duration: Duration = field(
@@ -86,6 +101,10 @@ class InstructionParseResult:
     )
 
     additional_instructions: list[str] = field(
+        default_factory=list
+    )
+
+    warnings: list[ExtractionWarning] = field(
         default_factory=list
     )
 
@@ -120,6 +139,13 @@ class MedicineUsageRecord:
     # Structured medicine strength.
     strength: Strength = field(
         default_factory=Strength
+    )
+
+    # Every explicitly paired component/strength in a fixed-dose combination.
+    # ``strength`` above remains for backwards compatibility with existing
+    # single-ingredient consumers.
+    ingredient_strengths: list[IngredientStrength] = field(
+        default_factory=list
     )
 
     # Structured dosage schedule.

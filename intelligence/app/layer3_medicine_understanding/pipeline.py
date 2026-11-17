@@ -61,6 +61,10 @@ def understand_medicine_entry(
         instruction_result.dosage_schedule
     )
 
+    medicine.frequency_times_per_day = (
+        instruction_result.frequency_times_per_day
+    )
+
     medicine.timing = (
         instruction_result.timing
     )
@@ -71,6 +75,10 @@ def understand_medicine_entry(
 
     medicine.additional_instructions = (
         instruction_result.additional_instructions
+    )
+
+    medicine.warnings.extend(
+        instruction_result.warnings
     )
 
     return medicine

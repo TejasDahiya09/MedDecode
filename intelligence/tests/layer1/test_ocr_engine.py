@@ -1,5 +1,8 @@
+import sys
+from types import SimpleNamespace
 from unittest.mock import Mock
 
+import pytest
 from PIL import Image
 
 from app.layer1_document_processing.ocr_engine import (
@@ -24,6 +27,21 @@ def create_mock_engine():
     engine._ocr = Mock()
 
     return engine
+
+
+def test_default_engine_disables_mkldnn(monkeypatch: pytest.MonkeyPatch) -> None:
+    observed: dict[str, object] = {}
+
+    class FakePaddleOCR:
+        def __init__(self, **options: object) -> None:
+            observed.update(options)
+
+    monkeypatch.setitem(sys.modules, "paddleocr", SimpleNamespace(PaddleOCR=FakePaddleOCR))
+
+    OCREngine()
+
+    assert observed["device"] == "cpu"
+    assert observed["enable_mkldnn"] is False
 
 
 def test_process_page_returns_ocr_page_result():

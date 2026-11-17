@@ -1,3 +1,7 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from PIL import Image
 
 from app.layer1_document_processing.document_loader import (
@@ -7,16 +11,20 @@ from app.layer1_document_processing.image_processor import (
     load_and_normalize_image,
 )
 from app.layer1_document_processing.pdf_processor import (
+    DEFAULT_DPI,
     load_pdf_as_images,
 )
-from app.layer1_document_processing.ocr_engine import (
-    OCREngine,
-)
 from app.schemas.ocr import OCRPageResult
+
+if TYPE_CHECKING:
+    from app.integration.document_safety import DocumentSafetyLimits
+    from app.layer1_document_processing.ocr_engine import OCREngine
+    from app.layer1_document_processing.preprocessing_adapter import PreprocessedOCRDocument
 
 
 def process_document(
     file_path: str,
+    pdf_dpi: int = DEFAULT_DPI,
 ) -> list[Image.Image]:
     """
     Process a supported prescription document and convert it
@@ -27,6 +35,8 @@ def process_document(
     - JPEG
     - PNG
     - PDF
+
+    PDF pages use ``pdf_dpi`` for rendering; image inputs are unaffected.
 
     Returns:
         A list of standardized RGB Pillow Image objects.
@@ -53,7 +63,8 @@ def process_document(
     if document_type == "pdf":
 
         return load_pdf_as_images(
-            file_path
+            file_path,
+            dpi=pdf_dpi,
         )
 
     # Defensive fallback.
@@ -85,12 +96,15 @@ def process_document_with_ocr(
         file_path
     )
 
-    engine = ocr_engine or OCREngine()
+    if ocr_engine is None:
+        from app.layer1_document_processing.ocr_engine import OCREngine
+
+        ocr_engine = OCREngine()
 
     results = []
 
     for page in pages:
-        page_result = engine.process_page(
+        page_result = ocr_engine.process_page(
             page
         )
 
@@ -99,3 +113,28 @@ def process_document_with_ocr(
         )
 
     return results
+
+
+def process_document_with_preprocessing(
+    file_path: str,
+    ocr_engine: OCREngine | None = None,
+    *,
+    pdf_dpi: int = 120,
+    safety_limits: DocumentSafetyLimits | None = None,
+) -> PreprocessedOCRDocument:
+    """Run the additive per-page preprocessing and native-PDF routing adapter.
+
+    The existing ``process_document`` and ``process_document_with_ocr``
+    behavior remains unchanged for existing callers.
+    """
+
+    from app.layer1_document_processing.preprocessing_adapter import (
+        process_document_with_preprocessing as process,
+    )
+
+    return process(
+        file_path,
+        ocr_engine=ocr_engine,
+        pdf_dpi=pdf_dpi,
+        safety_limits=safety_limits,
+    )

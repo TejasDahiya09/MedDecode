@@ -1,10 +1,28 @@
+from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 import numpy as np
 from PIL import Image
-from paddleocr import PaddleOCR
 
 from app.schemas.ocr import OCRBlock, OCRPageResult
+
+
+@dataclass(frozen=True)
+class PaddleOCRLocalModelConfig:
+    """Explicit local Paddle model locations for offline inference."""
+
+    text_detection_model_dir: Path
+    text_recognition_model_dir: Path
+    device: str = "cpu"
+    enable_mkldnn: bool = False
+
+    def validate(self) -> None:
+        if self.device != "cpu":
+            raise ValueError("The local MedDecode OCR baseline supports CPU inference only.")
+        for directory in (self.text_detection_model_dir, self.text_recognition_model_dir):
+            if not directory.is_dir():
+                raise ValueError("Required local PaddleOCR model assets are unavailable.")
 
 
 class OCREngine:
@@ -15,12 +33,27 @@ class OCREngine:
     stable OCR output format.
     """
 
-    def __init__(self) -> None:
-        self._ocr = PaddleOCR(
-            use_doc_orientation_classify=False,
-            use_doc_unwarping=False,
-            use_textline_orientation=False,
-        )
+    def __init__(self, local_model_config: PaddleOCRLocalModelConfig | None = None) -> None:
+        from paddleocr import PaddleOCR
+
+        options: dict[str, Any] = {
+            "use_doc_orientation_classify": False,
+            "use_doc_unwarping": False,
+            "use_textline_orientation": False,
+            "device": "cpu",
+            "enable_mkldnn": False,
+        }
+        if local_model_config is not None:
+            local_model_config.validate()
+            options.update(
+                {
+                    "text_detection_model_dir": str(local_model_config.text_detection_model_dir),
+                    "text_recognition_model_dir": str(local_model_config.text_recognition_model_dir),
+                    "device": local_model_config.device,
+                    "enable_mkldnn": local_model_config.enable_mkldnn,
+                }
+            )
+        self._ocr = PaddleOCR(**options)
 
     def process_page(
         self,

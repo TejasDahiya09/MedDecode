@@ -1,0 +1,1783 @@
+{
+  "schema_version": "1.0",
+  "genuine_local_inference": true,
+  "engine": "easyocr",
+  "engine_version": "1.7.2",
+  "paddle_version": null,
+  "model_directory": "C:\\Users\\dahiy\\.EasyOCR",
+  "fixture_count": 14,
+  "writing_style_counts": {
+    "printed": 13,
+    "synthetic_handwriting_like": 1
+  },
+  "original_raster_ocr": {
+    "page_count": 14,
+    "macro_page_cer": 0.019910897248243558,
+    "macro_page_wer": 0.01913265306122449,
+    "exact_matches": 12,
+    "exact_match_accuracy": 0.8571428571428571
+  },
+  "preprocessed_raster_ocr": {
+    "page_count": 14,
+    "macro_page_cer": 0.014330540105386416,
+    "macro_page_wer": 0.011989795918367347,
+    "exact_matches": 12,
+    "exact_match_accuracy": 0.8571428571428571
+  },
+  "searchable_native_text_separate": {
+    "page_count": 3,
+    "macro_page_cer": 0.0,
+    "macro_page_wer": 0.0,
+    "exact_matches": 3,
+    "exact_match_accuracy": 1.0
+  },
+  "baseline_fields": {
+    "medicine_names": {
+      "correct": 16,
+      "total": 16,
+      "accuracy": 1.0
+    },
+    "strengths": {
+      "correct": 23,
+      "total": 23,
+      "accuracy": 1.0
+    },
+    "units": {
+      "correct": 23,
+      "total": 23,
+      "accuracy": 1.0
+    },
+    "frequencies": {
+      "correct": 22,
+      "total": 22,
+      "accuracy": 1.0
+    },
+    "timings": {
+      "correct": 7,
+      "total": 8,
+      "accuracy": 0.875
+    },
+    "durations": {
+      "correct": 16,
+      "total": 18,
+      "accuracy": 0.8888888888888888
+    }
+  },
+  "preprocessed_fields": {
+    "medicine_names": {
+      "correct": 16,
+      "total": 16,
+      "accuracy": 1.0
+    },
+    "strengths": {
+      "correct": 23,
+      "total": 23,
+      "accuracy": 1.0
+    },
+    "units": {
+      "correct": 23,
+      "total": 23,
+      "accuracy": 1.0
+    },
+    "frequencies": {
+      "correct": 22,
+      "total": 22,
+      "accuracy": 1.0
+    },
+    "timings": {
+      "correct": 7,
+      "total": 8,
+      "accuracy": 0.875
+    },
+    "durations": {
+      "correct": 18,
+      "total": 18,
+      "accuracy": 1.0
+    }
+  },
+  "native_text_fields": {
+    "medicine_names": {
+      "correct": 3,
+      "total": 3,
+      "accuracy": 1.0
+    },
+    "strengths": {
+      "correct": 3,
+      "total": 3,
+      "accuracy": 1.0
+    },
+    "units": {
+      "correct": 3,
+      "total": 3,
+      "accuracy": 1.0
+    },
+    "frequencies": {
+      "correct": 3,
+      "total": 3,
+      "accuracy": 1.0
+    },
+    "timings": {
+      "correct": 1,
+      "total": 1,
+      "accuracy": 1.0
+    },
+    "durations": {
+      "correct": 3,
+      "total": 3,
+      "accuracy": 1.0
+    }
+  },
+  "critical_numeric_substitutions": {
+    "baseline": 0,
+    "preprocessed": 0
+  },
+  "unsupported_or_ambiguous_field_count": 2,
+  "raster_ocr_page_count": 14,
+  "initialization_and_first_call_ms": 7856.088199999249,
+  "warm_mean_inference_ms": 5010.028376666742,
+  "inference_call_count": 31,
+  "elapsed_seconds": 160.29873789999965,
+  "memory": {
+    "peak_sampled_rss_bytes": 2464153600,
+    "final_tree_rss_bytes": 1380671488
+  },
+  "samples": [
+    {
+      "id": "clean_print_two_medicines",
+      "document_type": "image",
+      "writing_style": "printed",
+      "expected_pages": [
+        "Tab FictionalMedA 0.5 mg\n1-0-1 after food for 5 days\nCap FictionalMedB 500 mcg\n0-0-1 khane ke baad for 7 days"
+      ],
+      "baseline_ocr": [
+        {
+          "text": "Tab FictionalMedA 0.5 mg\n1-0-1 after food for 5 days\nCap FictionalMedB 500 mcg\n0-0-1 khane ke baad for 7 days",
+          "latency_ms": 7856.10909999923
+        }
+      ],
+      "prepared": [
+        {
+          "text": "Tab FictionalMedA 0.5 mg\n1-0-1 after food for 5 days\nCap FictionalMedB 500 mcg\n0-0-1 khane ke baad for 7 days",
+          "route": "raster_ocr",
+          "latency_ms": 2699.271499999668,
+          "applied_steps": [
+            "autocontrast"
+          ],
+          "warnings": []
+        }
+      ],
+      "raster_page_indexes": [
+        0
+      ],
+      "native_page_indexes": [],
+      "baseline_metrics": {
+        "page_count": 1,
+        "cer": 0.0,
+        "wer": 0.0,
+        "exact_matches": 1,
+        "exact_match_accuracy": 1.0
+      },
+      "prepared_metrics": {
+        "page_count": 1,
+        "cer": 0.0,
+        "wer": 0.0,
+        "exact_matches": 1,
+        "exact_match_accuracy": 1.0
+      },
+      "native_text_metrics": {
+        "page_count": 0,
+        "cer": null,
+        "wer": null,
+        "exact_matches": 0
+      },
+      "baseline_fields": {
+        "medicine_names": {
+          "correct": 2,
+          "total": 2,
+          "accuracy": 1.0
+        },
+        "strengths": {
+          "correct": 2,
+          "total": 2,
+          "accuracy": 1.0
+        },
+        "units": {
+          "correct": 2,
+          "total": 2,
+          "accuracy": 1.0
+        },
+        "frequencies": {
+          "correct": 2,
+          "total": 2,
+          "accuracy": 1.0
+        },
+        "timings": {
+          "correct": 2,
+          "total": 2,
+          "accuracy": 1.0
+        },
+        "durations": {
+          "correct": 2,
+          "total": 2,
+          "accuracy": 1.0
+        }
+      },
+      "prepared_fields": {
+        "medicine_names": {
+          "correct": 2,
+          "total": 2,
+          "accuracy": 1.0
+        },
+        "strengths": {
+          "correct": 2,
+          "total": 2,
+          "accuracy": 1.0
+        },
+        "units": {
+          "correct": 2,
+          "total": 2,
+          "accuracy": 1.0
+        },
+        "frequencies": {
+          "correct": 2,
+          "total": 2,
+          "accuracy": 1.0
+        },
+        "timings": {
+          "correct": 2,
+          "total": 2,
+          "accuracy": 1.0
+        },
+        "durations": {
+          "correct": 2,
+          "total": 2,
+          "accuracy": 1.0
+        }
+      },
+      "native_fields": {},
+      "critical_numeric_substitutions_baseline": 0,
+      "critical_numeric_substitutions_prepared": 0,
+      "unsupported_field_count": 0,
+      "ocr_comparison_page_count": 1
+    },
+    {
+      "id": "typed_three_medicines",
+      "document_type": "image",
+      "writing_style": "printed",
+      "expected_pages": [
+        "1. Tab FictionalA 10 mg OD x 3 days\n2. Cap FictionalB 250 mg BD x 5 days\n3. Syr FictionalC 5 ml TDS x 7 days"
+      ],
+      "baseline_ocr": [
+        {
+          "text": "1. Tab FictionalA 10 mg OD x 3 days\n2. Cap FictionalB 250 mg BD x 5 days\n3. Syr FictionalC 5 ml TDS x 7 days",
+          "latency_ms": 2714.2297999998846
+        }
+      ],
+      "prepared": [
+        {
+          "text": "1. Tab FictionalA 10 mg OD x 3 days\n2. Cap FictionalB 250 mg BD x 5 days\n3. Syr FictionalC 5 ml TDS x 7 days",
+          "route": "raster_ocr",
+          "latency_ms": 2837.67859999989,
+          "applied_steps": [
+            "autocontrast"
+          ],
+          "warnings": []
+        }
+      ],
+      "raster_page_indexes": [
+        0
+      ],
+      "native_page_indexes": [],
+      "baseline_metrics": {
+        "page_count": 1,
+        "cer": 0.0,
+        "wer": 0.0,
+        "exact_matches": 1,
+        "exact_match_accuracy": 1.0
+      },
+      "prepared_metrics": {
+        "page_count": 1,
+        "cer": 0.0,
+        "wer": 0.0,
+        "exact_matches": 1,
+        "exact_match_accuracy": 1.0
+      },
+      "native_text_metrics": {
+        "page_count": 0,
+        "cer": null,
+        "wer": null,
+        "exact_matches": 0
+      },
+      "baseline_fields": {
+        "medicine_names": {
+          "correct": 3,
+          "total": 3,
+          "accuracy": 1.0
+        },
+        "strengths": {
+          "correct": 3,
+          "total": 3,
+          "accuracy": 1.0
+        },
+        "units": {
+          "correct": 3,
+          "total": 3,
+          "accuracy": 1.0
+        },
+        "frequencies": {
+          "correct": 3,
+          "total": 3,
+          "accuracy": 1.0
+        },
+        "durations": {
+          "correct": 3,
+          "total": 3,
+          "accuracy": 1.0
+        }
+      },
+      "prepared_fields": {
+        "medicine_names": {
+          "correct": 3,
+          "total": 3,
+          "accuracy": 1.0
+        },
+        "strengths": {
+          "correct": 3,
+          "total": 3,
+          "accuracy": 1.0
+        },
+        "units": {
+          "correct": 3,
+          "total": 3,
+          "accuracy": 1.0
+        },
+        "frequencies": {
+          "correct": 3,
+          "total": 3,
+          "accuracy": 1.0
+        },
+        "durations": {
+          "correct": 3,
+          "total": 3,
+          "accuracy": 1.0
+        }
+      },
+      "native_fields": {},
+      "critical_numeric_substitutions_baseline": 0,
+      "critical_numeric_substitutions_prepared": 0,
+      "unsupported_field_count": 0,
+      "ocr_comparison_page_count": 1
+    },
+    {
+      "id": "low_contrast_print",
+      "document_type": "image",
+      "writing_style": "printed",
+      "expected_pages": [
+        "Tab FictionalContrast 25 mg\n1-1-1 after food for 5 days"
+      ],
+      "baseline_ocr": [
+        {
+          "text": "Tab FictionalContrast 25 mg\n1-1-1 after food for 5 days",
+          "latency_ms": 4312.622600000395
+        }
+      ],
+      "prepared": [
+        {
+          "text": "Tab FictionalContrast 25 mg\n1-1-1 after food for 5 days",
+          "route": "raster_ocr",
+          "latency_ms": 4848.313999999846,
+          "applied_steps": [],
+          "warnings": [
+            "candidate_may_have_removed_strokes"
+          ]
+        }
+      ],
+      "raster_page_indexes": [
+        0
+      ],
+      "native_page_indexes": [],
+      "baseline_metrics": {
+        "page_count": 1,
+        "cer": 0.0,
+        "wer": 0.0,
+        "exact_matches": 1,
+        "exact_match_accuracy": 1.0
+      },
+      "prepared_metrics": {
+        "page_count": 1,
+        "cer": 0.0,
+        "wer": 0.0,
+        "exact_matches": 1,
+        "exact_match_accuracy": 1.0
+      },
+      "native_text_metrics": {
+        "page_count": 0,
+        "cer": null,
+        "wer": null,
+        "exact_matches": 0
+      },
+      "baseline_fields": {
+        "medicine_names": {
+          "correct": 1,
+          "total": 1,
+          "accuracy": 1.0
+        },
+        "strengths": {
+          "correct": 1,
+          "total": 1,
+          "accuracy": 1.0
+        },
+        "units": {
+          "correct": 1,
+          "total": 1,
+          "accuracy": 1.0
+        },
+        "frequencies": {
+          "correct": 1,
+          "total": 1,
+          "accuracy": 1.0
+        },
+        "timings": {
+          "correct": 1,
+          "total": 1,
+          "accuracy": 1.0
+        },
+        "durations": {
+          "correct": 1,
+          "total": 1,
+          "accuracy": 1.0
+        }
+      },
+      "prepared_fields": {
+        "medicine_names": {
+          "correct": 1,
+          "total": 1,
+          "accuracy": 1.0
+        },
+        "strengths": {
+          "correct": 1,
+          "total": 1,
+          "accuracy": 1.0
+        },
+        "units": {
+          "correct": 1,
+          "total": 1,
+          "accuracy": 1.0
+        },
+        "frequencies": {
+          "correct": 1,
+          "total": 1,
+          "accuracy": 1.0
+        },
+        "timings": {
+          "correct": 1,
+          "total": 1,
+          "accuracy": 1.0
+        },
+        "durations": {
+          "correct": 1,
+          "total": 1,
+          "accuracy": 1.0
+        }
+      },
+      "native_fields": {},
+      "critical_numeric_substitutions_baseline": 0,
+      "critical_numeric_substitutions_prepared": 0,
+      "unsupported_field_count": 0,
+      "ocr_comparison_page_count": 1
+    },
+    {
+      "id": "slight_skew_print",
+      "document_type": "image",
+      "writing_style": "printed",
+      "expected_pages": [
+        "Tab FictionalSkew 12.5 mg\n0-1-0 after food for 10 days"
+      ],
+      "baseline_ocr": [
+        {
+          "text": "Tab FictionalSkew 12.5 mg\n0-1-0 after food for 10 days",
+          "latency_ms": 4963.684299999841
+        }
+      ],
+      "prepared": [
+        {
+          "text": "Tab FictionalSkew 12.5 mg\n0-1-0 after food for 10 days",
+          "route": "raster_ocr",
+          "latency_ms": 4867.641199999525,
+          "applied_steps": [],
+          "warnings": [
+            "candidate_may_have_removed_strokes"
+          ]
+        }
+      ],
+      "raster_page_indexes": [
+        0
+      ],
+      "native_page_indexes": [],
+      "baseline_metrics": {
+        "page_count": 1,
+        "cer": 0.0,
+        "wer": 0.0,
+        "exact_matches": 1,
+        "exact_match_accuracy": 1.0
+      },
+      "prepared_metrics": {
+        "page_count": 1,
+        "cer": 0.0,
+        "wer": 0.0,
+        "exact_matches": 1,
+        "exact_match_accuracy": 1.0
+      },
+      "native_text_metrics": {
+        "page_count": 0,
+        "cer": null,
+        "wer": null,
+        "exact_matches": 0
+      },
+      "baseline_fields": {
+        "medicine_names": {
+          "correct": 1,
+          "total": 1,
+          "accuracy": 1.0
+        },
+        "strengths": {
+          "correct": 1,
+          "total": 1,
+          "accuracy": 1.0
+        },
+        "units": {
+          "correct": 1,
+          "total": 1,
+          "accuracy": 1.0
+        },
+        "frequencies": {
+          "correct": 1,
+          "total": 1,
+          "accuracy": 1.0
+        },
+        "timings": {
+          "correct": 1,
+          "total": 1,
+          "accuracy": 1.0
+        },
+        "durations": {
+          "correct": 1,
+          "total": 1,
+          "accuracy": 1.0
+        }
+      },
+      "prepared_fields": {
+        "medicine_names": {
+          "correct": 1,
+          "total": 1,
+          "accuracy": 1.0
+        },
+        "strengths": {
+          "correct": 1,
+          "total": 1,
+          "accuracy": 1.0
+        },
+        "units": {
+          "correct": 1,
+          "total": 1,
+          "accuracy": 1.0
+        },
+        "frequencies": {
+          "correct": 1,
+          "total": 1,
+          "accuracy": 1.0
+        },
+        "timings": {
+          "correct": 1,
+          "total": 1,
+          "accuracy": 1.0
+        },
+        "durations": {
+          "correct": 1,
+          "total": 1,
+          "accuracy": 1.0
+        }
+      },
+      "native_fields": {},
+      "critical_numeric_substitutions_baseline": 0,
+      "critical_numeric_substitutions_prepared": 0,
+      "unsupported_field_count": 0,
+      "ocr_comparison_page_count": 1
+    },
+    {
+      "id": "uneven_lighting_photo",
+      "document_type": "image",
+      "writing_style": "printed",
+      "expected_pages": [
+        "Tab FictionalPhoto 5 mg\n1-0-0 before food for 3 days"
+      ],
+      "baseline_ocr": [
+        {
+          "text": "Tab FictionalPhoto 5 mg\n1-0-0 before food for 3 days",
+          "latency_ms": 5028.265399999327
+        }
+      ],
+      "prepared": [
+        {
+          "text": "Tab FictionalPhoto 5 mg\n1-0-0 before food for 3 days",
+          "route": "raster_ocr",
+          "latency_ms": 4832.5746999998955,
+          "applied_steps": [
+            "autocontrast"
+          ],
+          "warnings": [
+            "deskew_skipped_for_character_or_edge_safety",
+            "shadowing_detected"
+          ]
+        }
+      ],
+      "raster_page_indexes": [
+        0
+      ],
+      "native_page_indexes": [],
+      "baseline_metrics": {
+        "page_count": 1,
+        "cer": 0.0,
+        "wer": 0.0,
+        "exact_matches": 1,
+        "exact_match_accuracy": 1.0
+      },
+      "prepared_metrics": {
+        "page_count": 1,
+        "cer": 0.0,
+        "wer": 0.0,
+        "exact_matches": 1,
+        "exact_match_accuracy": 1.0
+      },
+      "native_text_metrics": {
+        "page_count": 0,
+        "cer": null,
+        "wer": null,
+        "exact_matches": 0
+      },
+      "baseline_fields": {
+        "medicine_names": {
+          "correct": 1,
+          "total": 1,
+          "accuracy": 1.0
+        },
+        "strengths": {
+          "correct": 1,
+          "total": 1,
+          "accuracy": 1.0
+        },
+        "units": {
+          "correct": 1,
+          "total": 1,
+          "accuracy": 1.0
+        },
+        "frequencies": {
+          "correct": 1,
+          "total": 1,
+          "accuracy": 1.0
+        },
+        "timings": {
+          "correct": 1,
+          "total": 1,
+          "accuracy": 1.0
+        },
+        "durations": {
+          "correct": 1,
+          "total": 1,
+          "accuracy": 1.0
+        }
+      },
+      "prepared_fields": {
+        "medicine_names": {
+          "correct": 1,
+          "total": 1,
+          "accuracy": 1.0
+        },
+        "strengths": {
+          "correct": 1,
+          "total": 1,
+          "accuracy": 1.0
+        },
+        "units": {
+          "correct": 1,
+          "total": 1,
+          "accuracy": 1.0
+        },
+        "frequencies": {
+          "correct": 1,
+          "total": 1,
+          "accuracy": 1.0
+        },
+        "timings": {
+          "correct": 1,
+          "total": 1,
+          "accuracy": 1.0
+        },
+        "durations": {
+          "correct": 1,
+          "total": 1,
+          "accuracy": 1.0
+        }
+      },
+      "native_fields": {},
+      "critical_numeric_substitutions_baseline": 0,
+      "critical_numeric_substitutions_prepared": 0,
+      "unsupported_field_count": 0,
+      "ocr_comparison_page_count": 1
+    },
+    {
+      "id": "small_print_png",
+      "document_type": "image",
+      "writing_style": "printed",
+      "expected_pages": [
+        "Tab FictionalSmall 0.25 mg\n1/2 tablet at night for 15 days"
+      ],
+      "baseline_ocr": [
+        {
+          "text": "Tab FictionalSmall 0.25 mg\n1/2 tablet at night for 15 days",
+          "latency_ms": 2793.653599999743
+        }
+      ],
+      "prepared": [
+        {
+          "text": "Tab FictionalSmall 0.25 mg\n1/2 tablet at night for 15 days",
+          "route": "raster_ocr",
+          "latency_ms": 2742.6804000006086,
+          "applied_steps": [
+            "autocontrast"
+          ],
+          "warnings": []
+        }
+      ],
+      "raster_page_indexes": [
+        0
+      ],
+      "native_page_indexes": [],
+      "baseline_metrics": {
+        "page_count": 1,
+        "cer": 0.0,
+        "wer": 0.0,
+        "exact_matches": 1,
+        "exact_match_accuracy": 1.0
+      },
+      "prepared_metrics": {
+        "page_count": 1,
+        "cer": 0.0,
+        "wer": 0.0,
+        "exact_matches": 1,
+        "exact_match_accuracy": 1.0
+      },
+      "native_text_metrics": {
+        "page_count": 0,
+        "cer": null,
+        "wer": null,
+        "exact_matches": 0
+      },
+      "baseline_fields": {
+        "medicine_names": {
+          "correct": 1,
+          "total": 1,
+          "accuracy": 1.0
+        },
+        "strengths": {
+          "correct": 1,
+          "total": 1,
+          "accuracy": 1.0
+        },
+        "units": {
+          "correct": 1,
+          "total": 1,
+          "accuracy": 1.0
+        },
+        "frequencies": {
+          "correct": 1,
+          "total": 1,
+          "accuracy": 1.0
+        },
+        "durations": {
+          "correct": 1,
+          "total": 1,
+          "accuracy": 1.0
+        }
+      },
+      "prepared_fields": {
+        "medicine_names": {
+          "correct": 1,
+          "total": 1,
+          "accuracy": 1.0
+        },
+        "strengths": {
+          "correct": 1,
+          "total": 1,
+          "accuracy": 1.0
+        },
+        "units": {
+          "correct": 1,
+          "total": 1,
+          "accuracy": 1.0
+        },
+        "frequencies": {
+          "correct": 1,
+          "total": 1,
+          "accuracy": 1.0
+        },
+        "durations": {
+          "correct": 1,
+          "total": 1,
+          "accuracy": 1.0
+        }
+      },
+      "native_fields": {},
+      "critical_numeric_substitutions_baseline": 0,
+      "critical_numeric_substitutions_prepared": 0,
+      "unsupported_field_count": 0,
+      "ocr_comparison_page_count": 1
+    },
+    {
+      "id": "synthetic_handwriting_like",
+      "document_type": "image",
+      "writing_style": "synthetic_handwriting_like",
+      "expected_pages": [
+        "Tab FictionalScript 20 mg\n1-0-1 khane ke baad for 5 days"
+      ],
+      "baseline_ocr": [
+        {
+          "text": "Tab\nFictionalscript 20 mg\n1-0-1 khane ke baad for 5\ndays",
+          "latency_ms": 4808.070399999451
+        }
+      ],
+      "prepared": [
+        {
+          "text": "Tab\nFictionalscript 20 mg\n1-0-1 khane ke baad for 5\ndays",
+          "route": "raster_ocr",
+          "latency_ms": 5030.469899999844,
+          "applied_steps": [
+            "autocontrast"
+          ],
+          "warnings": []
+        }
+      ],
+      "raster_page_indexes": [
+        0
+      ],
+      "native_page_indexes": [],
+      "baseline_metrics": {
+        "page_count": 1,
+        "cer": 0.0,
+        "wer": 0.0,
+        "exact_matches": 1,
+        "exact_match_accuracy": 1.0
+      },
+      "prepared_metrics": {
+        "page_count": 1,
+        "cer": 0.0,
+        "wer": 0.0,
+        "exact_matches": 1,
+        "exact_match_accuracy": 1.0
+      },
+      "native_text_metrics": {
+        "page_count": 0,
+        "cer": null,
+        "wer": null,
+        "exact_matches": 0
+      },
+      "baseline_fields": {
+        "medicine_names": {
+          "correct": 1,
+          "total": 1,
+          "accuracy": 1.0
+        },
+        "strengths": {
+          "correct": 1,
+          "total": 1,
+          "accuracy": 1.0
+        },
+        "units": {
+          "correct": 1,
+          "total": 1,
+          "accuracy": 1.0
+        },
+        "frequencies": {
+          "correct": 1,
+          "total": 1,
+          "accuracy": 1.0
+        },
+        "timings": {
+          "correct": 1,
+          "total": 1,
+          "accuracy": 1.0
+        },
+        "durations": {
+          "correct": 1,
+          "total": 1,
+          "accuracy": 1.0
+        }
+      },
+      "prepared_fields": {
+        "medicine_names": {
+          "correct": 1,
+          "total": 1,
+          "accuracy": 1.0
+        },
+        "strengths": {
+          "correct": 1,
+          "total": 1,
+          "accuracy": 1.0
+        },
+        "units": {
+          "correct": 1,
+          "total": 1,
+          "accuracy": 1.0
+        },
+        "frequencies": {
+          "correct": 1,
+          "total": 1,
+          "accuracy": 1.0
+        },
+        "timings": {
+          "correct": 1,
+          "total": 1,
+          "accuracy": 1.0
+        },
+        "durations": {
+          "correct": 1,
+          "total": 1,
+          "accuracy": 1.0
+        }
+      },
+      "native_fields": {},
+      "critical_numeric_substitutions_baseline": 0,
+      "critical_numeric_substitutions_prepared": 0,
+      "unsupported_field_count": 0,
+      "ocr_comparison_page_count": 1
+    },
+    {
+      "id": "romanized_hindi_combination",
+      "document_type": "image",
+      "writing_style": "printed",
+      "expected_pages": [
+        "Tab FictionalCombo 5 mg + 50 mg\n1-0-1 khane se pehle x 3 days"
+      ],
+      "baseline_ocr": [
+        {
+          "text": "Tab FictionalCombo 5 mg + 50 mg\n1-0-1 khane se\nx 3\ndays\npehle",
+          "latency_ms": 5678.390400000353
+        }
+      ],
+      "prepared": [
+        {
+          "text": "Tab FictionalCombo 5 mg + 50 mg\n1-0-1 khane se\nX 3\ndays\npehle",
+          "route": "raster_ocr",
+          "latency_ms": 5591.042500000185,
+          "applied_steps": [
+            "autocontrast"
+          ],
+          "warnings": []
+        }
+      ],
+      "raster_page_indexes": [
+        0
+      ],
+      "native_page_indexes": [],
+      "baseline_metrics": {
+        "page_count": 1,
+        "cer": 0.19672131147540983,
+        "wer": 0.14285714285714285,
+        "exact_matches": 0,
+        "exact_match_accuracy": 0.0
+      },
+      "prepared_metrics": {
+        "page_count": 1,
+        "cer": 0.19672131147540983,
+        "wer": 0.14285714285714285,
+        "exact_matches": 0,
+        "exact_match_accuracy": 0.0
+      },
+      "native_text_metrics": {
+        "page_count": 0,
+        "cer": null,
+        "wer": null,
+        "exact_matches": 0
+      },
+      "baseline_fields": {
+        "medicine_names": {
+          "correct": 1,
+          "total": 1,
+          "accuracy": 1.0
+        },
+        "strengths": {
+          "correct": 1,
+          "total": 1,
+          "accuracy": 1.0
+        },
+        "units": {
+          "correct": 2,
+          "total": 2,
+          "accuracy": 1.0
+        },
+        "frequencies": {
+          "correct": 1,
+          "total": 1,
+          "accuracy": 1.0
+        },
+        "timings": {
+          "correct": 0,
+          "total": 1,
+          "accuracy": 0.0
+        },
+        "durations": {
+          "correct": 1,
+          "total": 1,
+          "accuracy": 1.0
+        }
+      },
+      "prepared_fields": {
+        "medicine_names": {
+          "correct": 1,
+          "total": 1,
+          "accuracy": 1.0
+        },
+        "strengths": {
+          "correct": 1,
+          "total": 1,
+          "accuracy": 1.0
+        },
+        "units": {
+          "correct": 2,
+          "total": 2,
+          "accuracy": 1.0
+        },
+        "frequencies": {
+          "correct": 1,
+          "total": 1,
+          "accuracy": 1.0
+        },
+        "timings": {
+          "correct": 0,
+          "total": 1,
+          "accuracy": 0.0
+        },
+        "durations": {
+          "correct": 1,
+          "total": 1,
+          "accuracy": 1.0
+        }
+      },
+      "native_fields": {},
+      "critical_numeric_substitutions_baseline": 0,
+      "critical_numeric_substitutions_prepared": 0,
+      "unsupported_field_count": 0,
+      "ocr_comparison_page_count": 1
+    },
+    {
+      "id": "blurred_print",
+      "document_type": "image",
+      "writing_style": "printed",
+      "expected_pages": [
+        "Tab FictionalBlur 8 mg\n0-0-1 for 4 days"
+      ],
+      "baseline_ocr": [
+        {
+          "text": "Tab FictionalBlur 8 mg\n0-0-1 for 4 days",
+          "latency_ms": 5200.635299999703
+        }
+      ],
+      "prepared": [
+        {
+          "text": "Tab FictionalBlur 8 mg\n0-0-1 for 4 days",
+          "route": "raster_ocr",
+          "latency_ms": 5017.2732999999425,
+          "applied_steps": [
+            "autocontrast"
+          ],
+          "warnings": []
+        }
+      ],
+      "raster_page_indexes": [
+        0
+      ],
+      "native_page_indexes": [],
+      "baseline_metrics": {
+        "page_count": 1,
+        "cer": 0.0,
+        "wer": 0.0,
+        "exact_matches": 1,
+        "exact_match_accuracy": 1.0
+      },
+      "prepared_metrics": {
+        "page_count": 1,
+        "cer": 0.0,
+        "wer": 0.0,
+        "exact_matches": 1,
+        "exact_match_accuracy": 1.0
+      },
+      "native_text_metrics": {
+        "page_count": 0,
+        "cer": null,
+        "wer": null,
+        "exact_matches": 0
+      },
+      "baseline_fields": {
+        "medicine_names": {
+          "correct": 1,
+          "total": 1,
+          "accuracy": 1.0
+        },
+        "strengths": {
+          "correct": 1,
+          "total": 1,
+          "accuracy": 1.0
+        },
+        "units": {
+          "correct": 1,
+          "total": 1,
+          "accuracy": 1.0
+        },
+        "frequencies": {
+          "correct": 1,
+          "total": 1,
+          "accuracy": 1.0
+        },
+        "durations": {
+          "correct": 1,
+          "total": 1,
+          "accuracy": 1.0
+        }
+      },
+      "prepared_fields": {
+        "medicine_names": {
+          "correct": 1,
+          "total": 1,
+          "accuracy": 1.0
+        },
+        "strengths": {
+          "correct": 1,
+          "total": 1,
+          "accuracy": 1.0
+        },
+        "units": {
+          "correct": 1,
+          "total": 1,
+          "accuracy": 1.0
+        },
+        "frequencies": {
+          "correct": 1,
+          "total": 1,
+          "accuracy": 1.0
+        },
+        "durations": {
+          "correct": 1,
+          "total": 1,
+          "accuracy": 1.0
+        }
+      },
+      "native_fields": {},
+      "critical_numeric_substitutions_baseline": 0,
+      "critical_numeric_substitutions_prepared": 0,
+      "unsupported_field_count": 0,
+      "ocr_comparison_page_count": 1
+    },
+    {
+      "id": "exif_rotated_jpeg",
+      "document_type": "image",
+      "writing_style": "printed",
+      "expected_pages": [
+        "Tab FictionalRotate 2 mg\n1-0-1 for 6 days"
+      ],
+      "baseline_ocr": [
+        {
+          "text": "Tab FictionalRotate 2 mg\n1-0-1 for 6 days",
+          "latency_ms": 5277.8722000002745
+        }
+      ],
+      "prepared": [
+        {
+          "text": "Tab FictionalRotate 2 mg\n1-0-1 for 6 days",
+          "route": "raster_ocr",
+          "latency_ms": 4940.2602999998635,
+          "applied_steps": [
+            "autocontrast"
+          ],
+          "warnings": []
+        }
+      ],
+      "raster_page_indexes": [
+        0
+      ],
+      "native_page_indexes": [],
+      "baseline_metrics": {
+        "page_count": 1,
+        "cer": 0.0,
+        "wer": 0.0,
+        "exact_matches": 1,
+        "exact_match_accuracy": 1.0
+      },
+      "prepared_metrics": {
+        "page_count": 1,
+        "cer": 0.0,
+        "wer": 0.0,
+        "exact_matches": 1,
+        "exact_match_accuracy": 1.0
+      },
+      "native_text_metrics": {
+        "page_count": 0,
+        "cer": null,
+        "wer": null,
+        "exact_matches": 0
+      },
+      "baseline_fields": {
+        "medicine_names": {
+          "correct": 1,
+          "total": 1,
+          "accuracy": 1.0
+        },
+        "strengths": {
+          "correct": 1,
+          "total": 1,
+          "accuracy": 1.0
+        },
+        "units": {
+          "correct": 1,
+          "total": 1,
+          "accuracy": 1.0
+        },
+        "frequencies": {
+          "correct": 1,
+          "total": 1,
+          "accuracy": 1.0
+        },
+        "durations": {
+          "correct": 1,
+          "total": 1,
+          "accuracy": 1.0
+        }
+      },
+      "prepared_fields": {
+        "medicine_names": {
+          "correct": 1,
+          "total": 1,
+          "accuracy": 1.0
+        },
+        "strengths": {
+          "correct": 1,
+          "total": 1,
+          "accuracy": 1.0
+        },
+        "units": {
+          "correct": 1,
+          "total": 1,
+          "accuracy": 1.0
+        },
+        "frequencies": {
+          "correct": 1,
+          "total": 1,
+          "accuracy": 1.0
+        },
+        "durations": {
+          "correct": 1,
+          "total": 1,
+          "accuracy": 1.0
+        }
+      },
+      "native_fields": {},
+      "critical_numeric_substitutions_baseline": 0,
+      "critical_numeric_substitutions_prepared": 0,
+      "unsupported_field_count": 0,
+      "ocr_comparison_page_count": 1
+    },
+    {
+      "id": "numeric_adversarial_sheet",
+      "document_type": "image",
+      "writing_style": "printed",
+      "expected_pages": [
+        "FictionalA 0.5 mg\nFictionalB 5 mg\nFictionalC 0.25 mg\nFictionalD 25 mg\nFictionalE 500 mg\nFictionalF 500 mcg\nFictionalG 1-0-1\nFictionalH 1-1-1\nFictionalI OD\nFictionalJ BD\nFictionalK for 5 days\nFictionalL for 15 days\nFictionalM 1/2 tablet\nFictionalN 2 tablets"
+      ],
+      "baseline_ocr": [
+        {
+          "text": "FictionalA 0.5 mg\nFictionalB 5 mg\nFictionalC 0.25 mg\nFictionalD 25 mg\nFictionalE 500 mg\nFictionalF 500 mcg\nFictionalG 1-0-1\nFictionalH 1-1-1\nFictionall OD\nFictionalJ BD\nFictionalk for 5\nFictionalL for 15\nFictionalM 1/2 tablet\nFictionalN 2 tablets\ndays\ndays",
+          "latency_ms": 9651.994800000466
+        }
+      ],
+      "prepared": [
+        {
+          "text": "FictionalA 0.5 mg\nFictionalB 5 mg\nFictionalC 0.25 mg\nFictionalD 25 mg\nFictionalE 500 mg\nFictionalF 500 mcg\nFictionalG 1-0-1\nFictionalH 1-1-1\nFictionall OD\nFictionalJ BD\nFictionalK for 5 days\nFictionalL for 15 days\nFictionalM 1/2 tablet\nFictionalN 2 tablets",
+          "route": "raster_ocr",
+          "latency_ms": 9281.944500000463,
+          "applied_steps": [
+            "autocontrast"
+          ],
+          "warnings": []
+        }
+      ],
+      "raster_page_indexes": [
+        0
+      ],
+      "native_page_indexes": [],
+      "baseline_metrics": {
+        "page_count": 1,
+        "cer": 0.08203125,
+        "wer": 0.125,
+        "exact_matches": 0,
+        "exact_match_accuracy": 0.0
+      },
+      "prepared_metrics": {
+        "page_count": 1,
+        "cer": 0.00390625,
+        "wer": 0.025,
+        "exact_matches": 0,
+        "exact_match_accuracy": 0.0
+      },
+      "native_text_metrics": {
+        "page_count": 0,
+        "cer": null,
+        "wer": null,
+        "exact_matches": 0
+      },
+      "baseline_fields": {
+        "strengths": {
+          "correct": 6,
+          "total": 6,
+          "accuracy": 1.0
+        },
+        "units": {
+          "correct": 6,
+          "total": 6,
+          "accuracy": 1.0
+        },
+        "frequencies": {
+          "correct": 6,
+          "total": 6,
+          "accuracy": 1.0
+        },
+        "durations": {
+          "correct": 0,
+          "total": 2,
+          "accuracy": 0.0
+        }
+      },
+      "prepared_fields": {
+        "strengths": {
+          "correct": 6,
+          "total": 6,
+          "accuracy": 1.0
+        },
+        "units": {
+          "correct": 6,
+          "total": 6,
+          "accuracy": 1.0
+        },
+        "frequencies": {
+          "correct": 6,
+          "total": 6,
+          "accuracy": 1.0
+        },
+        "durations": {
+          "correct": 2,
+          "total": 2,
+          "accuracy": 1.0
+        }
+      },
+      "native_fields": {},
+      "critical_numeric_substitutions_baseline": 0,
+      "critical_numeric_substitutions_prepared": 0,
+      "unsupported_field_count": 2,
+      "ocr_comparison_page_count": 1
+    },
+    {
+      "id": "two_page_scanned_pdf",
+      "document_type": "scanned_pdf",
+      "writing_style": "printed",
+      "expected_pages": [
+        "Tab FictionalScan 0.5 mg\n1-0-1 after food for 5 days",
+        "Cap FictionalScanB 500 mcg\n0-0-1 for 7 days"
+      ],
+      "baseline_ocr": [
+        {
+          "text": "Tab FictionalScan 0.5 mg\n1-0-1 after food for 5 days",
+          "latency_ms": 4796.822299999803
+        },
+        {
+          "text": "Cap FictionalScanB 500 mcg\n0-0-1 for 7 days",
+          "latency_ms": 4733.705100000407
+        }
+      ],
+      "prepared": [
+        {
+          "text": "Tab FictionalScan 0.5 mg\n1-0-1 after food for 5 days",
+          "route": "raster_ocr",
+          "latency_ms": 5060.212500000489,
+          "applied_steps": [
+            "autocontrast"
+          ],
+          "warnings": [
+            "no_native_text_layer_detected"
+          ]
+        },
+        {
+          "text": "Cap FictionalScanB 500 mcg\n0-0-1 for 7 days",
+          "route": "raster_ocr",
+          "latency_ms": 5060.212500000489,
+          "applied_steps": [
+            "autocontrast"
+          ],
+          "warnings": [
+            "no_native_text_layer_detected"
+          ]
+        }
+      ],
+      "raster_page_indexes": [
+        0,
+        1
+      ],
+      "native_page_indexes": [],
+      "baseline_metrics": {
+        "page_count": 2,
+        "cer": 0.0,
+        "wer": 0.0,
+        "exact_matches": 2,
+        "exact_match_accuracy": 1.0
+      },
+      "prepared_metrics": {
+        "page_count": 2,
+        "cer": 0.0,
+        "wer": 0.0,
+        "exact_matches": 2,
+        "exact_match_accuracy": 1.0
+      },
+      "native_text_metrics": {
+        "page_count": 0,
+        "cer": null,
+        "wer": null,
+        "exact_matches": 0
+      },
+      "baseline_fields": {
+        "medicine_names": {
+          "correct": 2,
+          "total": 2,
+          "accuracy": 1.0
+        },
+        "strengths": {
+          "correct": 2,
+          "total": 2,
+          "accuracy": 1.0
+        },
+        "units": {
+          "correct": 2,
+          "total": 2,
+          "accuracy": 1.0
+        },
+        "frequencies": {
+          "correct": 2,
+          "total": 2,
+          "accuracy": 1.0
+        },
+        "timings": {
+          "correct": 1,
+          "total": 1,
+          "accuracy": 1.0
+        },
+        "durations": {
+          "correct": 2,
+          "total": 2,
+          "accuracy": 1.0
+        }
+      },
+      "prepared_fields": {
+        "medicine_names": {
+          "correct": 2,
+          "total": 2,
+          "accuracy": 1.0
+        },
+        "strengths": {
+          "correct": 2,
+          "total": 2,
+          "accuracy": 1.0
+        },
+        "units": {
+          "correct": 2,
+          "total": 2,
+          "accuracy": 1.0
+        },
+        "frequencies": {
+          "correct": 2,
+          "total": 2,
+          "accuracy": 1.0
+        },
+        "timings": {
+          "correct": 1,
+          "total": 1,
+          "accuracy": 1.0
+        },
+        "durations": {
+          "correct": 2,
+          "total": 2,
+          "accuracy": 1.0
+        }
+      },
+      "native_fields": {},
+      "critical_numeric_substitutions_baseline": 0,
+      "critical_numeric_substitutions_prepared": 0,
+      "unsupported_field_count": 0,
+      "ocr_comparison_page_count": 2
+    },
+    {
+      "id": "two_page_searchable_pdf",
+      "document_type": "searchable_pdf",
+      "writing_style": "printed",
+      "expected_pages": [
+        "Tab FictionalNativeA 0.5 mg\n1-0-1 after food for 5 days",
+        "Cap FictionalNativeB 500 mcg\n0-0-1 for 7 days"
+      ],
+      "baseline_ocr": [
+        {
+          "text": "Tab FictionalNativeA 0.5 mg\n1-0-1 after food for 5 days",
+          "latency_ms": 5308.504900000116
+        },
+        {
+          "text": "Cap FictionalNativeB 500 mcg\n0-0-1 for 7 days",
+          "latency_ms": 5773.735200000374
+        }
+      ],
+      "prepared": [
+        {
+          "text": "Tab FictionalNativeA 0.5 mg\n1-0-1 after food for 5 days",
+          "route": "native_pdf_text",
+          "latency_ms": 0.0,
+          "applied_steps": [],
+          "warnings": [
+            "Native PDF text was used; OCR confidence is unavailable and represented as 0.0 in the compatibility schema."
+          ]
+        },
+        {
+          "text": "Cap FictionalNativeB 500 mcg\n0-0-1 for 7 days",
+          "route": "native_pdf_text",
+          "latency_ms": 0.0,
+          "applied_steps": [],
+          "warnings": [
+            "Native PDF text was used; OCR confidence is unavailable and represented as 0.0 in the compatibility schema."
+          ]
+        }
+      ],
+      "raster_page_indexes": [],
+      "native_page_indexes": [
+        0,
+        1
+      ],
+      "baseline_metrics": {
+        "page_count": 0,
+        "cer": null,
+        "wer": null,
+        "exact_matches": 0
+      },
+      "prepared_metrics": {
+        "page_count": 0,
+        "cer": null,
+        "wer": null,
+        "exact_matches": 0
+      },
+      "native_text_metrics": {
+        "page_count": 2,
+        "cer": 0.0,
+        "wer": 0.0,
+        "exact_matches": 2,
+        "exact_match_accuracy": 1.0
+      },
+      "baseline_fields": {},
+      "prepared_fields": {},
+      "native_fields": {
+        "medicine_names": {
+          "correct": 2,
+          "total": 2,
+          "accuracy": 1.0
+        },
+        "strengths": {
+          "correct": 2,
+          "total": 2,
+          "accuracy": 1.0
+        },
+        "units": {
+          "correct": 2,
+          "total": 2,
+          "accuracy": 1.0
+        },
+        "frequencies": {
+          "correct": 2,
+          "total": 2,
+          "accuracy": 1.0
+        },
+        "timings": {
+          "correct": 1,
+          "total": 1,
+          "accuracy": 1.0
+        },
+        "durations": {
+          "correct": 2,
+          "total": 2,
+          "accuracy": 1.0
+        }
+      },
+      "critical_numeric_substitutions_baseline": 0,
+      "critical_numeric_substitutions_prepared": 0,
+      "unsupported_field_count": 0,
+      "ocr_comparison_page_count": 0
+    },
+    {
+      "id": "mixed_two_page_pdf",
+      "document_type": "mixed_pdf",
+      "writing_style": "printed",
+      "expected_pages": [
+        "Tab FictionalMixedNative 25 mg\n1-0-1 for 3 days",
+        "Tab FictionalMixedScan 0.25 mg\n1/2 tablet for 5 days"
+      ],
+      "baseline_ocr": [
+        {
+          "text": "Tab FictionalMixedNative 25 mg\n1-0-1 for 3 days",
+          "latency_ms": 5668.758000000707
+        },
+        {
+          "text": "Tab FictionalMixedScan 0.25 mg\n1/2 tablet for 5 days",
+          "latency_ms": 5949.226699999599
+        }
+      ],
+      "prepared": [
+        {
+          "text": "Tab FictionalMixedNative 25 mg\n1-0-1 for 3 days",
+          "route": "native_pdf_text",
+          "latency_ms": 0.0,
+          "applied_steps": [],
+          "warnings": [
+            "Native PDF text was used; OCR confidence is unavailable and represented as 0.0 in the compatibility schema."
+          ]
+        },
+        {
+          "text": "Tab FictionalMixedScan 0.25 mg\n1/2 tablet for 5 days",
+          "route": "raster_ocr",
+          "latency_ms": 5052.294600000096,
+          "applied_steps": [
+            "autocontrast"
+          ],
+          "warnings": [
+            "no_native_text_layer_detected"
+          ]
+        }
+      ],
+      "raster_page_indexes": [
+        1
+      ],
+      "native_page_indexes": [
+        0
+      ],
+      "baseline_metrics": {
+        "page_count": 1,
+        "cer": 0.0,
+        "wer": 0.0,
+        "exact_matches": 1,
+        "exact_match_accuracy": 1.0
+      },
+      "prepared_metrics": {
+        "page_count": 1,
+        "cer": 0.0,
+        "wer": 0.0,
+        "exact_matches": 1,
+        "exact_match_accuracy": 1.0
+      },
+      "native_text_metrics": {
+        "page_count": 1,
+        "cer": 0.0,
+        "wer": 0.0,
+        "exact_matches": 1,
+        "exact_match_accuracy": 1.0
+      },
+      "baseline_fields": {
+        "medicine_names": {
+          "correct": 1,
+          "total": 1,
+          "accuracy": 1.0
+        },
+        "strengths": {
+          "correct": 2,
+          "total": 2,
+          "accuracy": 1.0
+        },
+        "units": {
+          "correct": 1,
+          "total": 1,
+          "accuracy": 1.0
+        },
+        "frequencies": {
+          "correct": 1,
+          "total": 1,
+          "accuracy": 1.0
+        },
+        "durations": {
+          "correct": 1,
+          "total": 1,
+          "accuracy": 1.0
+        }
+      },
+      "prepared_fields": {
+        "medicine_names": {
+          "correct": 1,
+          "total": 1,
+          "accuracy": 1.0
+        },
+        "strengths": {
+          "correct": 2,
+          "total": 2,
+          "accuracy": 1.0
+        },
+        "units": {
+          "correct": 1,
+          "total": 1,
+          "accuracy": 1.0
+        },
+        "frequencies": {
+          "correct": 1,
+          "total": 1,
+          "accuracy": 1.0
+        },
+        "durations": {
+          "correct": 1,
+          "total": 1,
+          "accuracy": 1.0
+        }
+      },
+      "native_fields": {
+        "medicine_names": {
+          "correct": 1,
+          "total": 1,
+          "accuracy": 1.0
+        },
+        "strengths": {
+          "correct": 1,
+          "total": 1,
+          "accuracy": 1.0
+        },
+        "units": {
+          "correct": 1,
+          "total": 1,
+          "accuracy": 1.0
+        },
+        "frequencies": {
+          "correct": 1,
+          "total": 1,
+          "accuracy": 1.0
+        },
+        "durations": {
+          "correct": 1,
+          "total": 1,
+          "accuracy": 1.0
+        }
+      },
+      "critical_numeric_substitutions_baseline": 0,
+      "critical_numeric_substitutions_prepared": 0,
+      "unsupported_field_count": 0,
+      "ocr_comparison_page_count": 1
+    }
+  ],
+  "limitations": [
+    "All image fixtures are digitally rendered fictional text; the handwriting-like sample uses a printed script font and is not genuine handwriting.",
+    "No real patient data or hosted OCR was used.",
+    "Metrics describe this synthetic set only."
+  ]
+}

@@ -318,56 +318,14 @@ def _decide_possible_match(
     Otherwise REVIEW is selected to prevent incorrect medicine merges.
     """
 
-    candidate = _get_single_candidate(
-        candidate_result
-    )
-
-    if candidate is None:
-
-        return MergeDecision(
-            action=MergeAction.REVIEW,
-            target_medicine_id=None,
-            record=record,
-            reason=(
-                "Multiple possible medicine candidates were found. "
-                "Automatic merging is unsafe."
-            ),
-        )
-
-    if not _candidate_is_high_confidence(candidate):
-
-        return MergeDecision(
-            action=MergeAction.REVIEW,
-            target_medicine_id=candidate.medicine_id,
-            record=record,
-            reason=(
-                "A possible medicine candidate was found, but the "
-                "similarity confidence is below the automatic merge "
-                "threshold."
-            ),
-        )
-
-    if not _record_can_enrich_existing_medicine(record):
-
-        return MergeDecision(
-            action=MergeAction.SKIP,
-            target_medicine_id=candidate.medicine_id,
-            record=record,
-            reason=(
-                "A high-confidence medicine candidate was found, but "
-                "the incoming record contains no additional information "
-                "to merge."
-            ),
-        )
-
+    candidate = _get_single_candidate(candidate_result)
     return MergeDecision(
-        action=MergeAction.UPDATE,
-        target_medicine_id=candidate.medicine_id,
+        action=MergeAction.REVIEW,
+        target_medicine_id=candidate.medicine_id if candidate is not None else None,
         record=record,
         reason=(
-            "Exactly one high-confidence medicine candidate was found "
-            "and the incoming record contains information suitable for "
-            "automatic enrichment."
+            "A fuzzy medicine candidate cannot update an official source "
+            "record automatically. Manual identity review is required."
         ),
     )
 

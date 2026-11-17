@@ -97,3 +97,15 @@ def test_dosage_pattern_can_be_embedded_in_instruction():
     assert result.night_units == 1
 
     assert result.units_per_day == 2
+
+
+def test_zero_denominator_fraction_remains_unstructured():
+    result = parse_dosage_schedule(
+        "1/0-0-1"
+    )
+
+    assert result.raw_pattern is None
+    assert result.morning_units is None
+    assert result.afternoon_units is None
+    assert result.night_units is None
+    assert result.units_per_day is None

@@ -64,6 +64,23 @@ class MedicineIntelligencePipeline:
         # Step 1: Retrieve candidates from the read-only repository.
         retrieval = self.retriever.retrieve(query)
 
+        # A combination cannot be confirmed from name or dosage form alone:
+        # each written component must have an exact, independently evidenced
+        # strength and the candidate must contain no additional components.
+        if len(medicine.ingredient_strengths) >= 2:
+            def identity(items):
+                return sorted((i.name.strip().casefold(), i.value, (i.unit or '').strip().casefold()) for i in items)
+
+            expected = identity(medicine.ingredient_strengths)
+            if any(value is None or not unit for _, value, unit in expected):
+                retrieval.candidates = []
+            else:
+                retrieval.candidates = [
+                    candidate for candidate in retrieval.candidates
+                    if all(item.strength_value is not None and item.strength_unit for item in candidate.ingredients)
+                    and sorted((item.ingredient_name.strip().casefold(), item.strength_value, item.strength_unit.strip().casefold()) for item in candidate.ingredients) == expected
+                ]
+
         if not retrieval.attempted:
             return self._not_attempted_result(
                 query=query,
@@ -150,7 +167,14 @@ class MedicineIntelligencePipeline:
             dosage_form=medicine.dosage_form,
             strength_value=strength.value if strength else None,
             strength_unit=strength.unit if strength else None,
-            active_ingredients=[],
+            # A single written product name is not automatically its active
+            # ingredient.  Only an explicitly separated combination provides
+            # component-level identity evidence for Layer 4.
+            active_ingredients=(
+                [component.name for component in medicine.ingredient_strengths if component.name]
+                if len(medicine.ingredient_strengths) >= 2
+                else []
+            ),
         )
 
     @staticmethod
