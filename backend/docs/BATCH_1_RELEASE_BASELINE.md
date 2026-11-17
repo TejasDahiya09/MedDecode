@@ -162,4 +162,3 @@ No Batch 2 source file was modified in this batch.
 The Batch 1 test and static-analysis baseline is trustworthy for this working tree. It is not a clean-checkout release baseline until migration/source ownership is reviewed and the preserved untracked work is deliberately brought under source control or excluded by its owners.
 
 Do not proceed to hosted deployment from this tree. Batch 2 may begin as a separate, narrowly scoped change after owner review of the affected intelligence files.
-

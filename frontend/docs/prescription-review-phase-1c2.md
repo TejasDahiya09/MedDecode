@@ -1,9 +1,9 @@
 # MedDecode — Phase 1C.2: Prescription Review Frontend Integration, Contract Alignment, and Feature-Flag Hardening
 
-**Module:** Prescription Review & Confirmation Frontend (`frontend/src/features/prescription-review`)  
-**Status:** Complete, Hardened & Verified  
-**Contract Version:** `1.0` (Backend Contract v1, Architecture V3)  
-**Verification Baseline:** 35/35 feature unit tests passed | 318/318 full frontend unit tests passed | TypeScript typecheck passed | ESLint 0 errors / 0 warnings | Production build passed  
+**Module:** Prescription Review & Confirmation Frontend (`frontend/src/features/prescription-review`)
+**Status:** Complete, Hardened & Verified
+**Contract Version:** `1.0` (Backend Contract v1, Architecture V3)
+**Verification Baseline:** 35/35 feature unit tests passed | 318/318 full frontend unit tests passed | TypeScript typecheck passed | ESLint 0 errors / 0 warnings | Production build passed
 
 ---
 

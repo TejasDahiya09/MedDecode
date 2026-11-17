@@ -69,4 +69,3 @@ job operations only. Approve a versioned mapping without changing Contract v1.
 
 These drafts remain **BLOCKED FOR EXECUTION** until every relevant decision has
 an owner, evidence, independent review, and isolated test result.
-

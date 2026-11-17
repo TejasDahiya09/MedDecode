@@ -36,4 +36,3 @@ Phase 5.7j also corrects the failed/success branch, adds historical-row STOP
 audits, and adds reconciliation row-count assertions. These are draft design
 corrections only. The package remains blocked for SQL execution and isolated
 database testing until all named helpers and security decisions are resolved.
-

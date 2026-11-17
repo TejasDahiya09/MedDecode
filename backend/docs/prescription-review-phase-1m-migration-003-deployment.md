@@ -1,7 +1,7 @@
 # Phase 1M — Migration 003 hosted deployment record
 
-Date: 2026-11-16  
-Target: Supabase project `wyripeqruhvbksjfsvlr`, database `postgres`  
+Date: 2026-11-16
+Target: Supabase project `wyripeqruhvbksjfsvlr`, database `postgres`
 Scope: Migration 003 only. No application feature flag, worker, job, result, or unrelated migration was changed.
 
 ## Approved artifact

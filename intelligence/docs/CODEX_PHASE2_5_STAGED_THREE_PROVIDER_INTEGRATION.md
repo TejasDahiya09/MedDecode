@@ -1,6 +1,6 @@
 # Codex Phase 2.5 - Staged Three-Provider OCR Integration
 
-Date: 2026-11-15  
+Date: 2026-11-15
 Branch: `integration/full-project`
 
 ## Outcome

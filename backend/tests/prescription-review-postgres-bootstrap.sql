@@ -36,4 +36,3 @@ CREATE TABLE public.meddecode_scoped_worker_scope (
 GRANT USAGE ON SCHEMA public,auth TO authenticated,meddecode_scoped_worker;
 GRANT EXECUTE ON FUNCTION auth.uid() TO authenticated;
 GRANT authenticated TO postgres WITH SET TRUE, INHERIT FALSE;
-

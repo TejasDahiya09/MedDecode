@@ -95,4 +95,3 @@ adapter runs before a separate complete/fail job call. A future adapter must
 replace that production path with one finalization RPC accepting only the
 canonical Contract v1 result. Compatibility tests must inject failures before,
 during, and after the RPC and prove no split terminal state remains.
-

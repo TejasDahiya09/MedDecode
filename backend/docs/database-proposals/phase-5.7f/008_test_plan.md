@@ -121,4 +121,3 @@ Migration hash, PostgreSQL version, before/after catalogs, complete role/grant
 matrix, test counts, concurrency iterations, rollback result, zero-network
 proof, known limitations, and skipped cases are mandatory. Passing mocks alone
 is insufficient; separate two-user Supabase-compatible RLS testing is required.
-

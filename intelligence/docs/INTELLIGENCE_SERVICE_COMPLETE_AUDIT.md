@@ -1,8 +1,8 @@
 # MedDecode Intelligence Service — Complete Forensic Audit
 
-**Audit date:** 2026-11-14  
-**Repository:** `C:/Users/dahiy/MedDecode-integration`  
-**Branch observed:** `integration/full-project`  
+**Audit date:** 2026-11-14
+**Repository:** `C:/Users/dahiy/MedDecode-integration`
+**Branch observed:** `integration/full-project`
 **Scope:** source inspection and non-networked local tests only. No source, configuration, model, database, cloud service, or processing job was changed.
 
 ## 1. Executive summary
@@ -360,4 +360,3 @@ Run real local FastAPI with model and restricted catalogue, Node Contract valida
 | MEDICAL_SAFETY_HANDLING | **PARTIAL** | Conservative matching/withholding; no patient-specific safety engine and evidence reduction remains. |
 | OCR_BENCHMARK_QUALITY | **MISSING** | No attributable, representative ground-truth benchmark artifact. |
 | READY_FOR_COPILOT_IMPLEMENTATION | **YES** | Gap register and phased safety-first roadmap are actionable; implementation must begin with P0/P1 controls and evaluation. |
-

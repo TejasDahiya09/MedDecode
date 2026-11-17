@@ -282,4 +282,3 @@ class TrOCRSubprocessProvider:
             ))
         self.last_status_code = "ok"
         return predictions
-

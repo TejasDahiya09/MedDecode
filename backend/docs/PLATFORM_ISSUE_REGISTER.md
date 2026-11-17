@@ -1,6 +1,6 @@
 # MedDecode Platform Issue Register
 
-**Snapshot:** 2026-11-17, branch `integration/full-project`  
+**Snapshot:** 2026-11-17, branch `integration/full-project`
 **Conventions:** Confirmed means reproduced by command, direct source inspection, or a recorded runtime symptom with an exact path. Suspected means plausible but requiring a controlled reproduction. Severity reflects release and patient-safety risk, not implementation effort.
 
 ## Summary

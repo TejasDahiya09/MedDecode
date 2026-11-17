@@ -179,5 +179,3 @@ async def process(request: Request):
                 raise HTTPException(status_code=422, detail="Document processing failed") from None
     finally:
         request.app.state.gate.release()
-
-

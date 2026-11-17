@@ -1,6 +1,6 @@
 # MedDecode V3 Implementation Roadmap
 
-**Status:** Proposed — awaiting owner approval  
+**Status:** Proposed — awaiting owner approval
 **Rule:** approval of one phase does not authorize the next.
 
 ## Phase 0 — Architecture approval

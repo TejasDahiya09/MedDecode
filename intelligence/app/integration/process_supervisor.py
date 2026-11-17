@@ -394,5 +394,3 @@ class ProcessingSupervisor:
         self._closing = True
         processes = list(self._active.values())
         await asyncio.gather(*(self._terminate(process) for process in processes), return_exceptions=True)
-
-

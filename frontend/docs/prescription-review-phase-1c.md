@@ -1,8 +1,8 @@
 # MedDecode — Phase 1C: Prescription Review, Editing, and Confirmation Frontend
 
-**Module:** Prescription Review & Confirmation Workspace  
-**Status:** Complete & Verified  
-**Contract Version:** `1.0` (Review Contract v1, Architecture V3)  
+**Module:** Prescription Review & Confirmation Workspace
+**Status:** Complete & Verified
+**Contract Version:** `1.0` (Review Contract v1, Architecture V3)
 **Feature Flag:** `isPrescriptionReviewEnabled()` (Environment `VITE_PRESCRIPTION_REVIEW_ENABLED`, query param `?review=true`, or `localStorage.meddecode_review_feature_flag`)
 
 ---

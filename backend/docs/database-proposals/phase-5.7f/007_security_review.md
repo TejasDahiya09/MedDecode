@@ -91,4 +91,3 @@ accepted.
 Alternatives remain disabled because the PDF uses `ingredient_equivalence` and
 current TypeScript uses `ingredient_equivalent`. No silent contract change is
 authorized.
-

@@ -1,8 +1,8 @@
 # MedDecode Master System Audit V3
 
-**Audit date:** 2026-11-15  
-**Repository:** `MedDecode-integration` (`integration/full-project`)  
-**Scope:** Phase A.0 documentation and architecture freeze only  
+**Audit date:** 2026-11-15
+**Repository:** `MedDecode-integration` (`integration/full-project`)
+**Scope:** Phase A.0 documentation and architecture freeze only
 **Authority:** No runtime, schema, hosted, credential, or cloud changes are authorized by this audit.
 
 ## Executive conclusion
@@ -150,10 +150,10 @@ Document AI Enterprise OCR provides printed/handwritten OCR, layout signals, des
 
 ## Status
 
-`CURRENT_VERTICAL_SLICE: VERIFIED_WITH_LIMITATIONS`  
-`HUMAN_REVIEW_WORKFLOW: NOT_IMPLEMENTED`  
-`OCR_EVIDENCE_PERSISTENCE: PARTIAL`  
-`MULTI_MEDICINE_ASSOCIATION: PARTIAL`  
-`THREE_PROVIDER_RUNTIME: BLOCKED_BY_MEMORY_BUDGET`  
-`CLOUD_OCR: NOT_IMPLEMENTED_DISABLED_BY_DESIGN`  
+`CURRENT_VERTICAL_SLICE: VERIFIED_WITH_LIMITATIONS`
+`HUMAN_REVIEW_WORKFLOW: NOT_IMPLEMENTED`
+`OCR_EVIDENCE_PERSISTENCE: PARTIAL`
+`MULTI_MEDICINE_ASSOCIATION: PARTIAL`
+`THREE_PROVIDER_RUNTIME: BLOCKED_BY_MEMORY_BUDGET`
+`CLOUD_OCR: NOT_IMPLEMENTED_DISABLED_BY_DESIGN`
 `ARCHITECTURE_REPLACEMENT_REQUIRED: NO`

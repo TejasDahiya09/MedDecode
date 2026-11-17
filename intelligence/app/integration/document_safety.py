@@ -161,5 +161,3 @@ def validate_staged_document(path: Path, file_type: str, limits: DocumentSafetyL
     if file_type == "application/pdf":
         return _pdf_geometry(path, limits, render_dpi)
     return _image_geometry(path, "JPEG" if file_type == "image/jpeg" else "PNG", limits)
-
-

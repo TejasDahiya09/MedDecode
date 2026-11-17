@@ -96,4 +96,3 @@ SELECT polname,
 FROM pg_policy WHERE polrelid='public.medication_reminders'::regclass
  AND polname IN ('medication_reminders_owner_insert','medication_reminders_owner_update');
 ROLLBACK;
-

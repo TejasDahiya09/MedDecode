@@ -10,4 +10,3 @@ SELECT public.meddecode_initialize_prescription_review_v1(
   '{"eventId":"60000000-0000-4000-8000-000000000001","type":"draft_created","medicineId":null,"changedFields":[],"idempotencyKey":null,"occurredAt":"2026-11-15T10:00:00Z"}'
 );
 COMMIT;
-

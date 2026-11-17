@@ -106,7 +106,7 @@ The real local inference run was performed with the approved checkpoint in the i
 
 | Sample | Output | Observation |
 | --- | --- | --- |
-| `Miraform 250 mg` | `Miratorm 250 mg. 1/ 1/` | partially correct, but degraded | 
+| `Miraform 250 mg` | `Miratorm 250 mg. 1/ 1/` | partially correct, but degraded |
 | `Take one tablet twice daily` | `Take one tablet twice daily 2000 2001` | spurious suffix output |
 | `Use 0.5 ml at bedtime` | `use 0.5ml at bedtime 2000 2001` | units preserved but decoder suffix noise appears |
 

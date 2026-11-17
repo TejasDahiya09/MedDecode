@@ -106,7 +106,7 @@ BEGIN
     RAISE EXCEPTION USING ERRCODE = '22023', MESSAGE = 'invalid heartbeat request';
   END IF;
   PERFORM 1 FROM public.meddecode_scoped_worker_scope AS scope
-   WHERE scope.job_id = p_job_id 
+   WHERE scope.job_id = p_job_id
      AND scope.worker_login = session_user AND scope.worker_instance_id = p_worker_instance_id AND scope.enabled
      AND scope.expires_at > clock_timestamp()
      AND EXISTS (SELECT 1 FROM public.ai_jobs AS scoped_job WHERE scoped_job.id = scope.job_id

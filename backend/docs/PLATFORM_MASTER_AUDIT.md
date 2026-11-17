@@ -1,8 +1,8 @@
 # MedDecode Platform Master Audit
 
-**Audit date:** 2026-11-17  
-**Repository:** `C:\Users\dahiy\MedDecode-integration`  
-**Branch:** `integration/full-project`  
+**Audit date:** 2026-11-17
+**Repository:** `C:\Users\dahiy\MedDecode-integration`
+**Branch:** `integration/full-project`
 **Mode:** audit only; no hosted SQL, worker start, job processing, or application-data mutation
 
 ## 1. Executive conclusion
@@ -182,8 +182,8 @@ Start with **Batch 1**, immediately followed by **Batch 2**. A repository whose 
 
 ## 12. Release decision
 
-**Platform readiness:** NO-GO.  
-**Reason:** failed backend/Python/static gates, unreproducible migration/source state, and a confirmed review-boundary regression.  
+**Platform readiness:** NO-GO.
+**Reason:** failed backend/Python/static gates, unreproducible migration/source state, and a confirmed review-boundary regression.
 **Hosted mutation recommendation:** none; resolve and independently verify local blockers first.
 
 The detailed, deduplicated findings and acceptance tests are in `PLATFORM_ISSUE_REGISTER.md`.

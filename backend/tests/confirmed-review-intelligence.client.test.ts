@@ -84,4 +84,3 @@ test("runs the real confirmed-review Python adapter through Layers 4-5", async (
   assert.deepEqual(medicine.extraction.strength, { value: 500, unit: "mg" });
   assert.ok(result.warnings.some((warning) => warning.code === "USER_CONFIRMED_TRANSCRIPTION"));
 });
-

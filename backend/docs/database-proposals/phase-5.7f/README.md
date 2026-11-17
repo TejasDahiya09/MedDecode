@@ -67,4 +67,3 @@ proof of live state. The verified recommendation table is
 
 The revised package is suitable for independent design review only. It is not
 ready for SQL compilation, staging, or production execution.
-
