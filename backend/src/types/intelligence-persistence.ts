@@ -84,6 +84,7 @@ export interface PrescriptionWarningProjectionInsert {
 }
 
 export type UnsupportedNormalizedField =
+  | "medicines[].alternatives"
   | "medicines[].medicine_match.medicine_external_id"
   | "medicines[].medicine_match.brand_name"
   | "medicines[].medicine_match.dosage_form"

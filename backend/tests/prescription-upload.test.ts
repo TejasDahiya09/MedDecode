@@ -455,4 +455,20 @@ describe("AWS S3 storage adapter commands", () => {
         !error.message.includes("secret AWS diagnostic")
     );
   });
+
+  it("aborts a stalled S3 request and returns a sanitized failure", async () => {
+    const client = {
+      async send(_command: unknown, options: { abortSignal: AbortSignal }) {
+        await new Promise<void>((_resolve, reject) => {
+          options.abortSignal.addEventListener("abort", () => reject(new Error("private provider detail")), { once: true });
+        });
+      },
+    } as unknown as S3Client;
+    const storage = createS3PrescriptionStorage({ region: "test", bucket, client, timeoutMs: 10 });
+    const keepAlive = setTimeout(() => undefined, 500);
+    try {
+      await assert.rejects(storage.upload({ objectKey: "synthetic", bytes: pdf(), fileType: "application/pdf" }),
+        (error: unknown) => error instanceof PrescriptionStorageError && !error.message.includes("private"));
+    } finally { clearTimeout(keepAlive); }
+  });
 });

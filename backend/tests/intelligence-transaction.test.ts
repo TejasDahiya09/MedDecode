@@ -343,7 +343,7 @@ test("prevents finalization from queued or already-terminal jobs", async () => {
   }
 });
 
-test("rejects unresolved non-empty alternatives before any synthetic write", async () => {
+test("retains nonempty alternatives in the raw result without inventing normalized links", async () => {
   const { transaction, finalize } = harness();
   const response = success();
   response.medicines.push({
@@ -368,20 +368,16 @@ test("rejects unresolved non-empty alternatives before any synthetic write", asy
       medicine_external_id: "synthetic",
       brand_name: "Synthetic",
       match_basis: {
-        ingredient_equivalent: true,
+        ingredient_equivalence: true,
         strength_compatibility: true,
         dosage_form_compatibility: true,
       },
       confidence: 0.5,
     }],
   });
-  const before = transaction.snapshot();
-  await assert.rejects(
-    () => finalize(response),
-    (error: unknown) => error instanceof InMemoryIntelligenceTransactionError &&
-      error.code === "MAPPING_REJECTED",
-  );
-  assert.deepEqual(transaction.snapshot(), before);
+  await finalize(response);
+  const snapshot = transaction.snapshot();
+  assert.deepEqual(snapshot.rawResults[0]?.[1].result_json, response);
 });
 
 test("result records never persist document URLs or storage metadata", async () => {

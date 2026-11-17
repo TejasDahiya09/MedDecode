@@ -11,6 +11,7 @@
     "dev": "tsx watch src/server.ts",
     "build": "tsc",
     "start": "node dist/server.js",
+    "worker:start": "node dist/worker.js",
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.tools.json",
     "test": "tsx --test tests/*.test.ts",
     "smoke:auth": "tsx scripts/auth-smoke.ts",
@@ -24,13 +25,15 @@
     "dotenv": "^17.2.2",
     "express": "^5.1.0",
     "file-type": "^22.3.0",
-    "helmet": "^8.1.0"
+    "helmet": "^8.1.0",
+    "pg": "^8.23.1"
   },
   "devDependencies": {
     "@types/busboy": "^1.5.5",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.3",
     "@types/node": "^24.5.2",
+    "@types/pg": "^8.23.1",
     "@types/supertest": "^7.2.1",
     "supertest": "^7.3.2",
     "tsx": "^4.20.5",

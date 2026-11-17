@@ -13,6 +13,7 @@ import type { PrescriptionHistoryRepository } from "../src/repositories/prescrip
 import type { ProfileRepository } from "../src/repositories/profile.repository.js";
 import type { AuthVerifier, VerifiedIdentity } from "../src/services/auth.service.js";
 import type { MedicineCabinetRow } from "../src/types/medicine-cabinet.js";
+import type { MedicineCabinetCreate, MedicineCabinetUpdate } from "../src/types/medicine-cabinet.js";
 
 const userId = "00000000-0000-4000-8000-000000000001";
 const otherUserId = "00000000-0000-4000-8000-000000000002";
@@ -56,6 +57,26 @@ class CabinetRepositoryProbe implements MedicineCabinetRepository {
   rows: readonly MedicineCabinetRow[] = [];
   detail: MedicineCabinetRow | null = null;
   failure?: Error;
+  exists = true;
+  familyAllowed = true;
+  readonly created: MedicineCabinetCreate[] = [];
+  async medicineExists() { if (this.failure) throw this.failure; return this.exists; }
+  async familyOwned() { return this.familyAllowed; }
+  async createOwned(_client: UserSupabaseClient, ownerId: string, input: MedicineCabinetCreate) {
+    this.created.push(input);
+    return { ...row, ...input, user_id: ownerId, id: this.created.length === 1 ? entryId : secondEntryId };
+  }
+  readonly deletions: Array<{ userId: string; entryId: string }> = [];
+  readonly updates: Array<{ userId: string; entryId: string; input: MedicineCabinetUpdate }> = [];
+  async updateOwned(_client: UserSupabaseClient, ownerId: string, recordId: string, input: MedicineCabinetUpdate) {
+    this.updates.push({ userId: ownerId, entryId: recordId, input });
+    if (this.failure) throw this.failure;
+    return this.detail?.user_id === ownerId && this.detail.id === recordId ? { ...this.detail, ...input } : null;
+  }
+  async deleteOwned(_client: UserSupabaseClient, ownerId: string, recordId: string) {
+    this.deletions.push({ userId: ownerId, entryId: recordId });
+    return this.detail?.user_id === ownerId && this.detail.id === recordId;
+  }
   async listOwned(
     _client: UserSupabaseClient,
     ownerId: string,
@@ -108,6 +129,64 @@ function harness() {
 }
 
 const auth = { Authorization: "Bearer token" };
+
+describe("Medicine cabinet editing", () => {
+  it("requires authentication and updates supported fields for the owner", async () => {
+    const current = harness(); current.repository.detail = row;
+    const path = `/api/v1/medicine-cabinet/${entryId}`;
+    assert.equal((await request(current.app).patch(path).send({ quantity: '3' })).status, 401);
+    const response = await request(current.app).patch(path).set(auth).send({ quantity: '3.5', expiry_date: '2028-02-29', usage_information: 'As directed' });
+    assert.equal(response.status, 200); assert.equal(response.body.entry.quantity, '3.5');
+    assert.equal(current.repository.updates[0]?.userId, userId);
+  });
+  it("rejects invalid fields and denies cross-owner edits", async () => {
+    const current = harness(); const path = `/api/v1/medicine-cabinet/${entryId}`;
+    for (const input of [{ user_id: otherUserId }, { quantity: '-1' }, { expiry_date: '2027-02-29' }, {}])
+      assert.equal((await request(current.app).patch(path).set(auth).send(input)).status, 400);
+    assert.equal((await request(current.app).patch('/api/v1/medicine-cabinet/invalid').set(auth).send({ quantity: '1' })).status, 400);
+    current.repository.detail = { ...row, user_id: otherUserId };
+    assert.equal((await request(current.app).patch(path).set(auth).send({ quantity: '1' })).status, 404);
+  });
+});
+
+describe("Medicine cabinet removal", () => {
+  it("requires authentication and deletes only an owned entry", async () => {
+    const current = harness();
+    current.repository.detail = row;
+    assert.equal((await request(current.app).delete(`/api/v1/medicine-cabinet/${entryId}`)).status, 401);
+    assert.equal(current.repository.deletions.length, 0);
+    assert.equal((await request(current.app).delete(`/api/v1/medicine-cabinet/${entryId}`).set(auth)).status, 204);
+    assert.deepEqual(current.repository.deletions, [{ userId, entryId }]);
+    current.repository.detail = { ...row, user_id: otherUserId };
+    assert.equal((await request(current.app).delete(`/api/v1/medicine-cabinet/${entryId}`).set(auth)).status, 404);
+    assert.equal((await request(current.app).delete('/api/v1/medicine-cabinet/invalid').set(auth)).status, 400);
+  });
+});
+
+describe("Medicine cabinet creation", () => {
+  it("creates distinct lots using the authenticated owner", async () => {
+    const current = harness();
+    assert.equal((await request(current.app).post('/api/v1/medicine-cabinet').send({ medicine_id: medicineId })).status, 401);
+    const first = await request(current.app).post('/api/v1/medicine-cabinet').set(auth).send({ medicine_id: medicineId, quantity: '2.5' });
+    const second = await request(current.app).post('/api/v1/medicine-cabinet').set(auth).send({ medicine_id: medicineId, quantity: '2.5' });
+    assert.equal(first.status, 201); assert.equal(second.status, 201);
+    assert.notEqual(first.body.entry.id, second.body.entry.id);
+    assert.equal(first.body.entry.quantity, '2.5');
+  });
+  it("rejects invalid input, foreign family, missing medicine and provider errors", async () => {
+    const current = harness();
+    assert.equal((await request(current.app).post('/api/v1/medicine-cabinet').set(auth).send({ medicine_id: medicineId, user_id: otherUserId })).status, 400);
+    assert.equal((await request(current.app).post('/api/v1/medicine-cabinet').set(auth).send({ medicine_id: medicineId, expiry_date: '2026-02-31' })).status, 400);
+    current.repository.familyAllowed = false;
+    assert.equal((await request(current.app).post('/api/v1/medicine-cabinet').set(auth).send({ medicine_id: medicineId, family_member_id: otherUserId })).status, 404);
+    current.repository.exists = false;
+    assert.equal((await request(current.app).post('/api/v1/medicine-cabinet').set(auth).send({ medicine_id: medicineId })).status, 404);
+    current.repository.failure = new Error('private diagnostic');
+    const failed = await request(current.app).post('/api/v1/medicine-cabinet').set(auth).send({ medicine_id: medicineId });
+    assert.equal(failed.status, 500); assert.doesNotMatch(JSON.stringify(failed.body), /private diagnostic/);
+    assert.equal(current.repository.created.length, 0);
+  });
+});
 const publicItem = {
   id: entryId,
   medicine_id: medicineId,
@@ -157,14 +236,13 @@ describe("Authenticated read-only medicine cabinet APIs", () => {
     const current = harness();
     current.repository.rows = [{
       ...row,
-      family_member_id: "must-not-leak",
+      family_member_id: null,
       provider_private: "must-not-leak"
     } as MedicineCabinetRow];
     const response = await request(current.app).get("/api/v1/medicine-cabinet").set(auth);
     assert.equal(response.status, 200);
-    assert.deepEqual(response.body.items, [publicItem]);
+    assert.deepEqual(response.body.items, [{ ...publicItem, family_member_id: null }]);
     assert.equal(JSON.stringify(response.body).includes("user_id"), false);
-    assert.equal(JSON.stringify(response.body).includes("family_member_id"), false);
     assert.equal(JSON.stringify(response.body).includes("provider_private"), false);
   });
 

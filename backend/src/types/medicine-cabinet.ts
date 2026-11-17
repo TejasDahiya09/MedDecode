@@ -3,6 +3,7 @@ export interface MedicineCabinetRow {
   readonly id: string;
   readonly user_id: string;
   readonly medicine_id: string;
+  readonly family_member_id?: string | null;
   readonly quantity: number | string | null;
   readonly purchase_date: string | null;
   readonly expiry_date: string | null;
@@ -16,6 +17,7 @@ export interface MedicineCabinetRow {
 export interface MedicineCabinetItem {
   readonly id: string;
   readonly medicine_id: string;
+  readonly family_member_id?: string | null;
   readonly quantity: string | null;
   readonly purchase_date: string | null;
   readonly expiry_date: string | null;
@@ -24,6 +26,19 @@ export interface MedicineCabinetItem {
   readonly created_at: string;
   readonly updated_at: string;
 }
+
+export interface MedicineCabinetCreate {
+  readonly medicine_id: string;
+  readonly family_member_id: string | null;
+  readonly quantity: string | null;
+  readonly purchase_date: string | null;
+  readonly expiry_date: string | null;
+  readonly refill_date: string | null;
+  readonly usage_information: string | null;
+}
+
+export type MedicineCabinetUpdate = Partial<Pick<MedicineCabinetCreate,
+  "quantity" | "purchase_date" | "expiry_date" | "refill_date" | "usage_information">>;
 
 export interface MedicineCabinetPage {
   readonly items: readonly MedicineCabinetItem[];

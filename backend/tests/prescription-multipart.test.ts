@@ -73,6 +73,14 @@ describe("Prescription multipart lifecycle", () => {
     await rejectsWithin(pending, "INVALID_MULTIPART_REQUEST");
   });
 
+  it("cleans request listeners when the parser closes without a file", async () => {
+    const { request, parser, pending } = controlledRequest();
+    parser.emit("close");
+    await rejectsWithin(pending, "INVALID_MULTIPART_REQUEST");
+    assert.equal(request.listenerCount("aborted"), 0);
+    assert.equal(request.listenerCount("close"), 0);
+  });
+
   it("settles on a file stream error", async () => {
     const { parser, pending } = controlledRequest();
     const file = new PassThrough();

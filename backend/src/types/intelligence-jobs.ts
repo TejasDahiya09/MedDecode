@@ -2,7 +2,7 @@ import type { IntelligenceFileType, IntelligenceResponseV1 } from "./intelligenc
 
 export const INTELLIGENCE_JOB_TYPE = "prescription_analysis" as const;
 
-export type IntelligenceJobStatus = "queued" | "processing" | "completed" | "failed";
+export type IntelligenceJobStatus = "queued" | "processing" | "completed" | "failed" | "cancelled";
 
 export interface RequestedAnalysis {
   readonly extract_prescription: boolean;
@@ -10,6 +10,13 @@ export interface RequestedAnalysis {
   readonly find_alternatives: false;
   readonly generate_recommendations: boolean;
 }
+
+export const DEFAULT_REQUESTED_ANALYSIS: RequestedAnalysis = Object.freeze({
+  extract_prescription: true,
+  match_medicines: true,
+  find_alternatives: false,
+  generate_recommendations: true
+});
 
 export interface OwnedProcessablePrescription {
   readonly id: string;

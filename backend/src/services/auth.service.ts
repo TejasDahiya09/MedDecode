@@ -1,6 +1,7 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 import { getSupabasePublicEnv } from "../config/env.js";
+import { createBoundedFetch } from "../config/bounded-fetch.js";
 
 export interface VerifiedIdentity {
   readonly userId: string;
@@ -24,6 +25,7 @@ function getAuthClient(): SupabaseClient {
   if (!authClient) {
     const { supabaseUrl, supabasePublishableKey } = getSupabasePublicEnv();
     authClient = createClient(supabaseUrl, supabasePublishableKey, {
+      global: { fetch: createBoundedFetch(fetch) },
       auth: {
         persistSession: false,
         autoRefreshToken: false,

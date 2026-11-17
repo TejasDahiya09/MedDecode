@@ -2,7 +2,6 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
-  IntelligenceResultMappingError,
   mapValidatedIntelligenceResult,
 } from "../src/services/intelligence-result.mapper.js";
 import type {
@@ -183,7 +182,7 @@ test("accepts a missing public external identifier without fabricating one", () 
   assert.equal("medicine_external_id" in plan.medicines[0]!, false);
 });
 
-test("accepts empty alternatives and rejects every non-empty alternative array", () => {
+test("preserves alternatives in raw JSON and marks their normalized projection unavailable", () => {
   const empty = success();
   empty.medicines.push(medicine());
   assert.doesNotThrow(() => mapValidatedIntelligenceResult({ response: empty, finalizedAt }));
@@ -194,7 +193,7 @@ test("accepts empty alternatives and rejects every non-empty alternative array",
     medicine_external_id: "synthetic-alternative",
     brand_name: "Synthetic alternative",
     match_basis: {
-      ingredient_equivalent: true,
+      ingredient_equivalence: true,
       strength_compatibility: true,
       dosage_form_compatibility: true,
     },
@@ -202,11 +201,10 @@ test("accepts empty alternatives and rejects every non-empty alternative array",
     note: null,
   }];
   nonEmpty.medicines.push(entry);
-  assert.throws(
-    () => mapValidatedIntelligenceResult({ response: nonEmpty, finalizedAt }),
-    (error: unknown) => error instanceof IntelligenceResultMappingError &&
-      error.code === "ALTERNATIVES_CONTRACT_UNRESOLVED",
-  );
+  const plan = mapValidatedIntelligenceResult({ response: nonEmpty, finalizedAt });
+  assert.deepEqual(plan.rawResult.result_json, nonEmpty);
+  assert.ok(plan.unsupportedNormalizedFields.includes("medicines[].alternatives"));
+  assert.equal("medicine_id" in plan.medicines[0]!, false);
 });
 
 test("returns immutable detached raw snapshots rather than mutating the validated response", () => {

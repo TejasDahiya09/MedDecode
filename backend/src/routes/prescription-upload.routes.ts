@@ -26,6 +26,8 @@ import {
 } from "../services/prescription-storage.service.js";
 import type { AuthVerifier } from "../services/auth.service.js";
 import type { PrescriptionInsert } from "../types/prescriptions.js";
+import { ProcessingJobService } from "../services/processing-job.service.js";
+import { createConfiguredProcessingJobStore, type ProcessingJobStoreFactory } from "../repositories/processing-job.store.js";
 
 export interface PrescriptionUploadDependencies {
   readonly storage: PrescriptionStorage;
@@ -70,7 +72,10 @@ export function createPrescriptionUploadRouter(
   verifier: AuthVerifier,
   userClientFactory: UserSupabaseClientFactory = createUserSupabaseClient,
   dependenciesFactory: PrescriptionUploadDependenciesFactory =
-    createDefaultPrescriptionUploadDependencies
+    createDefaultPrescriptionUploadDependencies,
+  autoSubmit: { readonly enabled: boolean; readonly storeFactory: ProcessingJobStoreFactory } = {
+    enabled: false, storeFactory: createConfiguredProcessingJobStore
+  }
 ): Router {
   const router = Router();
   const authenticate = createAuthenticateMiddleware(verifier, userClientFactory);
@@ -80,6 +85,15 @@ export function createPrescriptionUploadRouter(
     authenticate,
     async (request, response) => {
       const identity = requireAuthenticatedIdentity(request);
+      // Explicit contract negotiation keeps older clients from receiving a
+      // response shape they reject after an upload has already succeeded.
+      const autoHeader = request.get("X-MedDecode-Auto-Submit");
+      if (autoHeader !== undefined && autoHeader !== "v1") {
+        throw new AppError(400, "INVALID_PROCESSING_REQUEST", "Invalid processing preference.");
+      }
+      if (autoHeader === "v1" && !autoSubmit.enabled) {
+        throw new AppError(503, "AUTO_SUBMISSION_UNAVAILABLE", "Automatic processing submission is unavailable.");
+      }
       const dependencies = dependenciesFactory();
       const file = await parsePrescriptionMultipart(
         request,
@@ -168,6 +182,20 @@ export function createPrescriptionUploadRouter(
         }
       }
 
+      let processing: { requested: boolean | null; job_id: string | null; submission?: "unconfirmed" } = {
+        requested: false, job_id: null
+      };
+      if (autoHeader === "v1") {
+        try {
+          const submitted = await new ProcessingJobService(autoSubmit.storeFactory(requireUserClient(request)))
+            .submit(identity.userId, prescriptionId);
+          processing = { requested: true, job_id: submitted.body.job.id };
+        } catch {
+          // The upload is durable; the RPC may have committed despite a lost
+          // response. Never encourage a second upload or claim no job exists.
+          processing = { requested: null, job_id: null, submission: "unconfirmed" };
+        }
+      }
       response.status(201).json({
         prescription_id: prescriptionId,
         upload: {
@@ -175,10 +203,7 @@ export function createPrescriptionUploadRouter(
           mime_type: file.fileType,
           size_bytes: file.sizeBytes
         },
-        processing: {
-          requested: false,
-          job_id: null
-        }
+        processing
       });
     }
   );

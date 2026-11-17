@@ -271,7 +271,7 @@ test("non-empty alternatives are rejected when alternatives were not requested",
     medicine_external_id: "synthetic-external-id",
     brand_name: "Synthetic alternative",
     match_basis: {
-      ingredient_equivalent: true,
+      ingredient_equivalence: true,
       strength_compatibility: true,
       dosage_form_compatibility: true,
     },
@@ -382,9 +382,9 @@ test("synthetic document reference is inert and contains no bucket or object key
   assert.equal(reference.file_url.includes("private/prescriptions"), false);
 });
 
-test("orchestration source is not registered as an Express route", async () => {
+test("worker execution orchestration is not registered as an Express route", async () => {
   const { readFile } = await import("node:fs/promises");
   const appSource = await readFile(join(process.cwd(), "src", "app.ts"), "utf8");
   assert.equal(appSource.includes("PrescriptionProcessingService"), false);
-  assert.equal(appSource.includes("/process"), false);
+  assert.equal(appSource.includes("executeJob"), false);
 });
