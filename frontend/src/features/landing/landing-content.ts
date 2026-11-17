@@ -2,7 +2,7 @@ import type { IconName } from '../../components/Icon';
 
 export const capabilities: readonly { title: string; icon: IconName; description: string; labels: readonly string[] }[] = [
   { title: 'Prescription Understanding', icon: 'copy', description: 'Organize available details from a prescription into a clearer view.', labels: ['Prescription details', 'Medicine information', 'Review with a professional'] },
-  { title: 'Medicine Insights', icon: 'search', description: 'Explore medicine identities, active ingredients and supporting information.', labels: ['Medicine identity', 'Active ingredients', 'Available sources'] },
+  { title: 'Medicine Library', icon: 'search', description: 'Explore medicine identities, active ingredients and supporting information.', labels: ['Medicine identity', 'Active ingredients', 'Available sources'] },
   { title: 'Compare Medicines', icon: 'filter', description: 'Review equivalent formulations and available cost information with context.', labels: ['Formulations', 'Available cost information', 'Professional guidance'] },
   { title: 'Medicine Cabinet', icon: 'briefcase', description: 'Keep medicine and expiry information organized in one place.', labels: ['Your medicines', 'Expiry information', 'Cabinet overview'] },
   { title: 'Reminders', icon: 'calendar', description: 'Plan medicine-management and refill reminders around your needs.', labels: ['Reminder preferences', 'Refill planning', 'Your routine'] },

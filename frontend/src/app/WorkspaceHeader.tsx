@@ -1,4 +1,4 @@
-﻿import { useEffect, useId, useRef, useState, type MouseEvent, type PropsWithChildren } from 'react';
+import { useEffect, useId, useRef, useState, type MouseEvent, type PropsWithChildren } from 'react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { Icon } from '../components/Icon';
 import { PublicThemeToggle } from '../components/PublicThemeToggle';
@@ -44,20 +44,38 @@ export function WorkspaceHeader({ onExplore, expanded }: { onExplore: (event: Mo
   const [searchOpen, setSearchOpen] = useState(false);
   const searchContainer = useRef<HTMLDivElement>(null);
   const searchTrigger = useRef<HTMLButtonElement>(null);
+  const accountName = auth.user?.email ?? 'Not signed in';
+  const accountInitials = auth.user?.email?.split('@')[0]?.split(/[._-]/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join('') || 'A';
   return <header className="cc-top-nav"><div className="cc-top-nav-inner">
     <Link aria-label="MedDecode home" className="cc-shell-brand" to="/home"><span className="cc-shell-brand-mark">M</span><span className="cc-shell-wordmark">MedDecode</span></Link>
     <nav className="cc-shell-primary-nav" aria-label="Primary navigation">
-      {destinations.map((item, index) => <NavLink key={item.path} to={item.path} end className={({ isActive }) => `cc-shell-nav-link${index > 4 ? ' md-wide-link' : ''}${isActive ? ' is-active' : ''}`}>{item.label}</NavLink>)}
+      {destinations.map((item, index) => {
+        const isCurrentActive = item.path === '/prescriptions'
+          ? pathname === '/prescriptions' || pathname.startsWith('/prescriptions/')
+          : (item.path === '/medicine-library'
+             ? pathname === '/medicine-library' || pathname === '/medicine-insights'
+             : pathname === item.path);
+        return (
+          <NavLink
+            key={item.path}
+            to={item.path}
+            end={item.path !== '/prescriptions'}
+            className={({ isActive }) =>
+              `cc-shell-nav-link${index > 4 ? ' md-wide-link' : ''}${isCurrentActive || isActive ? ' is-active' : ''}`
+            }
+          >
+            {item.label}
+          </NavLink>
+        );
+      })}
       <Disclosure label="More workspace sections" className="md-desktop-more" active={destinations.slice(5).some(item => item.path === pathname)}><nav className="cc-shell-dropdown md-overflow-menu" aria-label="More workspace sections">{destinations.slice(5).map(item => <NavLink key={item.path} to={item.path} className={({ isActive }) => `cc-shell-menu-item${isActive ? ' is-selected' : ''}`}><Icon name={item.icon} className="size-4" />{item.label}</NavLink>)}</nav></Disclosure>
     </nav>
     <button type="button" className="cc-shell-explore-trigger" aria-label="Explore all sections" aria-haspopup="dialog" aria-controls="workspace-navigation" aria-expanded={expanded} onClick={onExplore}><Icon name="dashboard" /><span>Explore</span></button>
     <div ref={searchContainer} className={`cc-shell-search${searchOpen ? ' is-open' : ''}`} onKeyDown={event => { if (event.key === 'Escape') { setSearchOpen(false); searchTrigger.current?.focus(); } }}><RouteSearch onNavigate={() => setSearchOpen(false)} /></div>
     <div className="cc-shell-utilities">
       <button ref={searchTrigger} className="cc-shell-utility cc-shell-search-trigger" aria-label="Open section search" title="Search MedDecode sections" aria-expanded={searchOpen} onClick={() => { setSearchOpen(!searchOpen); if (!searchOpen) requestAnimationFrame(() => searchContainer.current?.querySelector('input')?.focus()); }}><Icon name="search" /></button>
-      <Disclosure label="Workspace shortcuts" className="md-compact-utilities"><nav className="cc-shell-dropdown md-overflow-menu" aria-label="Workspace shortcuts">{destinations.slice(4).map(item => <NavLink key={item.path} aria-label={`${item.label} shortcut`} to={item.path} className="cc-shell-menu-item"><Icon name={item.icon} className="size-4" />{item.label}</NavLink>)}</nav></Disclosure>
-      {destinations.filter(item => ['/my-cabinet','/reminders','/learn-resources'].includes(item.path)).map(item => <NavLink key={item.path} aria-label={`${item.label} shortcut`} title={item.label} to={item.path} className={({ isActive }) => `cc-shell-utility md-direct-utility${item.path !== '/reminders' ? ' md-utility-secondary' : ''}${isActive ? ' is-active' : ''}`}><Icon name={item.path === '/reminders' ? 'bell' : item.icon} /><span className="cc-shell-utility-label">{item.path === '/my-cabinet' ? 'Cabinet' : item.path === '/learn-resources' ? 'Resources' : 'Reminders'}</span></NavLink>)}
       <div className="cc-shell-theme"><PublicThemeToggle /></div>
-      <Disclosure label="Account menu" avatar="MU"><div className="cc-shell-dropdown cc-shell-account-menu"><div className="cc-shell-account-identity"><span className="cc-shell-avatar" aria-hidden="true">MU</span><div><strong>MedDecode User</strong><small>Verified session</small></div></div><p className="md-demo-profile-copy">Signed in to MedDecode. Demo workspace records still stay in memory.</p><div className="cc-shell-menu-section"><Link className="cc-shell-menu-item" to="/home"><Icon name="home" className="size-4" />Home</Link><Link className="cc-shell-menu-item" to="/my-cabinet"><Icon name="briefcase" className="size-4" />My Cabinet</Link><button type="button" className="cc-shell-menu-item" onClick={() => void auth.signOut()}><Icon name="arrow" className="size-4" />Sign out</button></div></div></Disclosure>
+      <Disclosure label="Account menu" avatar={accountInitials}><div className="cc-shell-dropdown cc-shell-account-menu"><div className="cc-shell-account-identity"><span className="cc-shell-avatar" aria-hidden="true">{accountInitials}</span><div><strong>{accountName}</strong><small>{auth.user ? 'Verified account' : 'No authenticated session'}</small></div></div><div className="cc-shell-menu-section"><Link className="cc-shell-menu-item" to="/home"><Icon name="home" className="size-4" />Home</Link><Link className="cc-shell-menu-item" to="/prescriptions"><Icon name="inbox" className="size-4" />My Prescriptions</Link><Link className="cc-shell-menu-item" to="/my-cabinet"><Icon name="briefcase" className="size-4" />My Cabinet</Link>{auth.user ? <button type="button" className="cc-shell-menu-item" onClick={() => void auth.signOut()}><Icon name="arrow" className="size-4" />Sign out</button> : <Link className="cc-shell-menu-item" to="/sign-in"><Icon name="arrow" className="size-4" />Sign in</Link>}</div></div></Disclosure>
     </div>
   </div></header>;
 }

@@ -6,6 +6,7 @@ beforeEach(() => {
   localStorage.clear();
   window.history.replaceState({}, '', '/');
   vi.stubGlobal('scrollTo', vi.fn());
+  Element.prototype.scrollIntoView = vi.fn();
   document.documentElement.removeAttribute('data-theme');
   document.head.innerHTML = '<meta name="theme-color" content="#f8fafc">';
 });

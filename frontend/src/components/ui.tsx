@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes, PropsWithChildren, ReactNode } from 'react';
+import type { ButtonHTMLAttributes, HTMLAttributes, PropsWithChildren, ReactNode } from 'react';
 import { Icon, type IconName } from './Icon';
 import { cn } from '../utils/class-names';
 
@@ -40,8 +40,8 @@ export function Badge({
   return <span className={`cc-badge cc-badge--${tone}`}>{children}</span>;
 }
 
-export function Card({ children, className }: PropsWithChildren<{ readonly className?: string }>) {
-  return <section className={cn('cc-card', className)}>{children}</section>;
+export function Card({ children, className, ...rest }: HTMLAttributes<HTMLElement>) {
+  return <section className={cn('cc-card', className)} {...rest}>{children}</section>;
 }
 
 export function EmptyState({

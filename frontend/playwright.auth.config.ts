@@ -18,28 +18,28 @@ export default defineConfig({
     {
       name: 'auth-mocked',
       testMatch: /auth-browser\.spec\.ts/,
-      use: { browserName: 'chromium', baseURL: 'http://127.0.0.1:5174' },
+      use: { browserName: 'chromium', baseURL: 'http://localhost:5174' },
     },
     {
       name: 'auth-missing-config',
       testMatch: /auth-missing-config\.spec\.ts/,
-      use: { browserName: 'chromium', baseURL: 'http://127.0.0.1:5175' },
+      use: { browserName: 'chromium', baseURL: 'http://localhost:5175' },
     },
   ],
   webServer: [
     {
       command: 'npm run dev',
-      url: 'http://127.0.0.1:5174',
-      reuseExistingServer: false,
+      url: 'http://localhost:5174',
+      reuseExistingServer: true,
       timeout: 30_000,
       env: configuredEnvironment,
     },
     {
-      command: 'npx --no-install vite --host 127.0.0.1 --port 5175 --strictPort',
-      url: 'http://127.0.0.1:5175',
-      reuseExistingServer: false,
+      command: 'npx --no-install vite --host localhost --port 5175 --strictPort',
+      url: 'http://localhost:5175',
+      reuseExistingServer: true,
       timeout: 30_000,
-      env: { VITE_API_BASE_URL: '/backend' },
+      env: { VITE_API_BASE_URL: '/backend', VITE_SUPABASE_URL: '', VITE_SUPABASE_PUBLISHABLE_KEY: '' },
     },
   ],
 });

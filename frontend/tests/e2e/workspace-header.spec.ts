@@ -1,4 +1,4 @@
-﻿import { expect, test } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 import { destinations } from '../../src/app/navigation';
 
 for (const width of [1200,1280,1440,1728,768,390,320,1920]) test(`top shell ${width}: routes, search, utilities and keyboard`, async ({page,baseURL}) => {
@@ -37,8 +37,15 @@ for (const width of [1200,1280,1440,1728,768,390,320,1920]) test(`top shell ${wi
     await expect(page.locator('.md-search-results').getByRole('link',{name:'Medicine Insights',exact:true})).toBeFocused();
     await page.keyboard.press('Enter'); await expect(page).toHaveURL(/medicine-insights$/);
   }
-  if(width>=1120 && width<1440) await page.getByLabel('Workspace shortcuts',{exact:true}).first().click();
-  await page.getByRole('link',{name:'Reminders shortcut'}).filter({visible:true}).click(); await expect(page).toHaveURL(/reminders$/);
+  if(width>=1120) {
+    if(width<1280) {
+      await page.getByLabel('More workspace sections',{exact:true}).first().click();
+      await page.getByRole('navigation',{name:'More workspace sections'}).getByRole('link',{name:'Reminders'}).click();
+    } else {
+      await page.getByRole('navigation',{name:'Primary navigation'}).getByRole('link',{name:'Reminders'}).click();
+    }
+    await expect(page).toHaveURL(/reminders$/);
+  }
   const profile=page.getByLabel('Demo User menu'); await profile.click();
   await expect(page.getByText('No authenticated session.',{exact:false})).toBeVisible();
   await page.keyboard.press('Escape'); await expect(profile).toBeFocused();
@@ -58,7 +65,7 @@ for(const width of [320,390]) for(const theme of ['light','dark'] as const) test
   for(const selector of ['.cc-home-welcome','.cc-home-kicker']) expect(await page.locator(selector).evaluate(el=>el.scrollWidth<=el.clientWidth)).toBe(true);
   for(const control of await page.locator('.cc-top-nav .cc-shell-avatar, .cc-shell-theme button, .cc-top-nav .cc-shell-utility:visible').all()) { const box=await control.boundingBox(); expect(box!.x).toBeGreaterThanOrEqual(0); expect(box!.x+box!.width).toBeLessThanOrEqual(width); }
   await page.getByRole('button',{name:'Explore all sections'}).click();
-  await expect(page.getByRole('dialog').getByRole('navigation',{name:'All sections'}).getByRole('link')).toHaveCount(7);
+  await expect(page.getByRole('dialog').getByRole('navigation',{name:'All sections'}).getByRole('link')).toHaveCount(8);
   await page.getByRole('dialog').getByRole('link',{name:/Learn & Resources/}).click(); await expect(page).toHaveURL(/learn-resources$/);
   await page.screenshot({path:`playwright-report/c1b/${baseURL?.includes('4174')?'preview':'dev'}-enlarged-${width}-${theme}.png`,fullPage:true});
 });

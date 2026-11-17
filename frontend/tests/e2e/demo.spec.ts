@@ -45,7 +45,7 @@ for (const width of [1440,390]) {
     if (width === 1440) await page.getByRole('navigation',{name:'Primary navigation'}).getByRole('link',{name:'Home',exact:true}).click();
     else await page.getByRole('navigation',{name:'Mobile navigation'}).getByRole('link',{name:'Home',exact:true}).click();
     await expect(page.getByText('04',{exact:true})).toBeVisible();
-    if (width === 1440) await page.getByRole('link',{name:'My Cabinet shortcut'}).click();
+    if (width === 1440) await page.getByRole('navigation',{name:'Primary navigation'}).getByRole('link',{name:'My Cabinet',exact:true}).click();
     else await page.getByRole('navigation',{name:'Mobile navigation'}).getByRole('link',{name:'Cabinet',exact:true}).click();
     await page.getByRole('button',{name:'Remove Synthetic cabinet test'}).click(); await page.getByRole('button',{name:'Confirm removal'}).click(); await expect(page.getByRole('heading',{name:'Synthetic cabinet test'})).toHaveCount(0);
     await page.getByRole('button',{name:'Add medicine',exact:true}).click(); await page.keyboard.press('Escape'); await expect(page.getByRole('dialog')).toHaveCount(0);

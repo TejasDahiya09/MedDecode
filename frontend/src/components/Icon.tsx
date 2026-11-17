@@ -10,12 +10,14 @@ export type IconName =
   | 'calendar'
   | 'check'
   | 'chevron'
+  | 'clock'
   | 'close'
   | 'copy'
   | 'dashboard'
   | 'filter'
   | 'home'
   | 'inbox'
+  | 'info'
   | 'linkedin'
   | 'menu'
   | 'message'
@@ -23,6 +25,7 @@ export type IconName =
   | 'moon'
   | 'plus'
   | 'profile'
+  | 'refresh'
   | 'search'
   | 'settings'
   | 'share'
@@ -48,12 +51,21 @@ const paths: Readonly<Record<IconName, readonly string[]>> = {
   calendar: ['M6 2v4M18 2v4M3 9h18', 'M4 4h16v18H4z'],
   check: ['m5 12 4 4L19 6'],
   chevron: ['m9 18 6-6-6-6'],
+  clock: [
+    'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z',
+    'M12 6v6l4 2',
+  ],
   close: ['M6 6l12 12M18 6 6 18'],
   copy: ['M8 8h12v12H8z', 'M4 16V4h12'],
   dashboard: ['M4 4h6v6H4zM14 4h6v10h-6zM4 14h6v6H4zM14 18h6v2h-6z'],
   filter: ['M4 5h16M7 12h10M10 19h4'],
   home: ['m3 11 9-8 9 8', 'M5 10v11h14V10', 'M9 21v-7h6v7'],
   inbox: ['M4 5h16l2 9v5H2v-5z', 'M2 14h6l2 3h4l2-3h6'],
+  info: [
+    'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z',
+    'M12 16v-4',
+    'M12 8h.01',
+  ],
   linkedin: ['M5 9v10M5 5.5v.01M10 19V9', 'M10 13a4 4 0 0 1 8 0v6', 'M3 3h18v18H3z'],
   menu: ['M4 7h16M4 12h16M4 17h16'],
   message: ['M4 4h16v13H8l-4 4z'],
@@ -61,6 +73,10 @@ const paths: Readonly<Record<IconName, readonly string[]>> = {
   moon: ['M20 15.5A8.5 8.5 0 0 1 8.5 4 8.5 8.5 0 1 0 20 15.5z'],
   plus: ['M12 5v14M5 12h14'],
   profile: ['M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8', 'M4 21a8 8 0 0 1 16 0'],
+  refresh: [
+    'M21.5 2v6h-6',
+    'M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.19',
+  ],
   search: ['M11 19a8 8 0 1 1 0-16 8 8 0 0 1 0 16', 'm21 21-4.35-4.35'],
   settings: [
     'M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7',
@@ -96,6 +112,7 @@ interface IconProps extends SVGProps<SVGSVGElement> {
 }
 
 export function Icon({ name, ...props }: IconProps) {
+  const pathList = (name && paths[name]) ? paths[name] : [];
   return (
     <svg
       aria-hidden="true"
@@ -107,7 +124,7 @@ export function Icon({ name, ...props }: IconProps) {
       viewBox="0 0 24 24"
       {...props}
     >
-      {paths[name].map((path) => (
+      {pathList.map((path) => (
         <path d={path} key={path} />
       ))}
     </svg>

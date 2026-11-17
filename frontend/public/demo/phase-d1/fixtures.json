@@ -1,0 +1,165 @@
+{
+  "schema_version": "phase-d1-demo.v1",
+  "demo_only": true,
+  "notice": "All reminder schedules, history events, and people are fictional preview data. These values are not treatment instructions and are not written to an account.",
+  "provenance": {
+    "source_dataset": "mohfw_india_nlem_2022",
+    "source_release": "2022",
+    "source_authority": "Ministry of Health and Family Welfare, Government of India",
+    "source_url": "https://nppa.gov.in/en/nlem2022",
+    "local_export": "datasets/normalized/india-nlem-2022/nlem-2022-first-50-formulations.json",
+    "record_id_semantics": "NLEM item and formulation identifier, not a production MedDecode UUID"
+  },
+  "catalogue_records": [
+    {
+      "source_record_id": "2.1.5:f1",
+      "canonical_name": "Paracetamol - Tablet 500 mg",
+      "ingredient_name": "Paracetamol",
+      "strength_value": "500",
+      "strength_unit": "mg",
+      "dosage_form": "Tablet"
+    },
+    {
+      "source_record_id": "2.1.5:f3",
+      "canonical_name": "Paracetamol - Oral liquid 120 mg/5 mL (p)",
+      "ingredient_name": "Paracetamol",
+      "strength_value": "120",
+      "strength_unit": "mg/5ml",
+      "dosage_form": "Oral liquid"
+    },
+    {
+      "source_record_id": "2.1.2:f1",
+      "canonical_name": "Diclofenac - Tablet 50 mg",
+      "ingredient_name": "Diclofenac",
+      "strength_value": "50",
+      "strength_unit": "mg",
+      "dosage_form": "Tablet"
+    },
+    {
+      "source_record_id": "2.1.3:f1",
+      "canonical_name": "Ibuprofen - Tablet 200 mg",
+      "ingredient_name": "Ibuprofen",
+      "strength_value": "200",
+      "strength_unit": "mg",
+      "dosage_form": "Tablet"
+    },
+    {
+      "source_record_id": "2.1.4:f2",
+      "canonical_name": "Mefenamic acid - Oral liquid 100 mg/5 mL (p)",
+      "ingredient_name": "Mefenamic acid",
+      "strength_value": "100",
+      "strength_unit": "mg/5ml",
+      "dosage_form": "Oral liquid"
+    }
+  ],
+  "cabinet": [
+    {
+      "id": "d1-cabinet-paracetamol-tablet",
+      "catalogue_record_id": "2.1.5:f1",
+      "status": "active",
+      "schedule_type": "daily",
+      "schedule_text": "Morning preview slot · 08:00 (fictional)",
+      "added_at": "2026-11-16",
+      "completed_at": null,
+      "reminder_id": "d1-reminder-paracetamol-tablet"
+    },
+    {
+      "id": "d1-cabinet-paracetamol-liquid",
+      "catalogue_record_id": "2.1.5:f3",
+      "status": "active",
+      "schedule_type": "daily",
+      "schedule_text": "Afternoon preview slot · 13:30 (fictional)",
+      "added_at": "2026-11-16",
+      "completed_at": null,
+      "reminder_id": "d1-reminder-paracetamol-liquid"
+    },
+    {
+      "id": "d1-cabinet-diclofenac-tablet",
+      "catalogue_record_id": "2.1.2:f1",
+      "status": "active",
+      "schedule_type": "daily",
+      "schedule_text": "Evening preview slot · 20:00 (fictional)",
+      "added_at": "2026-11-16",
+      "completed_at": null,
+      "reminder_id": "d1-reminder-diclofenac-tablet"
+    },
+    {
+      "id": "d1-cabinet-ibuprofen-tablet",
+      "catalogue_record_id": "2.1.3:f1",
+      "status": "active",
+      "schedule_type": "twice_daily",
+      "schedule_text": "Multiple daily preview slots (fictional)",
+      "added_at": "2026-11-16",
+      "completed_at": null,
+      "reminder_id": "d1-reminder-ibuprofen-tablet"
+    },
+    {
+      "id": "d1-cabinet-mefenamic-liquid",
+      "catalogue_record_id": "2.1.4:f2",
+      "status": "active",
+      "schedule_type": "twice_daily",
+      "schedule_text": "Afternoon/evening preview slots (fictional)",
+      "added_at": "2026-11-16",
+      "completed_at": null,
+      "reminder_id": "d1-reminder-mefenamic-liquid"
+    }
+  ],
+  "reminders": [
+    {
+      "id": "d1-reminder-paracetamol-tablet",
+      "cabinet_id": "d1-cabinet-paracetamol-tablet",
+      "title": "Morning demo reminder",
+      "schedule_type": "daily",
+      "scheduled_times": ["08:00"],
+      "ends_at": "2026-11-18",
+      "enabled": true,
+      "history": [
+        { "date": "2026-11-16", "time": "08:00", "status": "taken" }
+      ]
+    },
+    {
+      "id": "d1-reminder-paracetamol-liquid",
+      "cabinet_id": "d1-cabinet-paracetamol-liquid",
+      "title": "Afternoon demo reminder",
+      "schedule_type": "daily",
+      "scheduled_times": ["13:30"],
+      "ends_at": "2026-11-18",
+      "enabled": true,
+      "history": []
+    },
+    {
+      "id": "d1-reminder-diclofenac-tablet",
+      "cabinet_id": "d1-cabinet-diclofenac-tablet",
+      "title": "Evening demo reminder",
+      "schedule_type": "daily",
+      "scheduled_times": ["20:00"],
+      "ends_at": "2026-11-18",
+      "enabled": true,
+      "history": [
+        { "date": "2026-11-16", "time": "20:00", "status": "skipped" }
+      ]
+    },
+    {
+      "id": "d1-reminder-ibuprofen-tablet",
+      "cabinet_id": "d1-cabinet-ibuprofen-tablet",
+      "title": "Multiple-slot demo reminder",
+      "schedule_type": "twice_daily",
+      "scheduled_times": ["09:00", "18:00"],
+      "ends_at": "2026-11-18",
+      "enabled": true,
+      "history": [
+        { "date": "2026-11-16", "time": "09:00", "status": "taken" }
+      ]
+    },
+    {
+      "id": "d1-reminder-mefenamic-liquid",
+      "cabinet_id": "d1-cabinet-mefenamic-liquid",
+      "title": "Afternoon and evening demo reminder",
+      "schedule_type": "twice_daily",
+      "scheduled_times": ["14:00", "19:00"],
+      "ends_at": "2026-11-18",
+      "enabled": true,
+      "history": []
+    }
+  ]
+}

@@ -27,12 +27,12 @@ beforeEach(() => {
   vi.stubGlobal('matchMedia', vi.fn(() => media));
 });
 
-it.each(['light', 'dark', 'system'])('renders stored preference %s through providers', (mode) => {
+it.each(['light', 'dark', 'system'])('renders stored preference %s through providers', async (mode) => {
   localStorage.setItem(themeStorageKey, mode);
   mount();
   expect(document.documentElement.dataset.theme).toBe(mode === 'dark' ? 'dark' : 'light');
   expect(localStorage.getItem(themeStorageKey)).toBe(mode);
-  expect(screen.getByRole('heading', { name: 'Welcome, Demo User.' })).toBeTruthy();
+  expect(await screen.findByRole('heading', { name: /Welcome back/ })).toBeTruthy();
 });
 it.each([null, 'invalid'])('falls back to system for preference %s', (value) => {
   if (value !== null) localStorage.setItem(themeStorageKey, value);

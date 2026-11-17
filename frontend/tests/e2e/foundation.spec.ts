@@ -2,7 +2,7 @@ import { mkdir } from 'node:fs/promises';
 import { expect, test } from '@playwright/test';
 
 test.beforeEach(async ({ page }) => {
-  await page.route('**/backend/**', (route) => route.abort());
+  await page.route('**/api/**', (route) => route.abort());
 });
 
 for (const viewport of [

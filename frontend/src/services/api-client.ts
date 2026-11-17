@@ -8,8 +8,14 @@ export class ApiError extends Error {
   }
 }
 
-function endpointFor(path: string): URL {
-  const base = import.meta.env.VITE_API_BASE_URL?.trim();
+export interface RequestOptions extends RequestInit {
+  readonly params?: Record<string, string | number | boolean | undefined | null> | URLSearchParams;
+}
+
+export function endpointFor(path: string, params?: RequestOptions['params']): URL {
+  const configuredBase = import.meta.env.VITE_API_BASE_URL?.trim();
+  // Existing local setups use /backend; Vite also supports direct /api paths.
+  const base = import.meta.env.DEV && configuredBase === '/backend' ? '/' : configuredBase;
   if (!base) throw new ApiError('The application API is not configured.', null, 'configuration');
   let endpoint: URL;
   try {
@@ -35,11 +41,26 @@ function endpointFor(path: string): URL {
     }
   }
   endpoint.pathname = endpoint.pathname.replace(/\/+$/, '') + path;
+  if (params) {
+    if (params instanceof URLSearchParams) {
+      const query = params.toString();
+      if (query) endpoint.search = `?${query}`;
+    } else {
+      const searchParams = new URLSearchParams();
+      for (const [key, value] of Object.entries(params)) {
+        if (value !== undefined && value !== null) {
+          searchParams.set(key, String(value));
+        }
+      }
+      const query = searchParams.toString();
+      if (query) endpoint.search = `?${query}`;
+    }
+  }
   return endpoint;
 }
 
-export async function requestJson<T = unknown>(path: string, init: RequestInit = {}): Promise<T | undefined> {
-  const endpoint = endpointFor(path);
+export async function requestJson<T = unknown>(path: string, init: RequestOptions = {}): Promise<T | undefined> {
+  const endpoint = endpointFor(path, init.params);
   const headers = new Headers(init.headers);
   if (!headers.has('Accept')) headers.set('Accept', 'application/json');
   try {
@@ -61,7 +82,7 @@ export async function requestJson<T = unknown>(path: string, init: RequestInit =
   }
 }
 
-export async function requestAuthenticatedJson<T = unknown>(path: string, accessToken: string, init: RequestInit = {}): Promise<T | undefined> {
+export async function requestAuthenticatedJson<T = unknown>(path: string, accessToken: string, init: RequestOptions = {}): Promise<T | undefined> {
   if (!accessToken.trim()) throw new ApiError('An authenticated session is required.', 401, 'http');
   const headers = new Headers(init.headers);
   if (headers.has('Authorization')) throw new ApiError('Authorization is managed by the session transport.', null, 'configuration');

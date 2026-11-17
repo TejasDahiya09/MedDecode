@@ -1,0 +1,507 @@
+/* Medication Reminders Page Styles */
+.md-reminders {
+  max-width: 86rem;
+  margin-inline: auto;
+  padding-inline: 1.5rem;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  color: var(--cc-text);
+}
+
+.md-reminders-header {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  margin-bottom: 2rem;
+}
+
+@media (min-width: 768px) {
+  .md-reminders-header {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: flex-start;
+  }
+}
+
+.md-reminders-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-shrink: 0;
+}
+
+.md-reminders-add-btn {
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.md-reminders-header h1 {
+  margin: 0;
+  font-family: Manrope, Inter, sans-serif;
+  font-size: clamp(1.75rem, 2.5vw, 2.25rem);
+  font-weight: 800;
+  line-height: 1.15;
+  letter-spacing: -0.03em;
+  color: var(--cc-text);
+}
+
+.md-reminders-header p {
+  margin: 0.35rem 0 0;
+  color: var(--cc-muted);
+  font-size: 0.925rem;
+  line-height: 1.5;
+}
+
+/* Service Dependency / Unavailable Alert */
+.md-reminders-alert {
+  padding: 1.15rem 1.35rem;
+  border-radius: 0.875rem;
+  border: 1px solid var(--cc-border);
+  background: var(--cc-panel);
+  box-shadow: var(--cc-shadow-sm);
+  margin-bottom: 1.5rem;
+}
+
+.md-reminders-alert.is-unavailable {
+  border-color: color-mix(in srgb, var(--cc-warning, #f59e0b) 35%, var(--cc-border));
+  background: color-mix(in srgb, var(--cc-warning-soft, #fffbeb) 40%, var(--cc-panel));
+}
+
+.md-reminders-alert.is-error {
+  border-color: color-mix(in srgb, var(--cc-danger, #ef4444) 35%, var(--cc-border));
+  background: color-mix(in srgb, var(--cc-danger-soft, #fef2f2) 35%, var(--cc-panel));
+}
+
+.md-reminders-unavailable-helper {
+  box-shadow: var(--cc-shadow-sm);
+}
+
+/* Browser Notification Helper Banner */
+.md-reminders-notifications-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.875rem 1.25rem;
+  border-radius: 0.75rem;
+  border: 1px solid var(--cc-border);
+  background: color-mix(in srgb, var(--cc-panel) 90%, var(--cc-primary-soft));
+  margin-bottom: 1.5rem;
+  font-size: 0.825rem;
+}
+
+@media (min-width: 640px) {
+  .md-reminders-notifications-bar {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+}
+
+.md-reminders-notifications-info {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  color: var(--cc-text);
+}
+
+/* Layout Columns */
+.md-reminders-layout {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 2rem;
+}
+
+@media (min-width: 1024px) {
+  .md-reminders-layout {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.md-reminders-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.md-reminders-section-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.75rem;
+  border-bottom: 1px solid var(--cc-border);
+  padding-bottom: 0.75rem;
+}
+
+.md-reminders-section-head h2 {
+  margin: 0;
+  font-family: Manrope, Inter, sans-serif;
+  font-size: 1.15rem;
+  font-weight: 750;
+  color: var(--cc-text);
+}
+
+.md-reminders-section-head p {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--cc-muted);
+}
+
+/* Reminder Cards List */
+.md-reminders-list {
+  display: grid;
+  gap: 0.875rem;
+}
+
+.md-reminder-card {
+  display: flex;
+  flex-direction: column;
+  padding: 1.25rem;
+  border: 1px solid var(--cc-border);
+  border-radius: 1rem;
+  background: var(--cc-panel);
+  box-shadow: var(--cc-shadow-sm);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.md-reminder-card:hover {
+  border-color: color-mix(in srgb, var(--cc-primary) 35%, var(--cc-border));
+}
+
+.md-reminder-card.is-paused {
+  opacity: 0.65;
+  background: color-mix(in srgb, var(--cc-panel) 70%, transparent);
+}
+
+.md-reminder-card-main {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.md-reminder-time-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.65rem;
+  border-radius: 0.6rem;
+  font-size: 0.85rem;
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+  background: var(--cc-primary-soft);
+  color: var(--cc-primary);
+  flex-shrink: 0;
+}
+
+.md-reminder-times-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.md-reminder-time-sub {
+  font-size: 0.75rem;
+  font-weight: 650;
+  padding: 0.2rem 0.45rem;
+  border-radius: 0.4rem;
+  background: var(--cc-panel-muted);
+  color: var(--cc-muted);
+}
+
+.md-reminder-card-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.md-reminder-card-title {
+  margin: 0 0 0.35rem;
+  font-family: Manrope, Inter, sans-serif;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--cc-text);
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.md-reminder-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  color: var(--cc-muted);
+}
+
+.md-reminder-card-dosage {
+  color: var(--cc-text);
+  font-weight: 600;
+}
+
+.md-reminder-last-taken {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.75rem;
+  color: var(--cc-success, #10b981);
+  font-weight: 600;
+  margin-top: 0.35rem;
+}
+
+.md-reminder-card-notes {
+  margin: 0.65rem 0 0;
+  padding-top: 0.65rem;
+  border-top: 1px dashed var(--cc-border);
+  font-size: 0.8rem;
+  color: var(--cc-muted);
+  line-height: 1.45;
+  font-style: italic;
+}
+
+/* Dose action buttons */
+.md-reminder-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  padding-top: 0.875rem;
+  border-top: 1px solid var(--cc-border);
+}
+
+.md-reminder-dose-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.md-reminder-mgmt-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.md-btn-take-dose {
+  background: var(--cc-primary) !important;
+  color: #fff !important;
+  font-weight: 650;
+  font-size: 0.75rem;
+  height: 1.85rem;
+  padding-inline: 0.65rem;
+}
+
+.md-btn-take-dose:hover {
+  background: color-mix(in srgb, var(--cc-primary) 85%, #000) !important;
+}
+
+.md-btn-skip-dose {
+  color: var(--cc-muted) !important;
+  font-size: 0.75rem;
+  height: 1.85rem;
+  padding-inline: 0.5rem;
+}
+
+.md-btn-skip-dose:hover {
+  color: var(--cc-text) !important;
+  background: var(--cc-panel-muted) !important;
+}
+
+/* Recent Dose Activity Section */
+.md-reminders-activity-section {
+  margin-top: 2.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--cc-border);
+}
+
+.md-reminders-activity-list {
+  display: grid;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.md-reminders-activity-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.65rem 1rem;
+  border-radius: 0.65rem;
+  border: 1px solid var(--cc-border);
+  background: var(--cc-panel);
+  font-size: 0.825rem;
+}
+
+.md-reminders-activity-lead {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+/* Modal and Form Styles */
+.md-reminder-dialog {
+  width: min(38rem, calc(100% - 2rem));
+  max-height: calc(100dvh - 2.5rem);
+  margin: auto;
+  border: 1px solid var(--cc-border);
+  border-radius: 1rem;
+  background: var(--cc-panel);
+  color: var(--cc-text);
+  box-shadow: var(--cc-shadow-lg);
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.md-reminder-dialog::backdrop {
+  background: var(--cc-overlay, rgba(0, 0, 0, 0.5));
+  backdrop-filter: blur(8px);
+}
+
+.md-reminder-dialog-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid var(--cc-border);
+  background: var(--cc-panel-strong, var(--cc-panel));
+}
+
+.md-reminder-dialog-head h2 {
+  margin: 0;
+  font-family: Manrope, Inter, sans-serif;
+  font-size: 1.25rem;
+  font-weight: 750;
+  color: var(--cc-text);
+}
+
+.md-reminder-dialog-body {
+  padding: 1.25rem 1.5rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.md-reminder-form {
+  display: grid;
+  gap: 1.15rem;
+}
+
+.md-reminder-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  font-size: 0.825rem;
+  font-weight: 650;
+  color: var(--cc-text);
+}
+
+.md-reminder-form input,
+.md-reminder-form select,
+.md-reminder-form textarea {
+  width: 100%;
+  min-height: 2.5rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--cc-border);
+  border-radius: 0.6rem;
+  background: var(--cc-panel-muted, color-mix(in srgb, var(--cc-panel) 90%, transparent));
+  color: var(--cc-text);
+  font: inherit;
+  font-size: 0.875rem;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.md-reminder-form input:focus,
+.md-reminder-form select:focus,
+.md-reminder-form textarea:focus {
+  outline: 0;
+  border-color: var(--cc-primary);
+  box-shadow: 0 0 0 3px var(--cc-primary-soft);
+}
+
+.md-reminder-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+@media (max-width: 500px) {
+  .md-reminder-form-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.md-reminder-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--cc-border);
+}
+
+/* Multi-time chips */
+.md-reminder-time-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.35rem;
+}
+
+.md-reminder-time-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.45rem;
+  background: var(--cc-panel-muted);
+  border: 1px solid var(--cc-border);
+  font-size: 0.8rem;
+  color: var(--cc-text);
+}
+
+/* Tablet & Mobile Breakpoints */
+@media (max-width: 768px) {
+  .md-reminders {
+    padding-inline: 1.25rem;
+  }
+  .md-reminder-card-main {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+@media (max-width: 640px) {
+  .md-reminders {
+    padding-inline: 1rem;
+  }
+  .md-reminders-header h1 {
+    font-size: 1.65rem;
+  }
+  .md-reminder-dialog {
+    width: calc(100% - 1.5rem);
+    max-height: calc(100dvh - 1.5rem);
+  }
+  .md-reminder-dialog-head,
+  .md-reminder-dialog-body {
+    padding: 1rem 1.15rem;
+  }
+  .md-reminder-card-actions {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+  .md-reminder-dose-actions,
+  .md-reminder-mgmt-actions {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 360px) {
+  .md-reminders {
+    padding-inline: 0.75rem;
+  }
+  .md-reminder-card {
+    padding: 1rem;
+  }
+}

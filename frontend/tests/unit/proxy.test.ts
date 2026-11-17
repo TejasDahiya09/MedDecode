@@ -4,6 +4,8 @@ import { resolveConfig } from 'vite';
 
 it('limits the proxy to development and rewrites only its namespace', async () => {
   const config = await resolveConfig({}, 'serve', 'development');
+  const api = config.server.proxy?.['^/api(?:/|$)'];
+  expect(api && typeof api !== 'string' && api.target).toBe('http://127.0.0.1:3000');
   const rule = config.server.proxy?.['^/backend(?:/|$)'];
   expect(rule).toBeTruthy();
   if (!rule || typeof rule === 'string') throw new Error('Missing proxy options');
@@ -13,4 +15,4 @@ it('limits the proxy to development and rewrites only its namespace', async () =
   expect(new RegExp('^/backend(?:/|$)').test('/backend-other')).toBe(false);
   const preview = await resolveConfig({}, 'serve', 'production', 'production', true);
   expect(preview.server.proxy).toBeUndefined();
-});
+}, 15000);

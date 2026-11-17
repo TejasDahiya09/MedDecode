@@ -16,7 +16,8 @@
     "test:unit": "vitest",
     "test:e2e": "playwright test",
     "test:e2e:auth": "playwright test --config playwright.auth.config.ts",
-    "test:e2e:preview": "playwright test --config playwright.preview.config.ts"
+    "test:e2e:preview": "playwright test --config playwright.preview.config.ts",
+    "test:visual-qa": "playwright test tests/e2e/visual-qa.spec.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "2.119.0",

@@ -1,0 +1,77 @@
+{
+  "schema_version": "phase-d1-expected.v2",
+  "document": {
+    "kind": "fictional_academic_catalogue_demo",
+    "patient": "Fictional Demonstration Patient (not a real person)",
+    "clinician": "Not specified",
+    "facility": "Not specified",
+    "watermark": "FICTIONAL ACADEMIC DEMONSTRATION — NOT VALID FOR TREATMENT",
+    "notice": "This is not a prescription and must not be used for treatment. NLEM inclusion does not establish marketing approval or availability. No dosage instructions are provided in this document."
+  },
+  "provenance": {
+    "source_dataset": "mohfw_india_nlem_2022",
+    "source_release": "2022",
+    "source_authority": "Ministry of Health and Family Welfare, Government of India",
+    "source_url": "https://nppa.gov.in/en/nlem2022",
+    "record_id_semantics": "NLEM item and formulation identifier, not a production MedDecode UUID",
+    "local_export_scope": "First 50 normalized NLEM 2022 formulations in this repository"
+  },
+  "expected_medicines": [
+    {
+      "sequence_number": 1,
+      "catalogue_record_id": "2.1.5:f1",
+      "canonical_name": "Paracetamol - Tablet 500 mg",
+      "medicine_name": "Paracetamol",
+      "strength": "500 mg",
+      "dosage_form": "Tablet",
+      "dosage_statement": "DOSAGE NOT SPECIFIED IN SOURCE DATA"
+    },
+    {
+      "sequence_number": 2,
+      "catalogue_record_id": "2.1.5:f3",
+      "canonical_name": "Paracetamol - Oral liquid 120 mg/5 mL (p)",
+      "medicine_name": "Paracetamol",
+      "strength": "120 mg/5 mL",
+      "dosage_form": "Oral liquid",
+      "dosage_statement": "DOSAGE NOT SPECIFIED IN SOURCE DATA"
+    },
+    {
+      "sequence_number": 3,
+      "catalogue_record_id": "2.1.2:f1",
+      "canonical_name": "Diclofenac - Tablet 50 mg",
+      "medicine_name": "Diclofenac",
+      "strength": "50 mg",
+      "dosage_form": "Tablet",
+      "dosage_statement": "DOSAGE NOT SPECIFIED IN SOURCE DATA"
+    },
+    {
+      "sequence_number": 4,
+      "catalogue_record_id": "2.1.3:f1",
+      "canonical_name": "Ibuprofen - Tablet 200 mg",
+      "medicine_name": "Ibuprofen",
+      "strength": "200 mg",
+      "dosage_form": "Tablet",
+      "dosage_statement": "DOSAGE NOT SPECIFIED IN SOURCE DATA"
+    },
+    {
+      "sequence_number": 5,
+      "catalogue_record_id": "2.1.4:f2",
+      "canonical_name": "Mefenamic acid - Oral liquid 100 mg/5 mL (p)",
+      "medicine_name": "Mefenamic acid",
+      "strength": "100 mg/5 mL",
+      "dosage_form": "Oral liquid",
+      "dosage_statement": "DOSAGE NOT SPECIFIED IN SOURCE DATA"
+    }
+  ],
+  "ocr_reporting": {
+    "metrics": [
+      "medicine-name exact match",
+      "strength exact match",
+      "dosage-form exact match",
+      "explicit missing-dosage notice"
+    ],
+    "normalization": "Case-insensitive text with collapsed whitespace; strength digits and units must match exactly.",
+    "missing_field_handling": "No dosage instructions are provided; each row explicitly states DOSAGE NOT SPECIFIED IN SOURCE DATA.",
+    "ocr_accuracy": "See demos/phase-d1/ocr-evaluation.json; rerun the local evaluator to refresh sample-specific metrics."
+  }
+}

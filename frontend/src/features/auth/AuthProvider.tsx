@@ -7,6 +7,7 @@ type AuthStatus = 'loading' | 'authenticated' | 'unauthenticated' | 'error';
 type AuthActionResult = { ok: true; confirmationRequired?: boolean } | { ok: false; message: string };
 type AuthContextValue = {
   status: AuthStatus; user: AuthUser | null; error: string | null;
+  getAccessToken(): string | null;
   signIn(email: string, password: string): Promise<AuthActionResult>;
   signUp(email: string, password: string, fullName: string): Promise<AuthActionResult>;
   requestPasswordReset(email: string): Promise<AuthActionResult>;
@@ -34,12 +35,13 @@ export function AuthProvider({ children, client: suppliedClient, initialSession 
   const [error, setError] = useState<string | null>(null);
   const sequence = useRef(0);
   const verifiedUserId = useRef<string | null>(initialSession?.user.id ?? null);
+  const verifiedSession = useRef<AuthSession | null>(initialSession ?? null);
   const client = useCallback(() => {
     if (!clientRef.current) clientRef.current = createBrowserAuthClient();
     return clientRef.current;
   }, []);
 
-  const clearSession = useCallback(() => { verifiedUserId.current = null; setUser(null); setError(null); setStatus('unauthenticated'); queryClient.clear(); }, [queryClient]);
+  const clearSession = useCallback(() => { verifiedUserId.current = null; verifiedSession.current = null; setUser(null); setError(null); setStatus('unauthenticated'); queryClient.clear(); }, [queryClient]);
   const verify = useCallback(async (session: AuthSession | null, showLoading = true) => {
     const run = ++sequence.current;
     if (!session) { clearSession(); return false; }
@@ -51,13 +53,24 @@ export function AuthProvider({ children, client: suppliedClient, initialSession 
       if (run !== sequence.current) return false;
       if (verifiedUserId.current !== identity.id) queryClient.clear();
       verifiedUserId.current = identity.id;
-      setUser(identity); setStatus('authenticated'); return true;
+      verifiedSession.current = session;
+      setUser((current) => current?.id === identity.id && current.email === identity.email ? current : identity);
+      setStatus('authenticated'); return true;
     } catch (cause) {
       if (run !== sequence.current) return false;
       if (cause instanceof ApiError && cause.status === 401) {
         await client().signOut().catch(() => undefined); clearSession(); return false;
       }
-      setUser(null); setError('We could not verify your MedDecode session. Please try again.'); setStatus('error'); return false;
+      const message = cause instanceof ApiError
+        ? cause.kind === 'network'
+          ? 'Cannot reach the backend. Check that the local backend is running, then try again.'
+          : cause.kind === 'configuration'
+            ? 'The application API is not configured correctly.'
+            : cause.status !== null && cause.kind === 'http'
+              ? `Session verification failed (HTTP ${cause.status}). Please try again.`
+              : 'The backend returned an unexpected session response.'
+        : 'The backend returned an unexpected session response.';
+      setUser(null); setError(message); setStatus('error'); return false;
     }
   }, [clearSession, client, queryClient]);
 
@@ -79,6 +92,7 @@ export function AuthProvider({ children, client: suppliedClient, initialSession 
   const unavailable = (cause: Error | null) => cause?.name === 'AuthRetryableFetchError' || cause?.name === 'TypeError';
   const value = useMemo<AuthContextValue>(() => ({
     status, user, error,
+    getAccessToken() { return status === 'authenticated' ? verifiedSession.current?.access_token ?? null : null; },
     async signIn(email, password) { try { const result = await client().signIn(email, password); if (unavailable(result.error)) return { ok: false, message: 'Authentication is temporarily unavailable. Please try again.' }; if (result.error || !result.session) return { ok: false, message: message(result.error, 'Sign-in failed. Check your credentials and try again.') }; return await verify(result.session) ? { ok: true } : { ok: false, message: 'Your session could not be verified by MedDecode.' }; } catch { return { ok: false, message: 'Authentication is unavailable in this deployment.' }; } },
     async signUp(email, password, fullName) { try { const result = await client().signUp(email, password, fullName); if (result.error) return { ok: false, message: 'Account creation failed. Please review your details and try again.' }; if (!result.session) return { ok: true, confirmationRequired: true }; return await verify(result.session) ? { ok: true } : { ok: false, message: 'Your new session could not be verified by MedDecode.' }; } catch { return { ok: false, message: 'Authentication is unavailable in this deployment.' }; } },
     async requestPasswordReset(email) { try { const result = await client().requestPasswordReset(email); return result.error ? { ok: false, message: 'The recovery request could not be sent.' } : { ok: true }; } catch { return { ok: false, message: 'Authentication is unavailable in this deployment.' }; } },
