@@ -23,6 +23,9 @@ coverage/
 
 # Large raw datasets
 intelligence/data/raw/openfda_drug_labels_meddecode.csv
+intelligence/data/raw/sample_medicines.csv
+/datasets/
+/test-results/
 
 # Backup files
 *.backup
@@ -39,3 +42,10 @@ intelligence/tests/fixtures/actual_prescription.jpg
 # Local diagnostic reports
 intelligence/meddecode_e2e_interface_details.txt
 intelligence/pipeline_interface_report.txt
+
+# Local nested worktrees, model environments, and generated browser/OCR output
+/MedDecode-dev/
+/intelligence/.venv-*/
+/playwright-report/
+/intelligence/tmp_*_test.png
+/supabase_catalogue_schema_audit.txt
