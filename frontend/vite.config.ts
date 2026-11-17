@@ -7,6 +7,14 @@ export default defineConfig(({ command, isPreview }) => ({
   ...(command === 'serve' && !isPreview ? {
     server: {
       proxy: {
+        '^/api(?:/|$)': {
+          target: 'http://127.0.0.1:3000',
+          changeOrigin: true,
+        },
+        '^/health$': {
+          target: 'http://127.0.0.1:3000',
+          changeOrigin: true,
+        },
         '^/backend(?:/|$)': {
           target: 'http://127.0.0.1:3000',
           changeOrigin: true,

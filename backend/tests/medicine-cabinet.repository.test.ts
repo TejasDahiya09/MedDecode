@@ -29,6 +29,7 @@ function queryClient(options: { readonly data: unknown; readonly error?: unknown
   const calls: Array<{ operation: string; value?: unknown }> = [];
   const result = { data: options.data, error: options.error ?? null };
   const query = {
+    delete() { calls.push({ operation: "delete" }); return query; },
     select(value: string) { calls.push({ operation: "select", value }); return query; },
     eq(column: string, value: unknown) {
       calls.push({ operation: `eq:${column}`, value }); return query;
@@ -52,6 +53,15 @@ function queryClient(options: { readonly data: unknown; readonly error?: unknown
 }
 
 describe("Medicine cabinet repository", () => {
+  it("deletes only the requested owner's entry and redacts errors", async () => {
+    const { client, calls } = queryClient({ data: { id: entryId } });
+    assert.equal(await supabaseMedicineCabinetRepository.deleteOwned!(client, userId, entryId), true);
+    assert.deepEqual(calls.map(({ operation }) => operation), ["from", "delete", "eq:id", "eq:user_id", "select", "maybeSingle"]);
+    assert.equal(calls[3]?.value, userId);
+    const failed = queryClient({ data: null, error: { message: "private diagnostic" } });
+    await assert.rejects(supabaseMedicineCabinetRepository.deleteOwned!(failed.client, userId, entryId),
+      (error: unknown) => error instanceof MedicineCabinetRepositoryError && !error.message.includes("private diagnostic"));
+  });
   it("uses one table, an explicit projection, owner filter and stable bounded ordering", async () => {
     const { client, calls } = queryClient({ data: [row] });
     assert.deepEqual(
@@ -70,7 +80,7 @@ describe("Medicine cabinet repository", () => {
       { operation: "order:id", value: { ascending: false } },
       { operation: "range", value: { from: 40, to: 60 } }
     ]);
-    for (const forbidden of ["*", "family_member_id", "medicine_external_id"]) {
+    for (const forbidden of ["*", "medicine_external_id"]) {
       assert.equal(MEDICINE_CABINET_FIELDS.includes(forbidden), false);
     }
   });

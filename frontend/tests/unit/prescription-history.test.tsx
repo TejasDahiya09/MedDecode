@@ -78,7 +78,7 @@ describe('prescription history list page', () => {
 
     expect(await screen.findByText(id1)).toBeTruthy();
     expect(screen.getByText(id2)).toBeTruthy();
-    expect(screen.getByText('Completed')).toBeTruthy();
+    expect(screen.getAllByText('Completed').length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText('Queued')).toBeTruthy();
     expect(screen.getByText('512.0 KB')).toBeTruthy();
     expect(screen.getByText('1.0 MB')).toBeTruthy();

@@ -40,6 +40,8 @@ class OCREngine:
             "use_doc_orientation_classify": False,
             "use_doc_unwarping": False,
             "use_textline_orientation": False,
+            "device": "cpu",
+            "enable_mkldnn": False,
         }
         if local_model_config is not None:
             local_model_config.validate()

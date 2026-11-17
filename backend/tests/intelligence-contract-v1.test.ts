@@ -86,11 +86,11 @@ test("validates alternative compatibility fields", async () => {
   medicine.alternatives = [{
     medicine_external_id: "synthetic-external-id",
     brand_name: "Synthetic Alternative",
-    match_basis: { ingredient_equivalent: true, strength_compatibility: true, dosage_form_compatibility: false },
+    match_basis: { ingredient_equivalence: true, strength_compatibility: true, dosage_form_compatibility: false },
     confidence: 0.5,
   }];
   assert.equal(validateIntelligenceResponseV1(response, expected).status, "completed_with_warnings");
-  ((medicine.alternatives as Record<string, unknown>[])[0]!.match_basis as Record<string, unknown>).ingredient_equivalent = "yes";
+  ((medicine.alternatives as Record<string, unknown>[])[0]!.match_basis as Record<string, unknown>).ingredient_equivalence = "yes";
   assert.throws(() => validateIntelligenceResponseV1(response, expected), IntelligenceContractValidationError);
 });
 test("accepts absent optional version and alternative price fields", async () => {

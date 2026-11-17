@@ -4,6 +4,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { finished } from "node:stream/promises";
+import { Readable } from "node:stream";
 
 import type { WorkerJobClaim } from "../types/worker-jobs.js";
 
@@ -58,6 +59,7 @@ export function createS3WorkerDocumentReader(options: {
   readonly maximumBytes?: number;
   readonly temporaryRoot?: string;
   readonly client?: S3GetObjectClient;
+  readonly timeoutMs?: number;
 }): WorkerDocumentReader {
   if (!options.bucket.trim()) throw new Error("Worker document bucket is required.");
   const maximumBytes = options.maximumBytes ?? DEFAULT_MAX_BYTES;
@@ -65,6 +67,8 @@ export function createS3WorkerDocumentReader(options: {
     throw new Error("Worker document maximum bytes is invalid.");
   }
   const client = options.client ?? new S3Client({ region: options.region });
+  const timeoutMs = options.timeoutMs ?? 30_000;
+  if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > 300_000) throw new Error("Worker document timeout is invalid.");
 
   return {
     async download(claim, signal) {
@@ -75,15 +79,24 @@ export function createS3WorkerDocumentReader(options: {
       }
       let directory: string | undefined;
       let stream: ReturnType<typeof createWriteStream> | undefined;
+      const downloadSignal = AbortSignal.any([signal, AbortSignal.timeout(timeoutMs)]);
+      let body: Readable | undefined;
+      const cancelBody = () => body?.destroy(new Error("Document download interrupted."));
       try {
-        const response = await client.send(new GetObjectCommand({ Bucket: options.bucket, Key: claim.objectKey }), { abortSignal: signal });
+        const response = await client.send(new GetObjectCommand({ Bucket: options.bucket, Key: claim.objectKey }), { abortSignal: downloadSignal });
+        if (downloadSignal.aborted) throw new WorkerDocumentReadError(signal.aborted ? "ABORTED" : "UNAVAILABLE");
+        if (response.Body instanceof Readable) {
+          body = response.Body;
+          downloadSignal.addEventListener("abort", cancelBody, { once: true });
+          if (downloadSignal.aborted) cancelBody();
+        }
         directory = await mkdtemp(join(options.temporaryRoot ?? tmpdir(), "meddecode-worker-"));
         const path = join(directory, `source.${EXTENSIONS[claim.fileType]}`);
         const writableStream = createWriteStream(path, { flags: "wx", mode: 0o600 });
         stream = writableStream;
         let sizeBytes = 0;
         for await (const chunk of bodyChunks(response.Body)) {
-          if (signal.aborted) throw new WorkerDocumentReadError("ABORTED");
+          if (downloadSignal.aborted) throw new WorkerDocumentReadError(signal.aborted ? "ABORTED" : "UNAVAILABLE");
           sizeBytes += chunk.byteLength;
           if (sizeBytes > maximumBytes) throw new WorkerDocumentReadError("TOO_LARGE");
           if (!writableStream.write(chunk)) await new Promise<void>((resolve, reject) => {
@@ -91,6 +104,7 @@ export function createS3WorkerDocumentReader(options: {
           });
         }
         writableStream.end(); await finished(writableStream);
+        if (downloadSignal.aborted) throw new WorkerDocumentReadError(signal.aborted ? "ABORTED" : "UNAVAILABLE");
         let cleaned = false;
         return {
           path, sizeBytes,
@@ -111,6 +125,8 @@ export function createS3WorkerDocumentReader(options: {
         if (directory) await rm(directory, { recursive: true, force: true }).catch(() => undefined);
         if (error instanceof WorkerDocumentReadError) throw error;
         throw new WorkerDocumentReadError(signal.aborted ? "ABORTED" : "UNAVAILABLE");
+      } finally {
+        downloadSignal.removeEventListener("abort", cancelBody);
       }
     },
   };

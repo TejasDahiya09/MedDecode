@@ -1,11 +1,23 @@
 \set ON_ERROR_STOP on
 
 -- LOCAL INTEGRATION CANDIDATE ONLY. NOT APPROVED FOR HOSTED DEPLOYMENT.
--- This package introduces no tables or clinical fields. It relies on the
+-- This package adds one nullable external-identifier column. It relies on the
 -- submission and claim/heartbeat migration candidates having been applied.
 BEGIN;
 SET LOCAL lock_timeout = '5s';
 SET LOCAL statement_timeout = '60s';
+
+-- The external identifier belongs to Member 1 and must not be treated as a
+-- legacy public.medicines UUID. Existing rows remain unchanged.
+ALTER TABLE public.prescription_medicines ADD COLUMN IF NOT EXISTS medicine_external_id text;
+DO $external_id_type$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_catalog.pg_attribute WHERE attrelid='public.prescription_medicines'::regclass
+      AND attname='medicine_external_id' AND atttypid='text'::regtype AND NOT attisdropped) THEN
+    RAISE EXCEPTION 'prescription medicine external identifier column incompatible';
+  END IF;
+END
+$external_id_type$;
 
 CREATE OR REPLACE FUNCTION public.complete_prescription_analysis_job_v1(
   p_job_id uuid,
@@ -26,6 +38,7 @@ DECLARE
   v_status text;
   v_now timestamptz := clock_timestamp();
   v_medicine jsonb;
+  v_alternative jsonb;
   v_recommendation jsonb;
   v_warning jsonb;
   v_ordinal bigint;
@@ -56,8 +69,7 @@ BEGIN
      OR jsonb_typeof(p_result_json->'medicines') IS DISTINCT FROM 'array'
      OR jsonb_typeof(p_result_json->'recommendations') IS DISTINCT FROM 'array'
      OR jsonb_typeof(p_result_json->'warnings') IS DISTINCT FROM 'array'
-     OR jsonb_typeof(p_result_json->'processing_metadata') IS DISTINCT FROM 'object'
-     OR jsonb_path_exists(p_result_json, '$.medicines[*].alternatives[*]') THEN
+     OR jsonb_typeof(p_result_json->'processing_metadata') IS DISTINCT FROM 'object' THEN
     RAISE EXCEPTION USING ERRCODE = '22023', MESSAGE = 'result structure is incompatible';
   END IF;
   v_status := p_result_json->>'status';
@@ -94,11 +106,16 @@ BEGIN
     RAISE EXCEPTION USING ERRCODE = '23505', MESSAGE = 'conflicting or incomplete persisted result';
   END IF;
 
+  -- Row locks can wait: evaluate the fence using a fresh time after the wait.
+  v_now := clock_timestamp();
   IF v_job.status <> 'processing'
      OR v_job.lease_owner IS DISTINCT FROM p_worker_instance_id
      OR v_job.claim_generation IS DISTINCT FROM p_claim_generation
      OR v_job.lease_expires_at IS NULL OR v_job.lease_expires_at <= v_now THEN
     RAISE EXCEPTION USING ERRCODE = '55000', MESSAGE = 'stale or expired worker claim';
+  END IF;
+  IF v_prescription.status IS DISTINCT FROM 'processing' THEN
+    RAISE EXCEPTION USING ERRCODE = '55000', MESSAGE = 'prescription is not processing';
   END IF;
   IF EXISTS (SELECT 1 FROM public.prescription_medicines WHERE prescription_id = p_prescription_id)
      OR EXISTS (SELECT 1 FROM public.prescription_recommendations WHERE prescription_id = p_prescription_id)
@@ -119,9 +136,21 @@ BEGIN
        OR jsonb_typeof(v_medicine#>'{extraction,frequency,type}') IS DISTINCT FROM 'string'
         OR COALESCE(v_medicine#>>'{extraction,frequency,type}' NOT IN ('scheduled', 'as_needed', 'unknown'), true)
        OR jsonb_typeof(v_medicine#>'{medicine_match,status}') IS DISTINCT FROM 'string'
-        OR COALESCE(v_medicine#>>'{medicine_match,status}' NOT IN ('matched', 'probable_match', 'ambiguous', 'unmatched', 'not_attempted'), true) THEN
+        OR COALESCE(v_medicine#>>'{medicine_match,status}' NOT IN ('matched', 'probable_match', 'ambiguous', 'unmatched', 'not_attempted'), true)
+       OR jsonb_typeof(v_medicine->'alternatives') IS DISTINCT FROM 'array' THEN
       RAISE EXCEPTION USING ERRCODE = '22023', MESSAGE = 'medicine projection is incompatible';
     END IF;
+    FOR v_alternative IN SELECT value FROM jsonb_array_elements(v_medicine->'alternatives') LOOP
+      IF jsonb_typeof(v_alternative) IS DISTINCT FROM 'object'
+        OR jsonb_typeof(v_alternative->'medicine_external_id') IS DISTINCT FROM 'string'
+        OR length(v_alternative->>'medicine_external_id') = 0
+        OR jsonb_typeof(v_alternative->'brand_name') IS DISTINCT FROM 'string'
+        OR jsonb_typeof(v_alternative#>'{match_basis,ingredient_equivalence}') IS DISTINCT FROM 'boolean'
+        OR jsonb_typeof(v_alternative#>'{match_basis,strength_compatibility}') IS DISTINCT FROM 'boolean'
+        OR jsonb_typeof(v_alternative#>'{match_basis,dosage_form_compatibility}') IS DISTINCT FROM 'boolean' THEN
+        RAISE EXCEPTION USING ERRCODE = '22023', MESSAGE = 'alternative projection is incompatible';
+      END IF;
+    END LOOP;
   END LOOP;
   FOR v_recommendation IN SELECT value FROM jsonb_array_elements(p_result_json->'recommendations')
   LOOP
@@ -153,7 +182,7 @@ BEGIN
     frequency_afternoon, frequency_night, frequency_times_per_day, timing,
     duration_value, duration_unit, quantity_value, quantity_unit, instructions,
     extraction_confidence, medicine_name_confidence, dosage_confidence, match_status,
-    match_confidence, medicine_id, units_per_day, estimated_total_units
+    match_confidence, medicine_id, medicine_external_id, units_per_day, estimated_total_units
   ) SELECT p_prescription_id, (m.value->>'sequence_number')::integer,
     m.value#>>'{extraction,raw_text}', m.value#>>'{extraction,medicine_name}',
     m.value#>>'{extraction,medicine_name_normalized}',
@@ -169,10 +198,27 @@ BEGIN
     (m.value#>>'{confidence,extraction}')::numeric,
     (m.value#>>'{confidence,medicine_name}')::numeric,
     (m.value#>>'{confidence,dosage}')::numeric, m.value#>>'{medicine_match,status}',
-    (m.value#>>'{medicine_match,confidence}')::numeric, NULL,
+    (m.value#>>'{medicine_match,confidence}')::numeric, NULL, m.value#>>'{medicine_match,medicine_external_id}',
     (m.value#>>'{derived,units_per_day}')::numeric,
     (m.value#>>'{derived,estimated_total_units}')::numeric
   FROM jsonb_array_elements(p_result_json->'medicines') AS m(value);
+
+  -- Preserve external IDs and explicitly returned compatibility evidence.
+  -- Legacy medicine_id stays NULL: no official-to-legacy mapping is inferred.
+  INSERT INTO public.prescription_medicine_alternatives (
+    prescription_medicine_id, medicine_id, medicine_external_id, ingredient_equivalence,
+    strength_compatibility, dosage_form_compatibility, price_value, price_currency,
+    price_unit_description, confidence, note
+  ) SELECT pm.id, NULL, alt.value->>'medicine_external_id',
+    (alt.value#>>'{match_basis,ingredient_equivalence}')::boolean,
+    (alt.value#>>'{match_basis,strength_compatibility}')::boolean,
+    (alt.value#>>'{match_basis,dosage_form_compatibility}')::boolean,
+    (alt.value#>>'{price,value}')::numeric, alt.value#>>'{price,currency}',
+    alt.value#>>'{price,unit_description}', (alt.value->>'confidence')::numeric, alt.value->>'note'
+  FROM jsonb_array_elements(p_result_json->'medicines') AS med(value)
+  JOIN public.prescription_medicines pm ON pm.prescription_id=p_prescription_id
+    AND pm.sequence_number=(med.value->>'sequence_number')::integer
+  CROSS JOIN LATERAL jsonb_array_elements(med.value->'alternatives') AS alt(value);
 
   INSERT INTO public.prescription_recommendations (
     prescription_id, type, title, message, related_medicine_sequence_number, confidence
@@ -210,7 +256,7 @@ BEGIN
     lease_owner = NULL, lease_expires_at = NULL, heartbeat_at = NULL
   WHERE j.id = p_job_id AND j.status = 'processing'
     AND j.lease_owner = p_worker_instance_id AND j.claim_generation = p_claim_generation
-    AND j.lease_expires_at > v_now;
+    AND j.lease_expires_at > clock_timestamp();
   IF NOT FOUND THEN RAISE EXCEPTION USING ERRCODE = '55000', MESSAGE = 'stale finalization'; END IF;
   RETURN QUERY SELECT p_job_id, p_prescription_id, v_status, false;
 END
@@ -260,22 +306,32 @@ BEGIN
   IF EXISTS (SELECT 1 FROM public.prescription_intelligence_results AS r WHERE r.prescription_id = p_prescription_id) THEN
     RAISE EXCEPTION USING ERRCODE = '23505', MESSAGE = 'result already exists';
   END IF;
+  v_now := clock_timestamp();
   IF v_job.status <> 'processing' OR v_job.lease_owner IS DISTINCT FROM p_worker_instance_id
      OR v_job.claim_generation IS DISTINCT FROM p_claim_generation
      OR v_job.lease_expires_at IS NULL OR v_job.lease_expires_at <= v_now THEN
     RAISE EXCEPTION USING ERRCODE = '55000', MESSAGE = 'stale or expired worker claim';
   END IF;
+  IF v_prescription.status IS DISTINCT FROM 'processing' THEN
+    RAISE EXCEPTION USING ERRCODE = '55000', MESSAGE = 'prescription is not processing';
+  END IF;
   v_retry := p_retryable AND v_job.attempt_count < v_job.max_attempts;
   IF v_retry AND (p_retry_at IS NULL OR p_retry_at <= v_now OR p_retry_at > v_now + interval '24 hours') THEN
     RAISE EXCEPTION USING ERRCODE = '22023', MESSAGE = 'retry schedule is invalid';
   END IF;
-  IF NOT v_retry AND p_retry_at IS NOT NULL THEN
+  -- A retryable failure may supply a schedule even on its last attempt; the
+  -- locked database row decides exhaustion and ignores that schedule.
+  IF NOT p_retryable AND p_retry_at IS NOT NULL THEN
     RAISE EXCEPTION USING ERRCODE = '22023', MESSAGE = 'terminal failure cannot schedule retry';
   END IF;
   IF v_retry THEN
     UPDATE public.ai_jobs AS j SET status = 'queued', available_at = p_retry_at,
       lease_owner = NULL, lease_expires_at = NULL, heartbeat_at = NULL,
-      error_message = p_failure_code, completed_at = NULL, result_reference = NULL WHERE j.id = p_job_id;
+      error_message = p_failure_code, completed_at = NULL, result_reference = NULL
+      WHERE j.id = p_job_id AND j.status = 'processing'
+        AND j.lease_owner = p_worker_instance_id AND j.claim_generation = p_claim_generation
+        AND j.lease_expires_at > clock_timestamp();
+    IF NOT FOUND THEN RAISE EXCEPTION USING ERRCODE = '55000', MESSAGE = 'stale failure'; END IF;
     UPDATE public.prescriptions AS p SET status = 'queued'
       WHERE p.id = p_prescription_id AND p.user_id = v_job.user_id;
     RETURN QUERY SELECT p_job_id, p_prescription_id, 'queued'::text, true, false, p_retry_at;
@@ -286,7 +342,11 @@ BEGIN
   UPDATE public.ai_jobs AS j SET status = 'failed', completed_at = v_now, available_at = v_now,
     lease_owner = NULL, lease_expires_at = NULL, heartbeat_at = NULL, error_message = p_failure_code,
     result_reference = jsonb_build_object('terminal_failure_code', p_failure_code,
-      'contract_code', p_contract_code, 'claim_generation', p_claim_generation) WHERE j.id = p_job_id;
+      'contract_code', p_contract_code, 'claim_generation', p_claim_generation)
+    WHERE j.id = p_job_id AND j.status = 'processing'
+      AND j.lease_owner = p_worker_instance_id AND j.claim_generation = p_claim_generation
+      AND j.lease_expires_at > clock_timestamp();
+  IF NOT FOUND THEN RAISE EXCEPTION USING ERRCODE = '55000', MESSAGE = 'stale failure'; END IF;
   UPDATE public.prescriptions AS p SET status = 'failed'
     WHERE p.id = p_prescription_id AND p.user_id = v_job.user_id;
   RETURN QUERY SELECT p_job_id, p_prescription_id, 'failed'::text, false, true, NULL::timestamptz;
@@ -352,6 +412,6 @@ GRANT EXECUTE ON FUNCTION public.complete_prescription_analysis_job_v1(uuid, uui
 GRANT EXECUTE ON FUNCTION public.fail_prescription_analysis_job_v1(uuid, uuid, text, bigint, text, boolean, text, timestamptz) TO meddecode_worker;
 GRANT EXECUTE ON FUNCTION public.recover_expired_prescription_analysis_jobs_v1(integer) TO meddecode_worker;
 REVOKE ALL ON TABLE public.ai_jobs, public.prescriptions, public.prescription_intelligence_results,
-  public.prescription_medicines, public.prescription_recommendations, public.prescription_warnings
+  public.prescription_medicines, public.prescription_medicine_alternatives, public.prescription_recommendations, public.prescription_warnings
   FROM meddecode_worker;
 COMMIT;

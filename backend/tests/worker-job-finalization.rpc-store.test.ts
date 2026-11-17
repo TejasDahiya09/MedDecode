@@ -115,6 +115,11 @@ test("stale, malformed, and transport responses fail safely without provider lea
   await assert.rejects(staleFinalization.store.completeOwned(completion()), (error: unknown) =>
     error instanceof WorkerJobFinalizationError && error.category === "STALE_CLAIM");
 
+  const staleFailure = setup();
+  staleFailure.caller.responses.push({ data: null, error: { code: "55000", message: "stale failure" } });
+  await assert.rejects(staleFailure.store.failOwned(failure()), (error: unknown) =>
+    error instanceof WorkerJobFinalizationError && error.category === "STALE_CLAIM");
+
   const malformed = setup();
   malformed.caller.responses.push({ data: [{ job_id: JOB_ID, prescription_id: PRESCRIPTION_ID, result_status: "completed", replayed: false, leak: "private" }], error: null });
   await assert.rejects(malformed.store.completeOwned(completion()), (error: unknown) =>

@@ -54,13 +54,23 @@ export function AuthProvider({ children, client: suppliedClient, initialSession 
       if (verifiedUserId.current !== identity.id) queryClient.clear();
       verifiedUserId.current = identity.id;
       verifiedSession.current = session;
-      setUser(identity); setStatus('authenticated'); return true;
+      setUser((current) => current?.id === identity.id && current.email === identity.email ? current : identity);
+      setStatus('authenticated'); return true;
     } catch (cause) {
       if (run !== sequence.current) return false;
       if (cause instanceof ApiError && cause.status === 401) {
         await client().signOut().catch(() => undefined); clearSession(); return false;
       }
-      setUser(null); setError('We could not verify your MedDecode session. Please try again.'); setStatus('error'); return false;
+      const message = cause instanceof ApiError
+        ? cause.kind === 'network'
+          ? 'Cannot reach the backend. Check that the local backend is running, then try again.'
+          : cause.kind === 'configuration'
+            ? 'The application API is not configured correctly.'
+            : cause.status !== null && cause.kind === 'http'
+              ? `Session verification failed (HTTP ${cause.status}). Please try again.`
+              : 'The backend returned an unexpected session response.'
+        : 'The backend returned an unexpected session response.';
+      setUser(null); setError(message); setStatus('error'); return false;
     }
   }, [clearSession, client, queryClient]);
 

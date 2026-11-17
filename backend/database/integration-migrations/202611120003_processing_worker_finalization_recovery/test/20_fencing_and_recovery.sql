@@ -36,10 +36,20 @@ VALUES
 SET ROLE meddecode_worker;
 SELECT * FROM public.fail_prescription_analysis_job_v1('71000000-0000-4000-8000-000000000001', '81000000-0000-4000-8000-000000000001', 'worker-failure-001', 1, 'INTELLIGENCE_TRANSPORT_FAILED', true, NULL, clock_timestamp() + interval '5 minutes');
 SELECT * FROM public.fail_prescription_analysis_job_v1('71000000-0000-4000-8000-000000000002', '81000000-0000-4000-8000-000000000002', 'worker-failure-002', 1, 'INTELLIGENCE_REJECTED', false, 'PROCESSING_FAILED', NULL);
-SELECT * FROM public.fail_prescription_analysis_job_v1('71000000-0000-4000-8000-000000000003', '81000000-0000-4000-8000-000000000003', 'worker-failure-003', 1, 'INTELLIGENCE_TRANSPORT_FAILED', true, NULL, NULL);
+SELECT * FROM public.fail_prescription_analysis_job_v1('71000000-0000-4000-8000-000000000003', '81000000-0000-4000-8000-000000000003', 'worker-failure-003', 1, 'INTELLIGENCE_TRANSPORT_FAILED', true, NULL, clock_timestamp() + interval '5 minutes');
 
 DO $expected_failures$
 BEGIN
+  BEGIN
+    PERFORM public.fail_prescription_analysis_job_v1('71000000-0000-4000-8000-000000000004', '81000000-0000-4000-8000-000000000004', 'worker-failure-004', 1, 'INTELLIGENCE_REJECTED', false, NULL, clock_timestamp() + interval '5 minutes');
+    RAISE EXCEPTION 'non-retryable failure unexpectedly accepted a retry schedule';
+  EXCEPTION WHEN invalid_parameter_value THEN NULL;
+  END;
+  BEGIN
+    PERFORM public.fail_prescription_analysis_job_v1('71000000-0000-4000-8000-000000000003', '81000000-0000-4000-8000-000000000003', 'worker-failure-003', 1, 'INTELLIGENCE_REJECTED', false, NULL, NULL);
+    RAISE EXCEPTION 'terminal failure unexpectedly accepted a second finalization';
+  EXCEPTION WHEN object_not_in_prerequisite_state THEN NULL;
+  END;
   BEGIN
     PERFORM public.fail_prescription_analysis_job_v1('71000000-0000-4000-8000-000000000004', '81000000-0000-4000-8000-000000000004', 'worker-failure-004', 1, 'INTELLIGENCE_TRANSPORT_FAILED', NULL, NULL, NULL);
     RAISE EXCEPTION 'NULL retryable flag unexpectedly accepted';

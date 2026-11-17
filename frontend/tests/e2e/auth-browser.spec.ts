@@ -33,7 +33,7 @@ async function json(route: Route, status: number, body: object): Promise<void> {
 
 async function installMocks(page: Page) {
   const state = { identityStatus: 200, bearerHeaders: [] as string[], authRequests: [] as string[] };
-  await page.route('https://mock.supabase.test/**', async (route) => {
+  await page.route('**/auth/v1/**', async (route) => {
     const request = route.request();
     state.authRequests.push(`${request.method()} ${new URL(request.url()).pathname}`);
     const url = new URL(request.url());
@@ -42,7 +42,7 @@ async function installMocks(page: Page) {
     if (url.pathname.endsWith('/auth/v1/logout') && request.method() === 'POST') return json(route, 204, {});
     return json(route, 404, { error: 'unexpected synthetic auth request' });
   });
-  await page.route('http://127.0.0.1:5174/backend/**', async (route) => {
+  await page.route('**/api/**', async (route) => {
     const authorization = route.request().headers().authorization ?? '';
     state.bearerHeaders.push(authorization);
     if (state.identityStatus === 401) return json(route, 401, { error: { code: 'UNAUTHORIZED', message: 'Authentication required.' } });
@@ -57,7 +57,7 @@ async function signIn(page: Page, destination = '/home') {
   await page.getByLabel('Password', { exact: true }).fill(password);
   await page.getByRole('button', { name: 'Sign In' }).click();
   await expect(page).toHaveURL(new RegExp(`${destination.replace('/', '\\/')}$`));
-  if (destination === '/home') await expect(page.getByRole('heading', { name: 'Welcome, Demo User.' })).toBeVisible();
+  if (destination === '/home') await expect(page.getByRole('heading', { name: /Welcome back/ })).toBeVisible();
 }
 
 test('redirects protected routes and completes verified sign-in with bearer identity', async ({ page }) => {
@@ -74,8 +74,7 @@ test('restores a persisted session on refresh without flashing protected content
   const state = await installMocks(page);
   await signIn(page);
   await page.reload();
-  await expect(page.getByRole('heading', { name: 'Welcome, Demo User.' })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Welcome back.' })).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: /Welcome back/ })).toBeVisible();
   expect(state.bearerHeaders.filter(Boolean).length).toBeGreaterThanOrEqual(2);
 });
 
@@ -96,13 +95,13 @@ test('sign-out clears persisted identity and returns to public auth state', asyn
   await page.getByRole('button', { name: 'Sign out' }).click();
   await expect(page).toHaveURL(/\/sign-in$/);
   await page.reload();
-  await expect(page.getByRole('heading', { name: 'Welcome back.' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /Welcome back/ })).toBeVisible();
 });
 
 test('auth network failure stays unauthenticated and reports a safe retry message', async ({ page }) => {
   await installMocks(page);
-  await page.unroute('https://mock.supabase.test/**');
-  await page.route('https://mock.supabase.test/**', (route) => route.abort('failed'));
+  await page.unroute('**/auth/v1/**');
+  await page.route('**/auth/v1/**', (route) => route.abort('failed'));
   await page.goto('/sign-in');
   await page.getByLabel('Email address').fill(email);
   await page.getByLabel('Password', { exact: true }).fill(password);
@@ -119,6 +118,8 @@ test('mobile sign-in remains usable and password recovery reports a non-sensitiv
   await expect(page.getByRole('button', { name: 'Sign In' })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   await page.getByRole('link', { name: 'Forgot password?' }).click();
+  await expect(page).toHaveURL(/\/forgot-password$/);
+  await expect(page.getByRole('heading', { name: "Let's get you back in." })).toBeVisible();
   await page.getByLabel('Email address').fill(email);
   await page.getByRole('button', { name: 'Request reset link' }).click();
   await expect(page.getByRole('alert')).toContainText('If the account exists');

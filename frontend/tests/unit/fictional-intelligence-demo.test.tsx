@@ -20,7 +20,7 @@ it('does not run on mount and renders only the explicit fictional fixture result
   expect(screen.getByText('DEVELOPMENT_FIXTURE_INJECTED_OCR')).toBeTruthy();
   expect(screen.queryByText(/alternative|price|recommendation/i)).toBeTruthy();
   const [url, init] = vi.mocked(fetch).mock.calls[0]!;
-  expect(String(url)).toBe(`${window.location.origin}/backend/api/v1/development/fictional-intelligence-result`);
+  expect(String(url)).toBe(`${window.location.origin}/api/v1/development/fictional-intelligence-result`);
   expect(init?.method).toBe('POST');
   expect(new Headers(init?.headers).get('Authorization')).toBe(`Bearer ${token}`);
 });

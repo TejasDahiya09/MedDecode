@@ -11,6 +11,7 @@ BEGIN
      OR to_regclass('public.prescriptions') IS NULL
      OR to_regclass('public.prescription_intelligence_results') IS NULL
      OR to_regclass('public.prescription_medicines') IS NULL
+     OR to_regclass('public.prescription_medicine_alternatives') IS NULL
      OR to_regclass('public.prescription_recommendations') IS NULL
      OR to_regclass('public.prescription_warnings') IS NULL THEN
     RAISE EXCEPTION 'required processing persistence tables are missing';
@@ -46,6 +47,18 @@ BEGIN
     RAISE EXCEPTION 'intelligence result persistence columns are incompatible';
   END IF;
 
+  SELECT count(*) INTO v_column_count FROM pg_catalog.pg_attribute AS a
+  WHERE a.attrelid='public.prescription_medicine_alternatives'::regclass AND NOT a.attisdropped
+    AND a.attname IN ('prescription_medicine_id','medicine_id','medicine_external_id',
+      'ingredient_equivalence','strength_compatibility','dosage_form_compatibility',
+      'price_value','price_currency','price_unit_description','confidence','note');
+  IF v_column_count <> 11 THEN RAISE EXCEPTION 'alternative projection columns are incompatible'; END IF;
+  IF EXISTS (SELECT 1 FROM pg_catalog.pg_attribute AS a
+    WHERE a.attrelid='public.prescription_medicines'::regclass AND NOT a.attisdropped
+      AND a.attname='medicine_external_id' AND (a.atttypid <> 'text'::regtype OR a.attnotnull)) THEN
+    RAISE EXCEPTION 'existing prescription medicine external identifier is incompatible';
+  END IF;
+
   -- The historical application schema has no required result owner column: the
   -- prescription/job lineage is the ownership authority. Do not deploy this
   -- function into a drifted schema where its INSERT would fail after a claim.
@@ -73,14 +86,24 @@ BEGIN
   SELECT count(*) INTO v_bad
   FROM public.ai_jobs AS j
   LEFT JOIN public.prescriptions AS p ON p.id = j.prescription_id
-  LEFT JOIN public.prescription_intelligence_results AS r ON r.prescription_id = j.prescription_id
   WHERE j.job_type = 'prescription_analysis'
     AND (j.prescription_id IS NULL OR p.id IS NULL OR p.user_id IS DISTINCT FROM j.user_id
-      OR j.status NOT IN ('queued', 'processing', 'completed', 'failed')
-      OR (r.id IS NOT NULL AND (r.job_id IS DISTINCT FROM j.id
-        OR j.status NOT IN ('completed', 'failed'))));
+      OR j.status NOT IN ('queued', 'processing', 'completed', 'failed', 'cancelled'));
   IF v_bad <> 0 THEN
     RAISE EXCEPTION 'existing job, prescription, or result lineage is incompatible: %', v_bad;
+  END IF;
+
+  -- A prescription may have historical cancelled or failed attempts. Check
+  -- the result against its own job, not against every job of the prescription.
+  IF EXISTS (
+    SELECT 1 FROM public.prescription_intelligence_results AS r
+    LEFT JOIN public.ai_jobs AS j ON j.id = r.job_id
+    LEFT JOIN public.prescriptions AS p ON p.id = r.prescription_id
+    WHERE j.id IS NULL OR j.prescription_id IS DISTINCT FROM r.prescription_id
+      OR p.id IS NULL OR j.user_id IS DISTINCT FROM p.user_id
+      OR j.job_type <> 'prescription_analysis' OR j.status NOT IN ('completed', 'failed')
+  ) THEN
+    RAISE EXCEPTION 'existing result job lineage is incompatible';
   END IF;
 
   IF EXISTS (

@@ -19,6 +19,8 @@ export function PrescriptionStatusBadge({ status }: StatusBadgeProps) {
       return <Badge tone="warning">Completed with warnings</Badge>;
     case 'failed':
       return <Badge tone="danger">Failed</Badge>;
+    case 'cancelled':
+      return <Badge tone="warning">Cancelled</Badge>;
     default:
       return <Badge tone="neutral">{status}</Badge>;
   }

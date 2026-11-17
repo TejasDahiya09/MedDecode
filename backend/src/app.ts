@@ -2,7 +2,7 @@ import cors from "cors";
 import express, { type Express } from "express";
 import helmet from "helmet";
 
-import { env, getDevelopmentFixtureIntelligenceConfig } from "./config/env.js";
+import { env, getDevelopmentFixtureIntelligenceConfig, getPrescriptionUploadEnv } from "./config/env.js";
 import { errorHandler, notFoundHandler } from "./middleware/error.middleware.js";
 import { createAuthRouter } from "./routes/auth.routes.js";
 import { healthRouter } from "./routes/health.routes.js";
@@ -45,12 +45,27 @@ import {
 } from "./services/auth.service.js";
 import { createPrescriptionProcessingRouter } from "./routes/prescription-processing.routes.js";
 import {
+  createConfiguredAutomaticProcessingJobStore,
   createConfiguredProcessingJobStore,
   type ProcessingJobStoreFactory
 } from "./repositories/processing-job.store.js";
 import { createDevelopmentFixtureIntelligenceRouter } from "./routes/development-fixture-intelligence.routes.js";
 import { LocalPythonIntelligenceClient } from "./services/local-python-intelligence.client.js";
 import { createPrescriptionResultsRouter } from "./routes/prescription-results.routes.js";
+import { createMedicineCatalogueRouter } from "./routes/medicine-catalogue.routes.js";
+import { createPrescriptionReviewRouter } from "./routes/prescription-review.routes.js";
+import {
+  type PrescriptionReviewRepositoryFactory,
+} from "./repositories/prescription-review.repository.js";
+import { createPostgresPrescriptionReviewRepository } from "./repositories/postgres-prescription-review.repository.js";
+import { createPrescriptionDocumentPreviewRouter } from "./routes/prescription-document-preview.routes.js";
+import { createS3PrescriptionDocumentPreviewService } from "./services/prescription-document-preview.service.js";
+import type { PrescriptionDocumentPreviewService } from "./services/prescription-document-preview.service.js";
+import { createRemindersRouter } from "./routes/reminders.routes.js";
+import {
+  defaultRemindersRepository,
+  type RemindersRepository,
+} from "./repositories/reminders.repository.js";
 
 export type RouteRegistrar = (app: Express) => void;
 
@@ -70,8 +85,22 @@ export function createApp(
   processingJobStoreFactory: ProcessingJobStoreFactory =
     createConfiguredProcessingJobStore,
   prescriptionResultsRepository: PrescriptionResultsRepository =
-    supabasePrescriptionResultsRepository
+    supabasePrescriptionResultsRepository,
+  prescriptionReviewOptions: {
+    readonly enabled: boolean;
+    readonly repositoryFactory: PrescriptionReviewRepositoryFactory;
+    readonly documentPreviewService?: PrescriptionDocumentPreviewService;
+    readonly autoDispatchConfirmed?: boolean;
+  } = {
+    enabled: env.prescriptionReviewV3Enabled,
+    repositoryFactory: createPostgresPrescriptionReviewRepository,
+    autoDispatchConfirmed: env.prescriptionReviewV3Enabled,
+  },
+  remindersRepository: RemindersRepository = defaultRemindersRepository
 ): Express {
+  if (env.prescriptionAutoSubmitEnabled && !env.processingJobStoreEnabled) {
+    throw new Error("Automatic prescription submission requires the durable job store.");
+  }
   const app = express();
 
   app.use(helmet());
@@ -90,7 +119,8 @@ export function createApp(
   app.use(createPrescriptionUploadRouter(
     authVerifier,
     userClientFactory,
-    uploadDependenciesFactory
+    uploadDependenciesFactory,
+    { enabled: env.prescriptionAutoSubmitEnabled, storeFactory: createConfiguredAutomaticProcessingJobStore }
   ));
   app.use(createPrescriptionHistoryRouter(
     authVerifier,
@@ -102,11 +132,36 @@ export function createApp(
     userClientFactory,
     prescriptionResultsRepository
   ));
+  if (prescriptionReviewOptions.enabled) {
+    app.use(createPrescriptionReviewRouter(
+      authVerifier,
+      userClientFactory,
+      prescriptionReviewOptions.repositoryFactory,
+      prescriptionReviewOptions.autoDispatchConfirmed === true,
+    ));
+    const preview=prescriptionReviewOptions.documentPreviewService ??
+      (process.env.AWS_REGION?.trim() && process.env.AWS_S3_BUCKET?.trim() ? (()=>{
+        const storage=getPrescriptionUploadEnv();
+        return createS3PrescriptionDocumentPreviewService({region:storage.awsRegion,bucket:storage.awsS3Bucket,
+          maximumBytes:storage.maximumFileSizeBytes,timeoutMs:storage.uploadTimeoutMs});
+      })() : undefined);
+    if(preview) app.use(createPrescriptionDocumentPreviewRouter(authVerifier,userClientFactory,preview));
+  }
   app.use(createMedicineCabinetRouter(
     authVerifier,
     userClientFactory,
     medicineCabinetRepository
   ));
+  app.use(createRemindersRouter(
+    authVerifier,
+    userClientFactory,
+    remindersRepository
+  ));
+  // Keep the catalogue disabled until hosted RPC access has passed deployment
+  // verification. Source selection remains explicit and legacy-defaulted.
+  app.use(createMedicineCatalogueRouter(authVerifier, userClientFactory, undefined,
+    process.env.MEDICINE_CATALOGUE_READ_ENABLED === "true",
+    env.medicineCatalogueDefaultSource));
   app.use(createFamilyMemberRouter(
     authVerifier,
     userClientFactory,

@@ -1,4 +1,4 @@
-﻿import { mkdir } from 'node:fs/promises';
+import { mkdir } from 'node:fs/promises';
 import { expect, test } from '@playwright/test';
 
 for (const size of [
@@ -87,13 +87,14 @@ test('public CTAs, anchor focus, capability controls, footer and history', async
   await page.locator('header.cc-public-header').getByRole('link', { name: 'Get Started', exact: true }).click();
   await expect(page).toHaveURL(/\/sign-up$/); await expect(page.getByRole('heading', { level: 1 })).toHaveText('Create your account.');
   await expect(page.getByRole('main')).toBeFocused(); await expect(page.getByRole('form', { name: 'Create Account' }).locator('input')).toHaveCount(4);
-  await expect(page.getByText(/Account access is not connected yet/)).toBeVisible();
+  await expect(page.getByText(/Secure account access/)).toBeVisible();
   await page.getByRole('link', { name: 'Back to MedDecode' }).click();
   await page.locator('header.cc-public-header').getByRole('link', { name: 'Sign In', exact: true }).click();
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Welcome back.');
   await page.goBack(); await expect(page).toHaveURL(/\/$/);
   await page.getByRole('navigation', { name: 'Footer navigation' }).getByRole('link', { name: 'Learn & Resources preview' }).click();
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Learn & Resources');
+  await expect(page).toHaveURL(/\/sign-in$/);
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Welcome back.');
 });
 
 test('public mobile disclosure supports focus, Escape, outside click and navigation', async ({ page, baseURL }) => {
@@ -117,7 +118,10 @@ test('public mobile disclosure supports focus, Escape, outside click and navigat
 });
 
 test('public themes persist across workspace routes, reload, OS and real tabs', async ({ page, context }) => {
-  await page.emulateMedia({ colorScheme: 'light' }); await page.goto('/');
+  await page.emulateMedia({ colorScheme: 'light' });
+  await page.goto('/');
+  await page.evaluate(() => localStorage.removeItem('meddecode-theme'));
+  await page.reload();
   await page.getByRole('button', { name: 'Switch to dark mode' }).click(); await page.reload();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
   await page.getByRole('navigation', { name: 'Footer navigation' }).getByRole('link', { name: 'Workspace preview' }).click();

@@ -10,6 +10,14 @@ export interface WorkerJobStore {
   }): Promise<WorkerHeartbeat>;
 }
 
+/** The controlled worker must not commit a claim after a prior attempt. */
+export class WorkerPriorAttemptError extends Error {
+  constructor() {
+    super("Controlled worker refused a previously attempted job.");
+    this.name = "WorkerPriorAttemptError";
+  }
+}
+
 export class WorkerJobStoreUnavailableError extends Error {
   constructor() {
     super("Worker job storage is not configured.");

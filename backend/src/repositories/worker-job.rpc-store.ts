@@ -1,4 +1,4 @@
-import type { WorkerJobStore } from "./worker-job.store.js";
+import { WorkerPriorAttemptError, type WorkerJobStore } from "./worker-job.store.js";
 import type { WorkerHeartbeat, WorkerJobClaim } from "../types/worker-jobs.js";
 
 export const WORKER_CLAIM_RPC = "claim_next_prescription_analysis_job_v1" as const;
@@ -98,8 +98,9 @@ const providerError = (value: unknown): { code: string | null; message: string |
   };
 };
 
-const safeError = (value: unknown): WorkerRpcStoreError => {
+const safeError = (value: unknown): Error => {
   const error = providerError(value);
+  if (error.code === "MD_PRIOR_ATTEMPT") return new WorkerPriorAttemptError();
   if (error.code === "42501" || error.code === "28000") {
     return new WorkerRpcStoreError("UNAUTHORIZED");
   }

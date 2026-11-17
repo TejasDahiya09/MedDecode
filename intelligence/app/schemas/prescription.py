@@ -1,6 +1,8 @@
 from dataclasses import dataclass, field
 from typing import Optional
 
+from app.schemas.ocr import UnverifiedNumberedRow
+
 
 @dataclass
 class ExtractionWarning:
@@ -119,5 +121,9 @@ class PrescriptionRecord:
     )
 
     warnings: list[ExtractionWarning] = field(
+        default_factory=list
+    )
+
+    unverified_numbered_rows: list[UnverifiedNumberedRow] = field(
         default_factory=list
     )

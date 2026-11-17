@@ -2,7 +2,9 @@
 
 ## Snapshot
 
-The source branch for this publication is `integration/full-project`, which was 40 commits ahead of `origin/main` at the final audit and had no main-only commits. The publication branch, `publication/meddecode-final`, is based on the refreshed `origin/main` and contains a content-only snapshot of the latest source worktree; it does not inherit the source branch's 40-commit history. The source worktree and its uncommitted changes were left unchanged.
+This repository is on `integration/full-project`. At inspection, `HEAD` was 40 commits ahead of `origin/main` and had no commits unique to `origin/main`. It was also ahead of `origin/backend` by 37 commits and `origin/intelligence` by 35, with no remote-only commits in those comparisons. Local `feature/backend-foundation`, `feature/frontend-foundation`, and `integration/monorepo-foundation` were respectively 33, 14, and 31 commits behind `integration/full-project`, with no branch-only commits. These ancestry counts do not account for uncommitted files, other worktrees, or unpublished collaborator work.
+
+The current worktree has substantial unstaged changes across application code, database assets, and ingestion tooling, including collaborator-owned backend/frontend changes and recent RxNorm integration. Do not discard, stage, commit, or publish them as part of documentation work. Check `git status` and review ownership before any later consolidation.
 
 The GitHub branch listing returned `protected: false` for the published `main`, `backend`, and `intelligence` branches at inspection time. This does not rule out repository rulesets, which were not inspectable through the available read-only interface. Required reviews/checks, team permissions, open-PR state, and deletion policy remain unverified. `integration/full-project` is local and is not among the listed published branches.
 
@@ -31,15 +33,15 @@ Presence in source is not equivalent to a fresh successful end-to-end run or pro
 
 ## Known consolidation blockers and risks
 
-1. The source changes span multiple ownership areas; obtain collaborator confirmation and review the publication diff before merging the pull request.
+1. Uncommitted files span multiple ownership areas; obtain collaborator confirmation and review the complete diff before staging.
 2. Placeholder-only backend/frontend `.env.example` templates have been restored from the active configuration requirements. The actual ignored `.env` files remain local; no values were read or copied into the templates.
 3. Root `test-results/` artifacts were untracked and are now excluded by the root ignore rule; they were not deleted.
 4. Hosted schema, branch protection, rulesets, required checks, and team permissions were not verified.
-5. The included database-reference SQL does not define the complete pre-existing medicine schema and is not a canonical schema.
+5. The database-reference SQL currently present in the worktree does not define the complete pre-existing medicine schema and is itself untracked.
 6. Although offline service tests pass, local PostgreSQL migration harnesses and browser E2E remain unrun on the intended final snapshot.
 7. The RxNorm dry-run and enrichment are separate callable stages; a single composed CLI/workflow is not present, so the recorded run is not reproducible from one checked-in command.
 8. The processing-worker runtime test currently encodes one claim per start. Confirm that one-shot behavior is the intended deployment model before enabling it as a long-running worker.
-9. The unused, unverified `intelligence/data/raw/sample_medicines.csv` is absent from this publication snapshot and is ignored. The source branch still has the file in earlier history, so pushing that branch would upload the old blob; this content-only branch does not inherit that history. The external backup file remains untouched, but its SHA-256 does not match the current historical file version and its exact contents are unverified.
+9. The unused, unverified `intelligence/data/raw/sample_medicines.csv` was removed from the working tree after a verified local backup and is now ignored. Its blob remains in existing branch history because history rewriting is prohibited; pushing the integration branch uploads that history. A reviewed squash-based publication can keep it out of the `main` tree.
 10. Clinical accuracy, regulatory status, security certification, production OCR performance, and data licensing are not established.
 
 ## Safe next steps

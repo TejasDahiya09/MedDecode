@@ -254,7 +254,7 @@ export async function parsePrescriptionMultipart(
 
     parser.on("close", () => {
       if (tooLarge) {
-        reject(uploadError(
+        fail(uploadError(
           413,
           "FILE_TOO_LARGE",
           "Uploaded file exceeds the allowed size."
@@ -263,7 +263,7 @@ export async function parsePrescriptionMultipart(
       }
 
       if (streamFailure) {
-        reject(uploadError(
+        fail(uploadError(
           400,
           "INVALID_MULTIPART_REQUEST",
           "Multipart upload could not be read."
@@ -272,7 +272,7 @@ export async function parsePrescriptionMultipart(
       }
 
       if (invalidParts || fileCount !== 1) {
-        reject(uploadError(
+        fail(uploadError(
           400,
           "INVALID_MULTIPART_REQUEST",
           "Provide exactly one file using the file field and no other fields."

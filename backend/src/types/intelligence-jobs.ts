@@ -2,7 +2,7 @@ import type { IntelligenceFileType, IntelligenceResponseV1 } from "./intelligenc
 
 export const INTELLIGENCE_JOB_TYPE = "prescription_analysis" as const;
 
-export type IntelligenceJobStatus = "queued" | "processing" | "completed" | "failed";
+export type IntelligenceJobStatus = "queued" | "processing" | "completed" | "failed" | "cancelled";
 
 export interface RequestedAnalysis {
   readonly extract_prescription: boolean;

@@ -1,0 +1,11 @@
+{
+  "name": "meddecode-development",
+  "private": true,
+  "scripts": {
+    "dev": "node scripts/dev-launcher.cjs",
+    "test:dev": "node --test scripts/dev-launcher.test.cjs",
+    "build": "npm --prefix backend run build && npm --prefix frontend run build",
+    "test": "node scripts/project-test.cjs",
+    "test:e2e": "npm --prefix frontend run test:e2e"
+  }
+}

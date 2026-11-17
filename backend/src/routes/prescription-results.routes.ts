@@ -52,7 +52,8 @@ function unavailable(): AppError {
 function validatedResult(row: PrescriptionIntelligenceResultRow, prescriptionId: string) {
   if (!UUID_PATTERN.test(row.prescription_id) || row.prescription_id !== prescriptionId ||
       typeof row.job_id !== "string" || !UUID_PATTERN.test(row.job_id) ||
-      row.schema_version !== "1.0" || !COMPLETED_STATUSES.has(row.status)) {
+      row.schema_version !== "1.0" || !COMPLETED_STATUSES.has(row.status) ||
+      typeof row.created_at !== "string" || !Number.isFinite(Date.parse(row.created_at))) {
     throw new AppError(500, "STORED_RESULT_INVALID", "Stored prescription analysis result is invalid.");
   }
   try {
@@ -63,7 +64,7 @@ function validatedResult(row: PrescriptionIntelligenceResultRow, prescriptionId:
     if (result.status !== row.status || result.status === "failed") {
       throw new AppError(500, "STORED_RESULT_INVALID", "Stored prescription analysis result is invalid.");
     }
-    return result;
+    return { ...result, completed_at: row.created_at };
   } catch (error) {
     if (error instanceof AppError) throw error;
     if (error instanceof IntelligenceContractValidationError) {

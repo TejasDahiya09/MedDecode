@@ -92,7 +92,7 @@ BEGIN
      OR p_worker_instance_id !~ '^[A-Za-z0-9._:-]+$' THEN
     RAISE EXCEPTION USING ERRCODE = '22023', MESSAGE = 'invalid worker instance';
   END IF;
-  IF p_lease_seconds NOT BETWEEN 30 AND 300 THEN
+  IF p_lease_seconds IS NULL OR p_lease_seconds NOT BETWEEN 30 AND 300 THEN
     RAISE EXCEPTION USING ERRCODE = '22023', MESSAGE = 'invalid lease duration';
   END IF;
 
@@ -155,7 +155,7 @@ BEGIN
      OR p_worker_instance_id IS NULL
      OR length(btrim(p_worker_instance_id)) NOT BETWEEN 8 AND 128
      OR p_worker_instance_id !~ '^[A-Za-z0-9._:-]+$'
-     OR p_extend_seconds NOT BETWEEN 30 AND 300 THEN
+     OR p_extend_seconds IS NULL OR p_extend_seconds NOT BETWEEN 30 AND 300 THEN
     RAISE EXCEPTION USING ERRCODE = '22023', MESSAGE = 'invalid heartbeat request';
   END IF;
   RETURN QUERY UPDATE public.ai_jobs AS j

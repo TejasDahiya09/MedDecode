@@ -28,7 +28,10 @@ export function createS3PrescriptionStorage(options: {
   readonly region: string;
   readonly bucket: string;
   readonly client?: S3Client;
+  readonly timeoutMs?: number;
 }): PrescriptionStorage {
+  const timeoutMs = options.timeoutMs ?? 30_000;
+  if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > 300_000) throw new Error("S3 timeout is invalid.");
   const client = options.client ?? new S3Client({ region: options.region });
 
   return {
@@ -40,7 +43,7 @@ export function createS3PrescriptionStorage(options: {
           Body: input.bytes,
           ContentType: input.fileType,
           ServerSideEncryption: "AES256"
-        }));
+        }), { abortSignal: AbortSignal.timeout(timeoutMs) });
       } catch {
         throw new PrescriptionStorageError();
       }
@@ -51,7 +54,7 @@ export function createS3PrescriptionStorage(options: {
         await client.send(new DeleteObjectCommand({
           Bucket: options.bucket,
           Key: objectKey
-        }));
+        }), { abortSignal: AbortSignal.timeout(timeoutMs) });
       } catch {
         throw new PrescriptionStorageError();
       }

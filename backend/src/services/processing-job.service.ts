@@ -14,7 +14,7 @@ import type {
 } from "../types/processing-jobs.js";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const STATUSES = new Set(["queued", "processing", "completed", "failed"]);
+const STATUSES = new Set(["queued", "processing", "completed", "failed", "cancelled"]);
 
 function invalidId(): AppError {
   return new AppError(
@@ -71,6 +71,17 @@ async function safely<T>(operation: () => Promise<T>): Promise<T> {
 
 export class ProcessingJobService {
   constructor(private readonly store: ProcessingJobStore) {}
+
+  async cancel(prescriptionId: string, jobId: string) {
+    validatePrescriptionId(prescriptionId);
+    if (!UUID_PATTERN.test(jobId)) throw new AppError(400, "INVALID_JOB_ID", "Job ID must be a valid UUID.");
+    if (!this.store.cancelOwned) throw unavailable();
+    const result = await safely(() => this.store.cancelOwned!(prescriptionId, jobId));
+    if (result === "not_found") throw new AppError(404, "PROCESSING_JOB_NOT_FOUND", "Processing job not found.");
+    if (result === "not_cancellable") throw new AppError(409, "PROCESSING_JOB_NOT_CANCELLABLE", "Processing job cannot be cancelled.");
+    return { prescription_id: prescriptionId, job_id: jobId, status: "cancelled" as const,
+      cancelled_at: result.cancelledAt, already_cancelled: result.alreadyCancelled };
+  }
 
   async submit(
     userId: string,

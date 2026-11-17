@@ -11,10 +11,12 @@ import type { IntelligenceRequestV1, IntelligenceResponseV1 } from "../types/int
 const DEFAULT_TIMEOUT_MS = 5_000;
 const DEFAULT_MAX_STDOUT_BYTES = 1024 * 1024;
 const DEFAULT_MAX_STDERR_BYTES = 64 * 1024;
+export const CATALOGUE_ENV_KEYS = ["MEDDECODE_CATALOGUE_ENV", "MEDDECODE_CATALOGUE_HOST", "MEDDECODE_CATALOGUE_PORT", "MEDDECODE_CATALOGUE_DATABASE", "MEDDECODE_CATALOGUE_USER", "MEDDECODE_CATALOGUE_SSLMODE", "MEDDECODE_CATALOGUE_SSLROOTCERT", "MEDDECODE_CATALOGUE_CONNECT_TIMEOUT_SECONDS", "MEDDECODE_CATALOGUE_PASSFILE", "MEDDECODE_CATALOGUE_PASSWORD"] as const;
+export type CatalogueEnvironment = Readonly<Partial<Record<(typeof CATALOGUE_ENV_KEYS)[number], string>>>;
 
 export class IntelligenceTransportError extends Error {
   constructor(readonly code:
-    "SPAWN_FAILED" | "TIMEOUT" | "OUTPUT_LIMIT" | "PROCESS_EXIT" |
+    "SPAWN_FAILED" | "TIMEOUT" | "ABORTED" | "OUTPUT_LIMIT" | "PROCESS_EXIT" |
     "INVALID_OUTPUT" | "FIXTURE_MODE_NOT_ENABLED" | "REAL_DOCUMENT_NOT_CONFIGURED" |
     "EASYOCR_MODEL_DIRECTORY_UNAVAILABLE" | "AWS_TEXTRACT_REGION_UNAVAILABLE") {
     super("The local intelligence adapter failed safely.");
@@ -26,9 +28,11 @@ export interface JsonSubprocessOptions {
   args: readonly string[];
   cwd: string;
   input: string;
+  signal?: AbortSignal;
   timeoutMs?: number;
   maxStdoutBytes?: number;
   maxStderrBytes?: number;
+  catalogueEnvironment?: CatalogueEnvironment;
   /** Test seam; production always uses node:child_process spawn. */
   spawnProcess?: (
     executable: string,
@@ -45,30 +49,44 @@ function terminateProcessTree(pid: number | undefined): void {
     // `taskkill /T` includes Python children such as multiprocessing workers.
     // Its result is intentionally ignored: the caller still receives only the
     // safe adapter error and never provider diagnostics.
-    const killer = spawn("taskkill", ["/pid", String(pid), "/T", "/F"], {
-      detached: true,
-      stdio: "ignore",
-      windowsHide: true,
-    });
-    killer.unref();
+    try {
+      const killer = spawn("taskkill", ["/pid", String(pid), "/T", "/F"], {
+        detached: true,
+        stdio: "ignore",
+        windowsHide: true,
+      });
+      killer.once("error", () => undefined);
+      killer.unref();
+    } catch { /* process may already be gone */ }
     return;
   }
   try { process.kill(-pid, "SIGKILL"); } catch { /* already exited */ }
 }
 
 export async function runJsonSubprocess(options: JsonSubprocessOptions): Promise<string> {
+  if (options.signal?.aborted) throw new IntelligenceTransportError("ABORTED");
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   const maxStdoutBytes = options.maxStdoutBytes ?? DEFAULT_MAX_STDOUT_BYTES;
   const maxStderrBytes = options.maxStderrBytes ?? DEFAULT_MAX_STDERR_BYTES;
 
   return new Promise((resolve, reject) => {
-    const child = (options.spawnProcess ?? spawn)(options.executable, [...options.args], {
+    let child: ChildProcessWithoutNullStreams;
+    try { child = (options.spawnProcess ?? spawn)(options.executable, [...options.args], {
       cwd: options.cwd,
       shell: false,
       stdio: ["pipe", "pipe", "pipe"],
       windowsHide: true,
-      env: { PYTHONIOENCODING: "utf-8", PATH: process.env.PATH ?? "" },
-    }) as ChildProcessWithoutNullStreams;
+      detached: process.platform !== "win32",
+      env: {
+        PYTHONIOENCODING: "utf-8", PATH: process.env.PATH ?? "",
+        ...(process.env.PGPASSFILE && options.catalogueEnvironment?.MEDDECODE_CATALOGUE_ENV !== "hosted" ? { PGPASSFILE: process.env.PGPASSFILE } : {}),
+        ...(process.env.SystemRoot ? { SystemRoot: process.env.SystemRoot } : {}),
+        ...Object.fromEntries(CATALOGUE_ENV_KEYS.flatMap(key => options.catalogueEnvironment?.[key] === undefined ? [] : [[key, options.catalogueEnvironment[key]]] )) ,
+      },
+    }) as ChildProcessWithoutNullStreams; } catch {
+      reject(new IntelligenceTransportError("SPAWN_FAILED"));
+      return;
+    }
     let settled = false;
     let stdoutBytes = 0;
     let stderrBytes = 0;
@@ -86,20 +104,27 @@ export async function runJsonSubprocess(options: JsonSubprocessOptions): Promise
       if (settled) return;
       settled = true;
       clearTimeout(timer);
+      options.signal?.removeEventListener("abort", abort);
       releaseHandles();
       if (error) reject(error);
       else resolve(output ?? "");
     };
     const terminate = (error: IntelligenceTransportError) => {
-      if (options.terminateTree !== undefined) options.terminateTree(child.pid);
-      else if (process.platform === "win32") terminateProcessTree(child.pid);
-      else {
-        child.kill("SIGKILL");
-        terminateProcessTree(child.pid);
-      }
-      finish(error);
+      if (settled) return;
+      try {
+        if (options.terminateTree !== undefined) options.terminateTree(child.pid);
+        else if (process.platform === "win32") terminateProcessTree(child.pid);
+        else {
+          child.kill("SIGKILL");
+          terminateProcessTree(child.pid);
+        }
+      } catch { /* report only the original safe error */ }
+      finally { finish(error); }
     };
     const timer = setTimeout(() => terminate(new IntelligenceTransportError("TIMEOUT")), timeoutMs);
+    const abort = () => terminate(new IntelligenceTransportError("ABORTED"));
+    options.signal?.addEventListener("abort", abort, { once: true });
+    if (options.signal?.aborted) { abort(); return; }
 
     child.once("error", () => finish(new IntelligenceTransportError("SPAWN_FAILED")));
     child.stdout.on("data", (chunk: Buffer) => {
@@ -151,11 +176,14 @@ export class LocalPythonIntelligenceClient implements IntelligenceClient {
     ocrProvider?: "easyocr" | "aws-textract" | "google-cloud-vision";
     /** Required only for an explicitly selected Textract worker. */
     awsRegion?: string;
+    /** Local-only official catalogue lookup; never enabled by default. */
+    officialCatalogueLocal?: boolean;
+    catalogueEnvironment?: CatalogueEnvironment;
     timeoutMs?: number;
     run?: typeof runJsonSubprocess;
   }) {}
 
-  async analyze(request: IntelligenceRequestV1): Promise<IntelligenceResponseV1> {
+  async analyze(request: IntelligenceRequestV1, signal?: AbortSignal): Promise<IntelligenceResponseV1> {
     const validated = validateIntelligenceRequestV1(request);
     const fixture = this.options.developmentFixture;
     const isFixtureWorker = this.options.worker === "development-local-pdf-fixture";
@@ -209,12 +237,18 @@ export class LocalPythonIntelligenceClient implements IntelligenceClient {
             "--easyocr-model-directory", this.options.easyOcrModelDirectory!,
           ]
         : ["-m", workerModule];
+    if (isRealLocalPdfWorker && this.options.catalogueEnvironment) args.push("--official-catalogue");
+    else if (isRealLocalPdfWorker && this.options.officialCatalogueLocal) args.push("--official-catalogue-local");
     const output = await (this.options.run ?? runJsonSubprocess)({
       executable: this.options.pythonExecutable,
       args,
       cwd: this.options.intelligenceDirectory,
       input: JSON.stringify(validated),
-      ...(this.options.timeoutMs === undefined ? {} : { timeoutMs: this.options.timeoutMs }),
+      ...(this.options.catalogueEnvironment === undefined ? {} : { catalogueEnvironment: this.options.catalogueEnvironment }),
+      ...(signal === undefined ? {} : { signal }),
+      ...(this.options.timeoutMs === undefined
+        ? (isRealLocalPdfWorker ? { timeoutMs: 120_000 } : {})
+        : { timeoutMs: this.options.timeoutMs }),
     });
     let parsed: unknown;
     try {
@@ -246,6 +280,8 @@ export function createRealLocalPdfIntelligenceClientFactory(options: {
   readonly easyOcrModelDirectory?: string;
   readonly ocrProvider?: "easyocr" | "aws-textract" | "google-cloud-vision";
   readonly awsRegion?: string;
+  readonly officialCatalogueLocal?: boolean;
+  readonly catalogueEnvironment?: CatalogueEnvironment;
   readonly timeoutMs?: number;
   /** Test seam only; the selected Python module remains real-local-pdf. */
   readonly run?: typeof runJsonSubprocess;
@@ -258,6 +294,8 @@ export function createRealLocalPdfIntelligenceClientFactory(options: {
     ...(options.easyOcrModelDirectory === undefined ? {} : { easyOcrModelDirectory: options.easyOcrModelDirectory }),
     ...(options.ocrProvider === undefined ? {} : { ocrProvider: options.ocrProvider }),
     ...(options.awsRegion === undefined ? {} : { awsRegion: options.awsRegion }),
+    ...(options.officialCatalogueLocal === true ? { officialCatalogueLocal: true } : {}),
+    ...(options.catalogueEnvironment === undefined ? {} : { catalogueEnvironment: options.catalogueEnvironment }),
     ...(options.timeoutMs === undefined ? {} : { timeoutMs: options.timeoutMs }),
     ...(options.run === undefined ? {} : { run: options.run }),
   });

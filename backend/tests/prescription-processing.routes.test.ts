@@ -107,6 +107,16 @@ describe("Prescription processing APIs", () => {
     assert.equal(response.body.submission.created, false);
   });
 
+  it("returns a cancelled job without treating it as an active submission", async () => {
+    const current = harness();
+    await request(current.app).post(`/api/v1/prescriptions/${prescriptionId}/process`).set(auth).send({});
+    current.store.setStatus(userId, prescriptionId, "cancelled");
+    const response = await request(current.app)
+      .get(`/api/v1/prescriptions/${prescriptionId}/processing-status`).set(auth);
+    assert.equal(response.status, 200);
+    assert.equal(response.body.processing.status, "cancelled");
+  });
+
   it("rejects invalid IDs, missing/non-owned records, and request fields", async () => {
     const invalid = harness();
     const invalidResponse = await request(invalid.app)

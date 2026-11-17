@@ -1,0 +1,121 @@
+{
+  "evaluation": "local_layer1_render_and_hybrid_ocr",
+  "scope": "Generated, clearly printed academic demonstration only; not handwriting or clinical accuracy.",
+  "input_pdf": "frontend\\public\\demo\\phase-d1\\sample-prescription.pdf",
+  "pdf_dpi": 120,
+  "page_count": 1,
+  "image_size_pixels": [
+    [
+      992,
+      1404
+    ]
+  ],
+  "engine": "EasyOCRProvider through HybridOCREngine",
+  "download_enabled": false,
+  "model_assets": "Local EasyOCR assets are present; the host-specific filesystem path is omitted.",
+  "package_versions": {
+    "easyocr": "1.7.2",
+    "torch": "2.6.0+cpu",
+    "PyMuPDF": "1.28.2",
+    "Pillow": "12.3.0"
+  },
+  "engine_versions_reported": [
+    "easyocr"
+  ],
+  "model_provenance": [
+    "local-easyocr-model-directory"
+  ],
+  "runtime_ms": {
+    "pdf_rendering": 22.34,
+    "ocr_recognition_including_hybrid_processing": 14731.59,
+    "easyocr_initialization": 6407.8,
+    "hybrid_page_elapsed": [
+      14731.57
+    ]
+  },
+  "confidence": {
+    "prediction_count": 51,
+    "mean_raw_prediction_confidence": 0.8569,
+    "minimum_raw_prediction_confidence": 0.2293,
+    "maximum_raw_prediction_confidence": 1.0,
+    "note": "Raw engine confidences are not calibrated probabilities."
+  },
+  "field_accuracy": {
+    "matched": 21,
+    "expected": 25,
+    "percentage": 84.0,
+    "method": "Each expected field must occur as an exact contiguous match after Unicode NFKC, case-folding, and removal of punctuation/spacing, within its printed record row.",
+    "fields": [
+      {
+        "source_record_id": "2.1.5:f1",
+        "field_matches": {
+          "medicine_name": true,
+          "strength": true,
+          "dosage_form": true,
+          "dosage_not_specified": true,
+          "catalogue_record_id": true
+        },
+        "matched_field_count": 5,
+        "expected_field_count": 5,
+        "recognized_row_text": "Paracetamol Strength: 500 mg Dosage form: Tablet DOSAGE NOT SPECIFIED IN SOURCE DATA NLEM 2022 source record: 2.1.5.f1"
+      },
+      {
+        "source_record_id": "2.1.5:f3",
+        "field_matches": {
+          "medicine_name": true,
+          "strength": true,
+          "dosage_form": true,
+          "dosage_not_specified": true,
+          "catalogue_record_id": false
+        },
+        "matched_field_count": 4,
+        "expected_field_count": 5,
+        "recognized_row_text": "Paracetamol Dosage form: Oral liquid Strength: 120 mg/5 mL DOSAGE NOT SPECIFIED IN SOURCE DATA NLEM 2022 source record: 2. 5.3"
+      },
+      {
+        "source_record_id": "2.1.2:f1",
+        "field_matches": {
+          "medicine_name": true,
+          "strength": true,
+          "dosage_form": true,
+          "dosage_not_specified": true,
+          "catalogue_record_id": false
+        },
+        "matched_field_count": 4,
+        "expected_field_count": 5,
+        "recognized_row_text": "3. Diclofenac Strength: 50 mg Dosage form: Tablet DOSAGE NOT SPECIFIED IN SOURCE DATA NLEM 2022 source record: 2. 2-f1"
+      },
+      {
+        "source_record_id": "2.1.3:f1",
+        "field_matches": {
+          "medicine_name": true,
+          "strength": true,
+          "dosage_form": true,
+          "dosage_not_specified": true,
+          "catalogue_record_id": false
+        },
+        "matched_field_count": 4,
+        "expected_field_count": 5,
+        "recognized_row_text": "Ibuprofen Strength: 200 mg Dosage form: Tablet DOSAGE NOT SPECIFIED IN SOURCE DATA NLEM 2022 source record: 2 3.1"
+      },
+      {
+        "source_record_id": "2.1.4:f2",
+        "field_matches": {
+          "medicine_name": true,
+          "strength": true,
+          "dosage_form": true,
+          "dosage_not_specified": true,
+          "catalogue_record_id": false
+        },
+        "matched_field_count": 4,
+        "expected_field_count": 5,
+        "recognized_row_text": "5. Mefenamic acid Strength: 100 mg/5 mL Dosage form: Oral liquid DOSAGE NOT SPECIFIED IN SOURCE DATA NLEM 2022 source record: 2. 4.2"
+      }
+    ]
+  },
+  "limitations": [
+    "This is a single generated digital PDF with large, clearly printed text.",
+    "It does not measure handwriting, camera capture, real prescriptions, clinical entity resolution, or safety.",
+    "Field accuracy is specific to this sample and must not be generalized to production documents."
+  ]
+}

@@ -593,16 +593,7 @@ def transform_prices(
         PriceRecord
     ] = []
 
-    seen: set[
-        tuple[
-            Decimal,
-            str,
-            Optional[str],
-            Optional[str],
-            Optional[str],
-            Optional[Decimal],
-        ]
-    ] = set()
+    seen: set[tuple[object, ...]] = set()
 
     for price_record in prices:
 
@@ -643,6 +634,22 @@ def transform_prices(
             region,
             package_description,
             quantity,
+            _clean_string(price_record.source),
+            _clean_string(price_record.price_basis),
+            _clean_string(price_record.price_unit),
+            _clean_string(price_record.package_quantity_unit),
+            _clean_string(price_record.notification_number),
+            _clean_string(price_record.notification_date),
+            _clean_string(price_record.nlem_version),
+            _clean_string(price_record.source_record_id),
+            _clean_string(price_record.source_release),
+            price_record.special_feature,
+            _clean_string(price_record.special_feature_qualifier),
+            _clean_string(price_record.original_price_text),
+            _clean_optional_decimal(price_record.previous_price),
+            _clean_string(price_record.previous_price_text),
+            _clean_string(price_record.effective_date),
+            _clean_string(price_record.publication_date),
         )
 
         if key in seen:
@@ -663,6 +670,23 @@ def transform_prices(
                 source=_clean_string(
                     price_record.source
                 ),
+                price_basis=_clean_string(price_record.price_basis),
+                price_unit=_clean_string(price_record.price_unit),
+                package_quantity_unit=_clean_string(price_record.package_quantity_unit),
+                notification_number=_clean_string(price_record.notification_number),
+                notification_date=_clean_string(price_record.notification_date),
+                nlem_version=_clean_string(price_record.nlem_version),
+                source_record_id=_clean_string(price_record.source_record_id),
+                source_release=_clean_string(price_record.source_release),
+                special_feature=price_record.special_feature,
+                special_feature_qualifier=_clean_string(
+                    price_record.special_feature_qualifier
+                ),
+                original_price_text=_clean_string(price_record.original_price_text),
+                previous_price=_clean_optional_decimal(price_record.previous_price),
+                previous_price_text=_clean_string(price_record.previous_price_text),
+                effective_date=_clean_string(price_record.effective_date),
+                publication_date=_clean_string(price_record.publication_date),
             )
         )
 

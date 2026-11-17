@@ -29,7 +29,7 @@ transition fails.
 
 The SQL gate is intentionally narrower than the TypeScript Contract v1
 validator. It validates correlation, top-level result shape, supported success
-statuses, empty alternatives, projection-critical fields, and database
+statuses, alternative projection-critical fields, and database
 constraints. The application validator remains authoritative for full clinical
 semantics. A production worker must validate with TypeScript before calling this
 function; SQL is a second, fail-closed persistence boundary.
@@ -77,8 +77,10 @@ Before any runtime or hosted review, prove all of the following:
 4. `meddecode_worker` is a safe `NOLOGIN`, `NOINHERIT` authorization role and a
    separately approved hosted login/role-assumption mechanism exists.
 5. The worker's TypeScript completion handler validates Contract v1 before use.
-6. Alternatives remain empty until the unresolved contract-key mismatch has an
-   approved resolution.
+6. The Contract v1 page 6 `ingredient_equivalence` field and nullable external-ID
+   projection are verified in disposable PostgreSQL, including rollback and replay.
+   The candidate does not infer any legacy medicine UUID. No runtime verification
+   or hosted deployment of these changes has been performed.
 
 ## Future local runtime test only
 

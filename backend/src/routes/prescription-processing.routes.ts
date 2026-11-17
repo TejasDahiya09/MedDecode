@@ -37,6 +37,22 @@ export function createPrescriptionProcessingRouter(
   const authenticate = createAuthenticateMiddleware(verifier, userClientFactory);
 
   router.post(
+    "/api/v1/prescriptions/:prescriptionId/jobs/:jobId/cancel",
+    authenticate,
+    async (request, response) => {
+      if (request.body !== undefined &&
+          (typeof request.body !== "object" || request.body === null ||
+           Array.isArray(request.body) || Object.keys(request.body).length !== 0)) {
+        throw new AppError(400, "INVALID_PROCESSING_REQUEST", "Cancellation does not accept request fields.");
+      }
+      requireAuthenticatedIdentity(request);
+      const service = new ProcessingJobService(storeFactory(requireUserClient(request)));
+      const jobId = typeof request.params.jobId === "string" ? request.params.jobId : "";
+      response.status(200).json(await service.cancel(prescriptionId(request), jobId));
+    }
+  );
+
+  router.post(
     "/api/v1/prescriptions/:prescriptionId/process",
     authenticate,
     async (request, response) => {

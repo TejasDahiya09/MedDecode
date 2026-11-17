@@ -64,6 +64,8 @@ def parse_dosage_schedule(
     night = _parse_dosage_value(
         match.group("night")
     )
+    if morning is None or afternoon is None or night is None:
+        return DosageSchedule()
 
     units_per_day = (
         morning
@@ -86,7 +88,7 @@ def parse_dosage_schedule(
 
 def _parse_dosage_value(
     value: str,
-) -> float:
+) -> float | None:
     """
     Convert a dosage component into a float.
 
@@ -108,10 +110,10 @@ def _parse_dosage_value(
             )
         )
 
-        return (
-            float(numerator)
-            / float(denominator)
-        )
+        denominator_value = float(denominator)
+        if denominator_value == 0:
+            return None
+        return float(numerator) / denominator_value
 
     return float(
         value

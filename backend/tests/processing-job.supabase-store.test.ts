@@ -6,6 +6,7 @@ import { parseProcessingJobStoreEnabled } from "../src/config/env.js";
 import {
   ProcessingJobStoreUnavailableError,
   createProcessingJobStoreFactory,
+  createSupabaseAutomaticProcessingJobStore,
   createSupabaseProcessingJobStore
 } from "../src/repositories/processing-job.store.js";
 import { DEFAULT_REQUESTED_ANALYSIS } from "../src/types/intelligence-jobs.js";
@@ -58,6 +59,22 @@ function harness(...responses: Response[]) {
 const input = { userId, prescriptionId, requestedAnalysis: DEFAULT_REQUESTED_ANALYSIS };
 
 describe("Supabase processing-job store", () => {
+  it("accepts a job claimed between submission and its status read", async () => {
+    const { store } = harness({ data: [submitRow(true)], error: null },
+      { data: [statusRow({ job_status: "processing", started_at: createdAt })], error: null });
+    const result = await store.submitOwned(input);
+    assert.equal(result.kind, "created");
+    if (result.kind === "created") assert.equal(result.job.status, "processing");
+  });
+  it("uses the dedicated owner-authenticated admission RPC for automatic uploads", async () => {
+    const client = new RpcClient();
+    client.responses.push({ data: [submitRow(true)], error: null }, { data: [statusRow()], error: null });
+    const store = createSupabaseAutomaticProcessingJobStore(client as unknown as UserSupabaseClient);
+    const result = await store.submitOwned(input);
+    assert.equal(result.kind, "created");
+    assert.equal(client.calls[0]?.name, "submit_automatic_prescription_analysis_job_v1");
+    assert.equal(client.calls[1]?.name, "get_prescription_analysis_status_v1");
+  });
   it("submits through the owner-scoped RPC and enriches the durable job", async () => {
     const { client, store } = harness(
       { data: [submitRow(true)], error: null },

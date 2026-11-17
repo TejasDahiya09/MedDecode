@@ -71,7 +71,8 @@ function resultJson(): Record<string, unknown> {
 function storedResult(overrides: Partial<PrescriptionIntelligenceResultRow> = {}): PrescriptionIntelligenceResultRow {
   return {
     prescription_id: prescriptionId, job_id: jobId, schema_version: "1.0",
-    status: "completed_with_warnings", result_json: resultJson(), ...overrides
+    status: "completed_with_warnings", result_json: resultJson(),
+    created_at: "2026-11-15T17:50:59.370Z", ...overrides
   };
 }
 
@@ -96,7 +97,9 @@ describe("Authenticated prescription results API", () => {
     current.repository.result = storedResult();
     const response = await request(current.app).get(path).set(auth);
     assert.equal(response.status, 200);
-    assert.deepEqual(response.body, resultJson());
+    assert.deepEqual(response.body, {
+      ...resultJson(), completed_at: "2026-11-15T17:50:59.370Z"
+    });
     assert.deepEqual(current.repository.prescriptionCalls, [{ userId, prescriptionId }]);
     assert.deepEqual(current.repository.resultCalls, [prescriptionId]);
   });
@@ -159,6 +162,12 @@ describe("Authenticated prescription results API", () => {
     assert.equal(malformedResponse.status, 500);
     assert.equal(malformedResponse.body.error.code, "STORED_RESULT_INVALID");
     assert.doesNotMatch(JSON.stringify(malformedResponse.body), /private|bad/i);
+
+    const invalidTimestamp = harness();
+    invalidTimestamp.repository.result = storedResult({ created_at: "not-a-timestamp" });
+    const invalidTimestampResponse = await request(invalidTimestamp.app).get(path).set(auth);
+    assert.equal(invalidTimestampResponse.status, 500);
+    assert.equal(invalidTimestampResponse.body.error.code, "STORED_RESULT_INVALID");
 
     const failure = harness();
     failure.repository.failure = new Error("private S3 key and provider diagnostic");

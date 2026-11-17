@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 
 import { getSupabasePublicEnv } from "./env.js";
+import { createBoundedFetch } from "./bounded-fetch.js";
 
 export type UserSupabaseClient = ReturnType<typeof createClient>;
 export type UserSupabaseClientFactory = (
@@ -24,6 +25,7 @@ export const createUserSupabaseClient: UserSupabaseClientFactory = (
 
   return createClient(supabaseUrl, supabasePublishableKey, {
     global: {
+      fetch: createBoundedFetch(fetch),
       headers: {
         Authorization: `Bearer ${accessToken}`
       }

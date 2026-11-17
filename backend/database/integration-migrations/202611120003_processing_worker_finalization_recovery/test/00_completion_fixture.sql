@@ -50,6 +50,15 @@ CREATE TABLE public.prescription_medicines (
   medicine_id uuid, units_per_day numeric, estimated_total_units numeric,
   UNIQUE (prescription_id, sequence_number)
 );
+CREATE TABLE public.prescription_medicine_alternatives (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  prescription_medicine_id uuid NOT NULL REFERENCES public.prescription_medicines(id) ON DELETE CASCADE,
+  medicine_id uuid, medicine_external_id text NOT NULL,
+  ingredient_equivalence boolean NOT NULL, strength_compatibility boolean NOT NULL,
+  dosage_form_compatibility boolean NOT NULL, price_value numeric(12,2), price_currency text,
+  price_unit_description text, confidence numeric CHECK (confidence IS NULL OR confidence BETWEEN 0 AND 1),
+  note text
+);
 CREATE TABLE public.prescription_recommendations (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   prescription_id uuid NOT NULL REFERENCES public.prescriptions(id) ON DELETE CASCADE,

@@ -1,0 +1,79 @@
+﻿{
+    "captured_utc":  "2026-11-17T12:32:44.8014522Z",
+    "repository":  "C:\\Users\\dahiy\\MedDecode-integration",
+    "branch":  "integration/full-project",
+    "head":  "503336431a31e47a38b98d6ff668818e7aa8d178",
+    "record_count":  18460,
+    "status_counts":  [
+                          {
+                              "status":  " D",
+                              "count":  1
+                          },
+                          {
+                              "status":  " M",
+                              "count":  103
+                          },
+                          {
+                              "status":  "??",
+                              "count":  18356
+                          }
+                      ],
+    "category_counts":  [
+                            {
+                                "category":  "configuration",
+                                "count":  6
+                            },
+                            {
+                                "category":  "documentation",
+                                "count":  107
+                            },
+                            {
+                                "category":  "generated",
+                                "count":  17759
+                            },
+                            {
+                                "category":  "migration",
+                                "count":  102
+                            },
+                            {
+                                "category":  "other",
+                                "count":  27
+                            },
+                            {
+                                "category":  "private-risk",
+                                "count":  8
+                            },
+                            {
+                                "category":  "source",
+                                "count":  262
+                            },
+                            {
+                                "category":  "test",
+                                "count":  189
+                            }
+                        ],
+    "ownership_hints":  [
+                            {
+                                "hint":  "concurrent-catalogue-history-preserve",
+                                "count":  46
+                            },
+                            {
+                                "hint":  "concurrent-intelligence-history-preserve",
+                                "count":  152
+                            },
+                            {
+                                "hint":  "concurrent-reminders-history-preserve",
+                                "count":  31
+                            },
+                            {
+                                "hint":  "generated-artifact",
+                                "count":  17759
+                            },
+                            {
+                                "hint":  "unassigned-preserve",
+                                "count":  472
+                            }
+                        ],
+    "hashed_records":  567,
+    "note":  "Captured before Batch 1 code edits. The generator and output artifacts were created after the initial status count and are not members of that snapshot."
+}

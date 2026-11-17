@@ -1,10 +1,14 @@
-import { Badge } from '../../components/ui';
+import { Link } from 'react-router-dom';
+import { Badge, Button } from '../../components/ui';
 import { Icon } from '../../components/Icon';
 import type { ContractV1MedicineItem } from './prescription-api';
+import { VerifiedAlternativesSection } from './VerifiedAlternativesSection';
 
 interface MedicineCardProps {
   readonly medicine: ContractV1MedicineItem;
+  readonly accessToken: string;
   readonly isUncertain?: boolean;
+  readonly onSaveToCabinet?: (medicine: ContractV1MedicineItem) => void;
 }
 
 function matchBadge(status: ContractV1MedicineItem['medicine_match']['status']) {
@@ -22,31 +26,32 @@ function matchBadge(status: ContractV1MedicineItem['medicine_match']['status']) 
   }
 }
 
-export function PrescriptionMedicineCard({ medicine, isUncertain }: MedicineCardProps) {
+export function PrescriptionMedicineCard({
+  medicine,
+  accessToken,
+  isUncertain,
+  onSaveToCabinet,
+}: MedicineCardProps) {
   const { sequence_number, extraction, medicine_match, confidence, derived } = medicine;
   const isUnverifiedName = !extraction.medicine_name;
   const name = extraction.medicine_name || 'Unverified Medicine Name';
   const hasStrength = extraction.strength && (extraction.strength.value !== null || extraction.strength.unit !== null);
   const strengthText = hasStrength
     ? `${extraction.strength?.value ?? ''} ${extraction.strength?.unit ?? ''}`.trim()
-    : 'Not specified';
+    : 'Not provided';
 
   const freq = extraction.frequency;
-  const hasSlotSchedule = freq.morning !== null || freq.afternoon !== null || freq.night !== null;
+  const hasSlotSchedule = freq.morning != null || freq.afternoon != null || freq.night != null;
   const slotText = hasSlotSchedule
-    ? `Morning: ${freq.morning ?? 0} · Afternoon: ${freq.afternoon ?? 0} · Night: ${freq.night ?? 0}`
+    ? `Morning: ${freq.morning ?? 'Not provided'} · Afternoon: ${freq.afternoon ?? 'Not provided'} · Night: ${freq.night ?? 'Not provided'}`
     : null;
   const timesText = freq.times_per_day !== null && freq.times_per_day !== undefined
     ? `${freq.times_per_day} time${freq.times_per_day === 1 ? '' : 's'} daily`
     : null;
-
-  const durationText = extraction.duration?.value
-    ? `${extraction.duration.value} ${extraction.duration.unit ?? 'days'}`
-    : null;
-
-  const quantityText = extraction.quantity?.value
-    ? `${extraction.quantity.value} ${extraction.quantity.unit ?? 'units'}`
-    : null;
+  const frequencyText = timesText
+    ?? (freq.type === 'as_needed' ? 'As needed' : 'Not provided');
+  const durationText = formatValueUnit(extraction.duration);
+  const quantityText = formatValueUnit(extraction.quantity);
 
   const lowConfidence = isUncertain ||
     isUnverifiedName ||
@@ -80,7 +85,7 @@ export function PrescriptionMedicineCard({ medicine, isUncertain }: MedicineCard
           </div>
           <h3
             id={`medicine-${sequence_number}-title`}
-            className="mt-1 text-lg font-bold text-[var(--cc-text)]"
+            className="mt-1 break-words text-lg font-bold text-[var(--cc-text)] [overflow-wrap:anywhere]"
           >
             {name}
           </h3>
@@ -99,7 +104,12 @@ export function PrescriptionMedicineCard({ medicine, isUncertain }: MedicineCard
         {medicine_match.brand_name ? (
           <div className="text-right">
             <span className="text-xs text-[var(--cc-muted)] block">Catalog reference</span>
-            <span className="text-sm font-semibold text-[var(--cc-text)]">{medicine_match.brand_name}</span>
+            <span className="break-words text-sm font-semibold text-[var(--cc-text)] [overflow-wrap:anywhere]">{medicine_match.brand_name}</span>
+            {medicine_match.confidence !== null ? (
+              <span className="block text-xs text-[var(--cc-muted)]">
+                Match confidence: {Math.round(medicine_match.confidence * 100)}%
+              </span>
+            ) : null}
           </div>
         ) : null}
       </div>
@@ -115,7 +125,7 @@ export function PrescriptionMedicineCard({ medicine, isUncertain }: MedicineCard
             <span>Recognition confidence: {Math.round(confidence.extraction * 100)}%</span>
           ) : null}
         </div>
-        <p className="text-xs sm:text-sm font-mono text-[var(--cc-text-soft)] break-words">
+        <p className="text-xs sm:text-sm font-mono text-[var(--cc-text-soft)] break-words [overflow-wrap:anywhere]">
           &ldquo;{extraction.raw_text}&rdquo;
         </p>
       </div>
@@ -127,21 +137,29 @@ export function PrescriptionMedicineCard({ medicine, isUncertain }: MedicineCard
           <dd className="mt-0.5 font-medium text-[var(--cc-text)]">{strengthText}</dd>
         </div>
         <div>
-          <dt className="text-xs text-[var(--cc-muted)]">Dosage Form</dt>
+          <dt className="text-xs text-[var(--cc-muted)]">Dosage form</dt>
           <dd className="mt-0.5 font-medium text-[var(--cc-text)] capitalize">
-            {extraction.dosage_form ?? 'Not specified'}
+            {extraction.dosage_form ?? 'Not provided'}
           </dd>
+        </div>
+        <div>
+          <dt className="text-xs text-[var(--cc-muted)]">Dose</dt>
+          <dd className="mt-0.5 font-medium text-[var(--cc-muted)]">Not provided</dd>
+        </div>
+        <div>
+          <dt className="text-xs text-[var(--cc-muted)]">Route</dt>
+          <dd className="mt-0.5 font-medium text-[var(--cc-muted)]">Not provided</dd>
         </div>
         <div>
           <dt className="text-xs text-[var(--cc-muted)]">Frequency</dt>
           <dd className="mt-0.5 font-medium text-[var(--cc-text)]">
-            {timesText ?? (freq.type === 'as_needed' ? 'As needed' : 'Scheduled')}
+            {frequencyText}
           </dd>
         </div>
         <div>
           <dt className="text-xs text-[var(--cc-muted)]">Timing</dt>
-          <dd className="mt-0.5 font-medium text-[var(--cc-text)]">
-            {extraction.timing ?? 'Standard schedule'}
+          <dd className="mt-0.5 font-medium text-[var(--cc-text)] break-words">
+            {extraction.timing ?? 'Not provided'}
           </dd>
         </div>
         {slotText ? (
@@ -150,19 +168,15 @@ export function PrescriptionMedicineCard({ medicine, isUncertain }: MedicineCard
             <dd className="mt-0.5 font-medium text-[var(--cc-text)]">{slotText}</dd>
           </div>
         ) : null}
-        {durationText ? (
-          <div>
-            <dt className="text-xs text-[var(--cc-muted)]">Duration</dt>
-            <dd className="mt-0.5 font-medium text-[var(--cc-text)]">{durationText}</dd>
-          </div>
-        ) : null}
-        {quantityText ? (
-          <div>
-            <dt className="text-xs text-[var(--cc-muted)]">Total Quantity</dt>
-            <dd className="mt-0.5 font-medium text-[var(--cc-text)]">{quantityText}</dd>
-          </div>
-        ) : null}
-        {derived?.estimated_total_units ? (
+        <div>
+          <dt className="text-xs text-[var(--cc-muted)]">Duration</dt>
+          <dd className="mt-0.5 font-medium text-[var(--cc-text)]">{durationText}</dd>
+        </div>
+        <div>
+          <dt className="text-xs text-[var(--cc-muted)]">Quantity</dt>
+          <dd className="mt-0.5 font-medium text-[var(--cc-text)]">{quantityText}</dd>
+        </div>
+        {derived?.estimated_total_units != null ? (
           <div>
             <dt className="text-xs text-[var(--cc-muted)]">Calculated units</dt>
             <dd className="mt-0.5 font-medium text-[var(--cc-text)]">{derived.estimated_total_units}</dd>
@@ -189,6 +203,40 @@ export function PrescriptionMedicineCard({ medicine, isUncertain }: MedicineCard
           ))}
         </div>
       ) : null}
+
+      <VerifiedAlternativesSection medicine={medicine} accessToken={accessToken} />
+
+      {/* Card Actions Footer: Catalogue lookup & Save to Cabinet */}
+      <div className="mt-3 pt-3 border-t border-[var(--cc-border)]/50 flex flex-wrap items-center justify-between gap-2">
+        {name && name !== 'Unverified Medicine Name' ? (
+          <Link
+            to={`/medicine-library?q=${encodeURIComponent(extraction.medicine_name || medicine_match.brand_name || name)}`}
+            className="text-xs font-semibold text-[var(--cc-primary)] hover:underline inline-flex items-center gap-1.5"
+            title={`Search catalogue for ${name}`}
+          >
+            <Icon name="search" className="size-3.5" />
+            <span>Look up formulation</span>
+            <Icon name="arrow" className="size-3" />
+          </Link>
+        ) : <span />}
+
+        {onSaveToCabinet ? (
+          <Button
+            variant="secondary"
+            icon="briefcase"
+            onClick={() => onSaveToCabinet(medicine)}
+            className="text-xs h-7 px-2.5"
+            aria-label={`Save ${name} to Medicine Cabinet`}
+          >
+            Save to My Cabinet
+          </Button>
+        ) : null}
+      </div>
     </article>
   );
+}
+
+function formatValueUnit(value: { readonly value: number | null; readonly unit: string | null } | undefined): string {
+  if (!value || (value.value === null && value.unit === null)) return 'Not provided';
+  return [value.value ?? 'Value not provided', value.unit ?? 'Unit not provided'].join(' ');
 }

@@ -4,5 +4,5 @@ import type {
 } from "../types/intelligence-contract-v1.js";
 
 export interface IntelligenceClient {
-  analyze(request: IntelligenceRequestV1): Promise<IntelligenceResponseV1>;
+  analyze(request: IntelligenceRequestV1, signal?: AbortSignal): Promise<IntelligenceResponseV1>;
 }

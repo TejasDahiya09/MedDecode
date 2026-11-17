@@ -2,28 +2,29 @@ import { Badge, Card, EmptyState, SectionHeader } from '../../components/ui';
 import { Icon } from '../../components/Icon';
 import { PrescriptionMedicineCard } from './PrescriptionMedicineCard';
 import { PrescriptionWarningsCard } from './PrescriptionWarningsCard';
-import type { ContractV1AnalysisResult } from './prescription-api';
+import type { ContractV1AnalysisResult, ContractV1MedicineItem } from './prescription-api';
 
 interface PrescriptionResultsViewProps {
   readonly result: ContractV1AnalysisResult;
+  readonly accessToken?: string;
+  readonly onSaveToCabinet?: (medicine: ContractV1MedicineItem) => void;
 }
 
-export function PrescriptionResultsView({ result }: PrescriptionResultsViewProps) {
-  const { medicines, warnings, prescription, patient, processing_metadata, status } = result;
+export function PrescriptionResultsView({ result, accessToken = '', onSaveToCabinet }: PrescriptionResultsViewProps) {
+  const { medicines, warnings, prescription, patient, processing_metadata, recommendations = [], status } = result;
 
   const isCompletedWithWarnings = status === 'completed_with_warnings';
   const confidenceScore = processing_metadata.overall_confidence;
-  const isLowConfidence = confidenceScore !== null && confidenceScore < 0.75;
   const hasWarnings = warnings.length > 0;
-  const showUncertainNotice = isCompletedWithWarnings || isLowConfidence || hasWarnings;
+  const showUncertainNotice = isCompletedWithWarnings || hasWarnings;
 
   return (
     <div className="grid gap-6">
-      {/* Uncertain OCR Banner if completed_with_warnings or low confidence */}
+      {/* Surface the persisted completion status and warnings without guessing their source. */}
       {showUncertainNotice ? (
         <section
           role="status"
-          aria-label="OCR recognition alert"
+          aria-label="Analysis warnings"
           className="rounded-2xl border border-[var(--cc-warning)]/40 bg-[var(--cc-warning-soft)]/20 p-5"
         >
           <div className="flex items-start gap-3.5">
@@ -34,14 +35,17 @@ export function PrescriptionResultsView({ result }: PrescriptionResultsViewProps
               <div className="flex flex-wrap items-center gap-2">
                 <h3 className="font-semibold text-[var(--cc-text)]">
                   {isCompletedWithWarnings
-                    ? 'Completed with warnings: Uncertain OCR outcomes detected'
-                    : 'Notice: Some recognized text requires manual verification'}
+                    ? 'Analysis completed with warnings'
+                    : 'This analysis includes warnings'}
                 </h3>
-                <Badge tone="warning">Manual verification required</Badge>
+                <Badge tone="warning">
+                  {hasWarnings
+                    ? `${warnings.length} ${warnings.length === 1 ? 'warning' : 'warnings'}`
+                    : 'Completed with warnings'}
+                </Badge>
               </div>
               <p className="mt-1 text-sm text-[var(--cc-text-soft)]">
-                Optical character recognition identified items with ambiguous matches or low confidence scores.
-                Review every extracted strength, unit, and instruction against the original physical prescription before relying on this summary.
+                Review the recorded warnings and extracted details against the original prescription.
               </p>
             </div>
           </div>
@@ -52,7 +56,7 @@ export function PrescriptionResultsView({ result }: PrescriptionResultsViewProps
       <Card>
         <SectionHeader
           title="Prescription Information"
-          description="Metadata extracted from the prescription header and document registry."
+          description="Prescription details returned with this analysis."
         />
         <dl className="mt-4 grid grid-cols-2 gap-4 text-sm sm:grid-cols-4">
           <div>
@@ -62,17 +66,12 @@ export function PrescriptionResultsView({ result }: PrescriptionResultsViewProps
             </dd>
           </div>
           <div>
-            <dt className="text-xs text-[var(--cc-muted)]">Overall OCR Confidence</dt>
+            <dt className="text-xs text-[var(--cc-muted)]">Reported result confidence</dt>
             <dd className="mt-1 font-semibold text-[var(--cc-text)] flex items-center gap-1.5">
               {confidenceScore !== null ? (
-                <>
-                  <span>{Math.round(confidenceScore * 100)}%</span>
-                  <Badge tone={confidenceScore >= 0.8 ? 'success' : 'warning'}>
-                    {confidenceScore >= 0.8 ? 'High' : 'Moderate'}
-                  </Badge>
-                </>
+                <span>{Math.round(confidenceScore * 100)}%</span>
               ) : (
-                'Not computed'
+                'Not provided'
               )}
             </dd>
           </div>
@@ -103,13 +102,27 @@ export function PrescriptionResultsView({ result }: PrescriptionResultsViewProps
               <dt className="text-xs text-[var(--cc-muted)]">Patient Reference</dt>
               <dd className="mt-1 font-medium text-[var(--cc-text)]">
                 {patient.name ?? 'Patient'}
-                {patient.age ? ` · Age ${patient.age}` : ''}
+                {patient.age != null ? ` · Age ${patient.age}` : ''}
                 {patient.gender ? ` · ${patient.gender}` : ''}
               </dd>
             </div>
           ) : null}
         </dl>
       </Card>
+
+      <section role="note">
+        <Card className="border-[var(--cc-border)]">
+          <div className="flex items-start gap-3">
+            <Icon name="shield" className="size-5 shrink-0 text-[var(--cc-info)]" />
+            <div>
+              <h2 className="font-semibold text-[var(--cc-text)]">Source evidence unavailable</h2>
+              <p className="mt-1 text-sm text-[var(--cc-muted)]">
+                This result includes extraction and match fields, but no source provenance, regulatory evidence, or price observations. None are inferred or displayed as verified facts.
+              </p>
+            </div>
+          </div>
+        </Card>
+      </section>
 
       {/* Recognized Medicines */}
       <section aria-labelledby="recognized-medicines-heading" className="grid gap-4">
@@ -137,12 +150,50 @@ export function PrescriptionResultsView({ result }: PrescriptionResultsViewProps
               <PrescriptionMedicineCard
                 key={medicine.sequence_number}
                 medicine={medicine}
+                accessToken={accessToken}
                 isUncertain={isCompletedWithWarnings}
+                onSaveToCabinet={onSaveToCabinet}
               />
             ))}
           </div>
         )}
       </section>
+
+      {recommendations.length > 0 ? (
+        <section aria-labelledby="analysis-notes-heading" className="grid gap-3">
+          <div>
+            <h2 id="analysis-notes-heading" className="text-xl font-bold text-[var(--cc-text)]">
+              Analysis notes
+            </h2>
+            <p className="text-sm text-[var(--cc-muted)]">
+              Notes returned with this analysis; they are not a substitute for professional advice.
+            </p>
+          </div>
+          <div className="grid gap-3">
+            {recommendations.map((recommendation, index) => (
+              <Card key={`${recommendation.type}-${index}`}>
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <h3 className="font-semibold text-[var(--cc-text)] break-words [overflow-wrap:anywhere]">
+                    {recommendation.title}
+                  </h3>
+                  <Badge tone="info">{recommendation.type}</Badge>
+                </div>
+                <p className="mt-2 text-sm text-[var(--cc-text-soft)] break-words [overflow-wrap:anywhere]">
+                  {recommendation.message}
+                </p>
+                <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-[var(--cc-muted)]">
+                  {recommendation.related_medicine_sequence_number !== null ? (
+                    <span>Relates to Entry #{recommendation.related_medicine_sequence_number}</span>
+                  ) : null}
+                  {recommendation.confidence !== null ? (
+                    <span>Reported confidence: {Math.round(recommendation.confidence * 100)}%</span>
+                  ) : null}
+                </div>
+              </Card>
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       {/* Warnings & Discrepancies */}
       <PrescriptionWarningsCard warnings={warnings} />

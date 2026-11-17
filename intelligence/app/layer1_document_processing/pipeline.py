@@ -17,7 +17,9 @@ from app.layer1_document_processing.pdf_processor import (
 from app.schemas.ocr import OCRPageResult
 
 if TYPE_CHECKING:
+    from app.integration.document_safety import DocumentSafetyLimits
     from app.layer1_document_processing.ocr_engine import OCREngine
+    from app.layer1_document_processing.preprocessing_adapter import PreprocessedOCRDocument
 
 
 def process_document(
@@ -111,3 +113,28 @@ def process_document_with_ocr(
         )
 
     return results
+
+
+def process_document_with_preprocessing(
+    file_path: str,
+    ocr_engine: OCREngine | None = None,
+    *,
+    pdf_dpi: int = 120,
+    safety_limits: DocumentSafetyLimits | None = None,
+) -> PreprocessedOCRDocument:
+    """Run the additive per-page preprocessing and native-PDF routing adapter.
+
+    The existing ``process_document`` and ``process_document_with_ocr``
+    behavior remains unchanged for existing callers.
+    """
+
+    from app.layer1_document_processing.preprocessing_adapter import (
+        process_document_with_preprocessing as process,
+    )
+
+    return process(
+        file_path,
+        ocr_engine=ocr_engine,
+        pdf_dpi=pdf_dpi,
+        safety_limits=safety_limits,
+    )

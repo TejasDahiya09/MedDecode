@@ -26,6 +26,7 @@ export interface SubmitProcessingJobInput {
 export interface ProcessingJobStore {
   submitOwned(input: SubmitProcessingJobInput): Promise<ProcessingSubmissionResult>;
   findOwnedStatus(userId: string, prescriptionId: string): Promise<ProcessingStatusResult>;
+  cancelOwned?(prescriptionId: string, jobId: string): Promise<{ cancelledAt: string; alreadyCancelled: boolean } | "not_found" | "not_cancellable">;
 }
 
 export type ProcessingJobStoreFactory = (
@@ -55,7 +56,7 @@ type RpcClient = {
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const JOB_STATUSES = new Set<IntelligenceJobStatus>([
-  "queued", "processing", "completed", "failed"
+  "queued", "processing", "completed", "failed", "cancelled"
 ]);
 
 const exactKeys = (value: Record<string, unknown>, expected: readonly string[]): boolean => {
@@ -144,7 +145,7 @@ function statusJob(
 class SupabaseProcessingJobStore implements ProcessingJobStore {
   private readonly rpcClient: RpcClient;
 
-  constructor(client: UserSupabaseClient) {
+  constructor(client: UserSupabaseClient, private readonly automatic = false) {
     this.rpcClient = client as unknown as RpcClient;
   }
 
@@ -169,7 +170,7 @@ class SupabaseProcessingJobStore implements ProcessingJobStore {
   async submitOwned(input: SubmitProcessingJobInput): Promise<ProcessingSubmissionResult> {
     const result = await callRpc(
       this.rpcClient,
-      "submit_prescription_analysis_job_v1",
+      this.automatic ? "submit_automatic_prescription_analysis_job_v1" : "submit_prescription_analysis_job_v1",
       {
         p_prescription_id: input.prescriptionId,
         p_requested_analysis: input.requestedAnalysis
@@ -204,7 +205,8 @@ class SupabaseProcessingJobStore implements ProcessingJobStore {
 
     const status = await this.readStatus(input.userId, input.prescriptionId);
     if (status === "none" || status === "prescription_not_found" ||
-        status.id !== submission.job_id || status.status !== submission.job_status) {
+        status.id !== submission.job_id || (status.status !== submission.job_status &&
+          !(submission.job_status === "queued" && status.status === "processing"))) {
       throw unavailable();
     }
     return submission.created
@@ -220,6 +222,23 @@ class SupabaseProcessingJobStore implements ProcessingJobStore {
     if (status === "prescription_not_found") return { kind: "prescription_not_found" };
     if (status === "none") return { kind: "none" };
     return { kind: "job", job: status };
+  }
+
+  async cancelOwned(prescriptionId: string, jobId: string) {
+    const result = await callRpc(this.rpcClient, "cancel_prescription_analysis_job_v1", {
+      p_prescription_id: prescriptionId, p_job_id: jobId
+    });
+    if (result.error) {
+      const error = rpcError(result.error);
+      if (error.code === "P0002" && error.message === "job not found") return "not_found" as const;
+      if (error.code === "55000" && error.message === "job cannot be cancelled") return "not_cancellable" as const;
+      throw unavailable();
+    }
+    const row = singleRow(result.data);
+    if (!row || !exactKeys(row, ["job_id", "prescription_id", "job_status", "cancelled_at", "already_cancelled"]) ||
+        row.job_id !== jobId || row.prescription_id !== prescriptionId || row.job_status !== "cancelled" ||
+        !timestamp(row.cancelled_at) || typeof row.already_cancelled !== "boolean") throw unavailable();
+    return { cancelledAt: row.cancelled_at, alreadyCancelled: row.already_cancelled };
   }
 }
 
@@ -243,6 +262,10 @@ export const createUnavailableProcessingJobStore: ProcessingJobStoreFactory = ()
 export const createSupabaseProcessingJobStore: ProcessingJobStoreFactory = (client) =>
   new SupabaseProcessingJobStore(client);
 
+/** Automatic admission is a separate owner-scoped RPC; never adopt old jobs. */
+export const createSupabaseAutomaticProcessingJobStore: ProcessingJobStoreFactory = (client) =>
+  new SupabaseProcessingJobStore(client, true);
+
 export function createProcessingJobStoreFactory(
   enabled: boolean
 ): ProcessingJobStoreFactory {
@@ -254,3 +277,6 @@ export function createProcessingJobStoreFactory(
 export const createConfiguredProcessingJobStore = createProcessingJobStoreFactory(
   env.processingJobStoreEnabled
 );
+
+export const createConfiguredAutomaticProcessingJobStore: ProcessingJobStoreFactory =
+  env.processingJobStoreEnabled ? createSupabaseAutomaticProcessingJobStore : createUnavailableProcessingJobStore;

@@ -271,7 +271,7 @@ test("non-empty alternatives are rejected when alternatives were not requested",
     medicine_external_id: "synthetic-external-id",
     brand_name: "Synthetic alternative",
     match_basis: {
-      ingredient_equivalent: true,
+      ingredient_equivalence: true,
       strength_compatibility: true,
       dosage_form_compatibility: true,
     },

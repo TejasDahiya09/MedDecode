@@ -38,6 +38,13 @@ def normalize_medicine_record(
         record
     )
 
+    for component in record.ingredient_strengths:
+        component.name = " ".join(component.name.split())
+        if component.unit is not None:
+            component.unit = component.unit.strip().lower() or None
+        if component.value is not None:
+            component.value = float(component.value)
+
     return record
 
 

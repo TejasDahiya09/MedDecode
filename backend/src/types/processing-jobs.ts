@@ -28,7 +28,7 @@ export interface ProcessingStatusResponse {
   readonly prescription_id: string;
   readonly processing: null | {
     readonly job_id: string;
-    readonly status: "queued" | "processing" | "completed" | "failed";
+    readonly status: "queued" | "processing" | "completed" | "failed" | "cancelled";
     readonly created_at: string;
     readonly started_at: string | null;
     readonly completed_at: string | null;

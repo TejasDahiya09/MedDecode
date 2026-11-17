@@ -114,7 +114,7 @@ const safeError = (
   const error = providerError(value);
   if (error.code === "42501") return new WorkerJobFinalizationError("WRONG_WORKER");
   if (error.code === "55000" &&
-      (error.message === "stale or expired worker claim" || error.message === "stale finalization")) {
+      (error.message === "stale or expired worker claim" || error.message === "stale finalization" || error.message === "stale failure")) {
     return new WorkerJobFinalizationError("STALE_CLAIM");
   }
   if (error.code === "23505") return new WorkerJobFinalizationError("CONFLICTING_FINALIZATION");

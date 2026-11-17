@@ -9,7 +9,7 @@ vi.mock('../../src/features/auth/AuthProvider', () => ({ useAuth: () => ({ statu
 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
 
-beforeEach(() => { vi.stubGlobal('fetch', vi.fn()); vi.stubGlobal('confirm', vi.fn(() => true)); });
+beforeEach(() => { window.localStorage.removeItem('meddecode.synthetic-cancellation.65624a5e-f197-465e-a34a-712f979e9624'); vi.stubEnv('VITE_API_BASE_URL', '/backend'); vi.stubGlobal('fetch', vi.fn()); vi.stubGlobal('confirm', vi.fn(() => true)); });
 
 it('mounts without requests and never renders the access token', () => {
   const { container } = render(<ProcessingRpcTestPanel />);
@@ -25,9 +25,63 @@ it('uses the isolated authenticated helper without exposing authorization', asyn
   fireEvent.click(screen.getByRole('button', { name: 'Run authentication check' }));
   await screen.findByText('Authenticated test account verified.');
   const [url, init] = vi.mocked(fetch).mock.calls[0]!;
-  expect(String(url)).toBe('http://127.0.0.1:3001/api/v1/auth/me');
+  expect(String(url)).toBe(`${window.location.origin}/api/v1/auth/me`);
   expect(new Headers(init?.headers).get('Authorization')).toBe(`Bearer ${token}`);
   expect(document.body.textContent).not.toContain(token);
+});
+
+it('verifies the existing queued synthetic job using only authenticated reads', async () => {
+  vi.mocked(fetch)
+    .mockResolvedValueOnce(json({ user: { id: userId } }))
+    .mockResolvedValueOnce(json({ prescription: { id: approvedPrescriptionId, file_type: 'application/pdf', file_size_bytes: '2484', status: 'queued', prescription_date: null, created_at: '2026-11-12T00:00:00Z', updated_at: '2026-11-12T00:00:00Z', processed_at: null } }))
+    .mockResolvedValueOnce(json({ prescription_id: approvedPrescriptionId, processing: { job_id: '65624a5e-f197-465e-a34a-712f979e9624', status: 'queued', created_at: '2026-11-12T00:01:00Z', started_at: null, completed_at: null } }));
+  render(<ProcessingRpcTestPanel />);
+  fireEvent.click(screen.getByRole('button', { name: 'Verify existing synthetic job' }));
+  await screen.findByText(/Signed-in account owns the approved queued synthetic job/);
+  expect(fetch).toHaveBeenCalledTimes(3);
+  for (const [, init] of vi.mocked(fetch).mock.calls) expect(init?.method ?? 'GET').toBe('GET');
+  expect(document.body.textContent).not.toContain(token);
+});
+
+it('sends the approved cancellation only once after fresh authenticated owner and job checks', async () => {
+  vi.mocked(fetch)
+    .mockResolvedValueOnce(json({ user: { id: userId } }))
+    .mockResolvedValueOnce(json({ prescription: { id: approvedPrescriptionId, file_type: 'application/pdf', file_size_bytes: '2484', status: 'queued', prescription_date: null, created_at: '2026-11-12T00:00:00Z', updated_at: '2026-11-12T00:00:00Z', processed_at: null } }))
+    .mockResolvedValueOnce(json({ prescription_id: approvedPrescriptionId, processing: { job_id: '65624a5e-f197-465e-a34a-712f979e9624', status: 'queued', created_at: '2026-11-12T00:01:00Z', started_at: null, completed_at: null } }))
+    .mockResolvedValueOnce(json({ prescription_id: approvedPrescriptionId, job_id: '65624a5e-f197-465e-a34a-712f979e9624', status: 'cancelled', cancelled_at: '2026-11-13T10:00:00Z', already_cancelled: false }));
+  render(<ProcessingRpcTestPanel />);
+  fireEvent.click(screen.getByRole('button', { name: 'Cancel approved synthetic job once' }));
+  await screen.findByText(/Cancellation response received/);
+  expect(fetch).toHaveBeenCalledTimes(4);
+  const [url, options] = vi.mocked(fetch).mock.calls[3]!;
+  expect(String(url)).toBe(`${window.location.origin}/api/v1/prescriptions/${approvedPrescriptionId}/jobs/65624a5e-f197-465e-a34a-712f979e9624/cancel`);
+  expect(options?.method).toBe('POST');
+  expect(options?.body).toBe('{}');
+  expect((screen.getByRole('button', { name: 'Cancel approved synthetic job once' }) as HTMLButtonElement).disabled).toBe(true);
+  expect(document.body.textContent).not.toContain(token);
+});
+
+it('does not attempt cancellation when owner verification fails', async () => {
+  vi.mocked(fetch).mockResolvedValueOnce(json({ user: { id: userId } })).mockResolvedValueOnce(json({ error: {} }, 404));
+  render(<ProcessingRpcTestPanel />);
+  fireEvent.click(screen.getByRole('button', { name: 'Cancel approved synthetic job once' }));
+  await screen.findByText(/not accessible to this account/);
+  expect(fetch).toHaveBeenCalledTimes(2);
+  expect(vi.mocked(fetch).mock.calls.every(([, init]) => (init?.method ?? 'GET') === 'GET')).toBe(true);
+});
+
+it('never retries an ambiguous cancellation response', async () => {
+  vi.mocked(fetch)
+    .mockResolvedValueOnce(json({ user: { id: userId } }))
+    .mockResolvedValueOnce(json({ prescription: { id: approvedPrescriptionId, file_type: 'application/pdf', file_size_bytes: '2484', status: 'queued', prescription_date: null, created_at: '2026-11-12T00:00:00Z', updated_at: '2026-11-12T00:00:00Z', processed_at: null } }))
+    .mockResolvedValueOnce(json({ prescription_id: approvedPrescriptionId, processing: { job_id: '65624a5e-f197-465e-a34a-712f979e9624', status: 'queued', created_at: '2026-11-12T00:01:00Z', started_at: null, completed_at: null } }))
+    .mockRejectedValueOnce(new Error('private failure'));
+  render(<ProcessingRpcTestPanel />);
+  fireEvent.click(screen.getByRole('button', { name: 'Cancel approved synthetic job once' }));
+  await screen.findByText(/Cancellation outcome is uncertain or rejected/);
+  expect((screen.getByRole('button', { name: 'Cancel approved synthetic job once' }) as HTMLButtonElement).disabled).toBe(true);
+  expect(fetch).toHaveBeenCalledTimes(4);
+  expect(document.body.textContent).not.toContain('private failure');
 });
 
 it('requires verified read-only checks and explicit confirmation before the first POST', async () => {
@@ -74,13 +128,58 @@ it('does not submit when confirmation is declined', async () => {
   expect(vi.mocked(fetch)).toHaveBeenCalledTimes(3);
 });
 
+it('reports a historical cancelled job without enabling a new submission', async () => {
+  vi.mocked(fetch)
+    .mockResolvedValueOnce(json({ user: { id: userId } }))
+    .mockResolvedValueOnce(json({ prescription: { id: approvedPrescriptionId, file_type: 'application/pdf', file_size_bytes: '2484', status: 'uploaded', prescription_date: null, created_at: '2026-11-12T00:00:00Z', updated_at: '2026-11-12T00:00:00Z', processed_at: null } }))
+    .mockResolvedValueOnce(json({ prescription_id: approvedPrescriptionId, processing: { job_id: '65624a5e-f197-465e-a34a-712f979e9624', status: 'cancelled', created_at: '2026-11-12T00:01:00Z', started_at: null, completed_at: '2026-11-13T10:00:00Z' } }));
+  render(<ProcessingRpcTestPanel />);
+  fireEvent.click(screen.getByRole('button', { name: 'Run authentication check' }));
+  await screen.findByText('Authenticated test account verified.');
+  fireEvent.click(screen.getByRole('button', { name: 'Run ownership check' }));
+  await screen.findByText('Owned uploaded prescription verified.');
+  fireEvent.click(screen.getByRole('button', { name: 'Run processing-status check' }));
+  await screen.findByText('A historical cancelled job is recorded. No new submission was made.');
+  expect((screen.getByRole('button', { name: 'Confirm and submit first job' }) as HTMLButtonElement).disabled).toBe(true);
+  expect(fetch).toHaveBeenCalledTimes(3);
+  expect(vi.mocked(fetch).mock.calls.every(([, init]) => (init?.method ?? 'GET') === 'GET')).toBe(true);
+});
+
 it('rejects malformed responses and does not leak raw failures', async () => {
   vi.mocked(fetch).mockResolvedValueOnce(json({ user: { id: 'wrong-user' }, token }));
   const { container } = render(<ProcessingRpcTestPanel />);
   fireEvent.click(screen.getByRole('button', { name: 'Run authentication check' }));
-  await screen.findByText('The check failed safely. Stop; do not continue to a write operation.');
+  await screen.findByText('Unexpected verification response. No write was performed.');
   expect(container.textContent).not.toContain(token);
   expect((screen.getByRole('button', { name: 'Run ownership check' }) as HTMLButtonElement).disabled).toBe(true);
+});
+
+it('reports inaccessible prescriptions without claiming which account owns them', async () => {
+  vi.mocked(fetch).mockResolvedValueOnce(json({ user: { id: userId } })).mockResolvedValueOnce(json({ error: { message: 'private' } }, 404));
+  render(<ProcessingRpcTestPanel />);
+  fireEvent.click(screen.getByRole('button', { name: 'Verify existing synthetic job' }));
+  await screen.findByText(/not accessible to this account \(HTTP 404\)/);
+  expect(fetch).toHaveBeenCalledTimes(2);
+  expect(document.body.textContent).not.toContain('private');
+});
+
+it('distinguishes unavailable processing status from a network failure', async () => {
+  const queued = { prescription: { id: approvedPrescriptionId, file_type: 'application/pdf', file_size_bytes: '2484', status: 'queued', prescription_date: null, created_at: '2026-11-12T00:00:00Z', updated_at: '2026-11-12T00:00:00Z', processed_at: null } };
+  vi.mocked(fetch).mockResolvedValueOnce(json({ user: { id: userId } })).mockResolvedValueOnce(json(queued)).mockResolvedValueOnce(json({ error: {} }, 503));
+  render(<ProcessingRpcTestPanel />);
+  fireEvent.click(screen.getByRole('button', { name: 'Verify existing synthetic job' }));
+  await screen.findByText(/processing service is unavailable \(HTTP 503\)/i);
+  expect(fetch).toHaveBeenCalledTimes(3);
+});
+
+it('explains that the pre-submission check is not the queued-job check', async () => {
+  vi.mocked(fetch).mockResolvedValueOnce(json({ user: { id: userId } })).mockResolvedValueOnce(json({ prescription: { id: approvedPrescriptionId, file_type: 'application/pdf', file_size_bytes: '2484', status: 'queued', prescription_date: null, created_at: '2026-11-12T00:00:00Z', updated_at: '2026-11-12T00:00:00Z', processed_at: null } }));
+  render(<ProcessingRpcTestPanel />);
+  fireEvent.click(screen.getByRole('button', { name: 'Run authentication check' }));
+  await screen.findByText('Authenticated test account verified.');
+  fireEvent.click(screen.getByRole('button', { name: 'Run ownership check' }));
+  await screen.findByText(/pre-submission check requires an uploaded prescription/);
+  expect((screen.getByRole('button', { name: 'Confirm and submit first job' }) as HTMLButtonElement).disabled).toBe(true);
 });
 
 it('rejects caller-supplied authorization headers', async () => {

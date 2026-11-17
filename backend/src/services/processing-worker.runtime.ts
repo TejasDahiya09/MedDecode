@@ -1,4 +1,5 @@
-import type { WorkerJobStore } from "../repositories/worker-job.store.js";
+import { WorkerPriorAttemptError, type WorkerJobStore } from "../repositories/worker-job.store.js";
+import { WorkerStageError } from './real-prescription-worker.handler.js';
 import type {
   WorkerHeartbeat,
   WorkerJobClaim,
@@ -15,6 +16,12 @@ export type WorkerLogEvent = Readonly<{
   attemptCount?: number;
   claimGeneration?: number;
   delayMs?: number;
+  jobId?: string;
+  stage?: string;
+  rpcName?: string;
+  sqlstate?: string;
+  category?: string;
+  httpStatus?: number;
 }>;
 
 export type WorkerLogger = (event: WorkerLogEvent) => void;
@@ -26,6 +33,11 @@ export type WorkerClaimHandler = (
 export interface WorkerRuntimeDependencies {
   readonly store: WorkerJobStore;
   readonly handler: WorkerClaimHandler;
+  /** Optional admission gate: failure or false prevents any claim. */
+  readonly beforeClaim?: () => Promise<boolean>;
+  /** Stop if an authorized job cannot be freshly claimed in controlled mode. */
+  readonly exitOnEmptyClaim?: boolean;
+  readonly exitOnClaimError?: boolean;
   readonly logger?: WorkerLogger;
   readonly now?: () => number;
   readonly wait?: (delayMs: number, signal: AbortSignal) => Promise<void>;
@@ -160,18 +172,32 @@ export class ProcessingWorkerRuntime {
     while (!signal.aborted) {
       let claim: WorkerJobClaim | null;
       try {
+        if (this.dependencies.beforeClaim && !await this.dependencies.beforeClaim()) {
+          await this.wait(this.config.pollIntervalMs, signal);
+          continue;
+        }
+        if (signal.aborted) return;
         claim = await this.dependencies.store.claimNext(
           this.config.workerInstanceId,
           this.config.leaseSeconds
         );
-      } catch {
+      } catch (error) {
+        if (error instanceof WorkerPriorAttemptError) {
+          this.logger({ level: "warn", event: "worker_prior_attempt_refused" });
+          return;
+        }
         this.logger({ level: "warn", event: "worker_claim_failed", delayMs: retryDelay });
+        if (this.dependencies.exitOnClaimError) return;
         await this.wait(retryDelay, signal);
         retryDelay = Math.min(retryDelay * 2, this.config.retryMaximumMs);
         continue;
       }
       retryDelay = this.config.retryInitialMs;
       if (!claim) {
+        if (this.dependencies.exitOnEmptyClaim) {
+          this.logger({ level: "warn", event: "worker_controlled_claim_unavailable" });
+          return;
+        }
         this.logger({ level: "info", event: "worker_no_job" });
         await this.wait(this.config.pollIntervalMs, signal);
         continue;
@@ -191,6 +217,12 @@ export class ProcessingWorkerRuntime {
             : error instanceof WorkerHeartbeatFailedError
               ? "worker_heartbeat_failed"
               : "worker_handler_failed",
+          jobId: claim.jobId,
+          ...(error instanceof WorkerStageError ? {
+            stage: error.stage, category: error.category,
+            ...(error.rpcName === undefined ? {} : { rpcName: error.rpcName }),
+            ...(error.sqlstate === undefined ? {} : { sqlstate: error.sqlstate }),
+          } : {}),
           claimGeneration: claim.claimGeneration
         });
       }

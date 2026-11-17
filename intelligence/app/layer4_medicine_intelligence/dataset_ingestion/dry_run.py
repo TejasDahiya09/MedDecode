@@ -72,7 +72,13 @@ def run_official_dry_run(
 ) -> OfficialDryRunReport:
     """Normalize and validate an official extract without database access."""
 
-    input_format = "rrf" if Path(input_path).suffix.casefold() == ".rrf" else "csv"
+    suffix = Path(input_path).suffix.casefold()
+    input_format = (
+        "rrf" if suffix == ".rrf" else
+        "pdf" if suffix == ".pdf" else
+        "xlsx" if suffix == ".xlsx" else
+        "csv"
+    )
     adapter = get_official_source_adapter(
         source, release=release, source_url=source_url, input_format=input_format
     )
@@ -157,6 +163,7 @@ def _medicine_export(medicine: MedicineRecord) -> dict[str, Any]:
         "strength_unit": medicine.strength_unit,
         "country": medicine.country,
         "ingredients": [asdict(item) for item in medicine.ingredients],
+        "prices": [asdict(item) for item in medicine.prices],
         "sources": [asdict(item) for item in medicine.sources],
     }
 

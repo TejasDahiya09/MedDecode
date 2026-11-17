@@ -142,7 +142,7 @@ function validateMedicine(value: unknown, index: number): void {
     string(alternative.medicine_external_id, `${alternativePath}.medicine_external_id`);
     string(alternative.brand_name, `${alternativePath}.brand_name`);
     const basis = record(alternative.match_basis, `${alternativePath}.match_basis`);
-    exactBoolean(basis.ingredient_equivalent, `${alternativePath}.match_basis.ingredient_equivalent`);
+    exactBoolean(basis.ingredient_equivalence, `${alternativePath}.match_basis.ingredient_equivalence`);
     exactBoolean(basis.strength_compatibility, `${alternativePath}.match_basis.strength_compatibility`);
     exactBoolean(basis.dosage_form_compatibility, `${alternativePath}.match_basis.dosage_form_compatibility`);
     if (alternative.price !== undefined) {

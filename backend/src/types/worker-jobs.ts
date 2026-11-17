@@ -18,6 +18,24 @@ export interface WorkerJobClaim {
   readonly inputReference: Readonly<Record<string, unknown>> | null;
 }
 
+export interface ConfirmedReviewJobBinding {
+  readonly revisionId: string;
+  readonly inputFingerprint: string;
+}
+
+/** Derives the processing mode only from the database-owned job reference. */
+export function confirmedReviewBinding(claim: WorkerJobClaim): ConfirmedReviewJobBinding | null {
+  const reference = claim.inputReference;
+  if (reference?.processing_mode !== "confirmed_review") return null;
+  const revisionId = reference.review_revision_id;
+  const inputFingerprint = reference.review_input_fingerprint;
+  if (typeof revisionId !== "string" || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(revisionId) ||
+      typeof inputFingerprint !== "string" || !/^[0-9a-f]{64}$/.test(inputFingerprint)) {
+    throw new Error("Confirmed review job binding is invalid.");
+  }
+  return { revisionId, inputFingerprint };
+}
+
 export interface WorkerHeartbeat {
   readonly jobId: string;
   readonly claimGeneration: number;

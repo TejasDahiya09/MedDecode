@@ -26,7 +26,8 @@ function deepFreeze<T>(value: T): T {
 }
 
 function object(value: unknown): Record<string, unknown> {
-  return value as Record<string, unknown>;
+  return value !== null && typeof value === "object" && !Array.isArray(value)
+    ? value as Record<string, unknown> : {};
 }
 
 function nullableString(value: unknown): string | null {
@@ -132,19 +133,16 @@ export function mapValidatedIntelligenceResult(input: {
     });
   }
 
-  if (response.medicines.some((medicine) => {
-    const alternatives = object(medicine).alternatives;
-    return Array.isArray(alternatives) && alternatives.length > 0;
-  })) {
-    throw new IntelligenceResultMappingError("ALTERNATIVES_CONTRACT_UNRESOLVED");
-  }
-
   const prescription = object(response.prescription);
   const doctor = object(prescription.doctor);
   const facility = object(prescription.facility);
   const patient = object(response.patient);
   const metadata = response.processing_metadata;
   const unsupported = new Set<UnsupportedNormalizedField>();
+  if (response.medicines.some((medicine) => {
+    const alternatives = object(medicine).alternatives;
+    return Array.isArray(alternatives) && alternatives.length > 0;
+  })) unsupported.add("medicines[].alternatives");
   const medicines = response.medicines.map((item) =>
     medicineProjection(response.prescription_id, object(item), unsupported));
   const recommendations = response.recommendations.map((item) => {

@@ -1,5 +1,5 @@
 import { lazy, Suspense, useLayoutEffect, useRef } from 'react';
-import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
+import { BrowserRouter, Navigate, Outlet, Route, Routes, useLocation } from 'react-router-dom';
 import { LandingPage } from '../features/landing/LandingPage';
 import { PublicLayout } from '../features/landing/PublicChrome';
 import { AuthPage } from '../features/auth/AuthPage';
@@ -8,10 +8,12 @@ import { AppShell } from './AppShell';
 import { destinations } from './navigation';
 import { NotFound } from './SectionPlaceholder';
 import { DemoProvider } from '../features/demo/DemoProvider';
-import { DemoWorkspace } from '../features/demo/DemoWorkspace';
+import { DemoWorkspaceRoute } from '../features/demo/DemoWorkspaceRoute';
 import { ProtectedRoute } from '../features/auth/ProtectedRoute';
 import { PrescriptionHistoryPage } from '../features/prescriptions/PrescriptionHistoryPage';
 import { PrescriptionResultsPage } from '../features/prescriptions/PrescriptionResultsPage';
+import { PrescriptionReviewWorkspace } from '../features/prescription-review/PrescriptionReviewWorkspace';
+import { WorkspacePage } from './WorkspacePage';
 
 const ProcessingRpcTestPanel = import.meta.env.DEV
   ? lazy(() => import('../features/dev/ProcessingRpcTestPanel'))
@@ -19,6 +21,11 @@ const ProcessingRpcTestPanel = import.meta.env.DEV
 const FictionalIntelligenceDemo = import.meta.env.DEV
   ? lazy(() => import('../features/dev/FictionalIntelligenceDemo'))
   : null;
+
+function MedicineInsightsRedirect() {
+  const location = useLocation();
+  return <Navigate to={`/medicine-library${location.search}`} replace />;
+}
 
 export function AppRoutes() {
   return (
@@ -30,13 +37,20 @@ export function AppRoutes() {
       </Route>
       <Route path="get-started" element={<Navigate replace to="/sign-up" />} />
       {(Object.keys(authScreens) as AuthScreen[]).map((screen) => <Route key={screen} path={screen} element={<AuthPage key={screen} screen={screen} />} />)}
+      <Route element={<DemoProvider><Outlet /></DemoProvider>}>
+       <Route path="demo" element={<Navigate replace to="/demo/home" />} />
+       <Route path="demo/:section" element={<DemoWorkspaceRoute />} />
+      </Route>
       <Route element={<ProtectedRoute />}>
        {ProcessingRpcTestPanel ? <Route path="__dev/processing-rpc-test" element={<Suspense fallback={<main tabIndex={-1}><p>Loading local test panel…</p></main>}><ProcessingRpcTestPanel /></Suspense>} /> : null}
        {FictionalIntelligenceDemo ? <Route path="__dev/fictional-intelligence" element={<Suspense fallback={<main tabIndex={-1}><p>Loading fictional fixture…</p></main>}><FictionalIntelligenceDemo /></Suspense>} /> : null}
-       <Route element={<DemoProvider><AppShell /></DemoProvider>}>
-        {destinations.map((destination) => <Route key={destination.path} path={destination.path} element={<DemoWorkspace key={destination.path} path={destination.path} />} />)}
+       <Route element={<AppShell />}>
+        {destinations.filter((d) => d.path !== '/prescriptions').map((destination) => <Route key={destination.path} path={destination.path} element={<WorkspacePage key={destination.path} path={destination.path} />} />)}
         <Route path="prescriptions" element={<PrescriptionHistoryPage />} />
         <Route path="prescriptions/:id" element={<PrescriptionResultsPage />} />
+        <Route path="prescriptions/:id/review" element={<PrescriptionReviewWorkspace />} />
+        <Route path="medicine-insights" element={<MedicineInsightsRedirect />} />
+        <Route path="cabinet" element={<Navigate replace to="/my-cabinet" />} />
        </Route>
       </Route>
       <Route path="*" element={<NotFound />} />

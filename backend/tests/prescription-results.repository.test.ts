@@ -24,6 +24,28 @@ function client(data: unknown, error: unknown = null) {
   };
 }
 
+function sequentialClient(responses: ReadonlyArray<{ data: unknown; error: unknown }>) {
+  const calls: Array<{ operation: string; value?: unknown }> = [];
+  let index = 0;
+  const makeQuery = () => {
+    const query = {
+      select(value: string) { calls.push({ operation: "select", value }); return query; },
+      eq(column: string, value: unknown) { calls.push({ operation: `eq:${column}`, value }); return query; },
+      async maybeSingle() {
+        calls.push({ operation: "maybeSingle" });
+        const response = responses[index++];
+        if (!response) throw new Error("unexpected query");
+        return response;
+      }
+    };
+    return query;
+  };
+  return {
+    client: { from(table: string) { calls.push({ operation: "from", value: table }); return makeQuery(); } } as unknown as UserSupabaseClient,
+    calls
+  };
+}
+
 describe("Prescription results repository", () => {
   it("owner-scopes the prescription and uses an explicit result projection", async () => {
     const owned = client({ id: prescriptionId, user_id: userId, status: "completed" });
@@ -37,7 +59,8 @@ describe("Prescription results repository", () => {
     await supabasePrescriptionResultsRepository.findOwnedResult(result.client, prescriptionId);
     assert.deepEqual(result.calls, [
       { operation: "from", value: "prescription_intelligence_results" }, { operation: "select", value: PRESCRIPTION_RESULT_FIELDS },
-      { operation: "eq:prescription_id", value: prescriptionId }, { operation: "maybeSingle" }
+      { operation: "eq:prescription_id", value: prescriptionId }, { operation: "eq:is_current", value: true },
+      { operation: "maybeSingle" }
     ]);
     assert.equal(PRESCRIPTION_RESULT_FIELDS.includes("error_json"), false);
     assert.equal(PRESCRIPTION_RESULT_FIELDS.includes("*"), false);
@@ -50,5 +73,46 @@ describe("Prescription results repository", () => {
       (error: unknown) => error instanceof PrescriptionResultsRepositoryError &&
         !error.message.includes("private provider diagnostic")
     );
+  });
+
+  it("reads the deployed legacy unique result only after an exact undefined-column error", async () => {
+    const row = {
+      prescription_id: prescriptionId,
+      job_id: "20000000-0000-4000-8000-000000000001",
+      schema_version: "1.0",
+      status: "completed_with_warnings",
+      result_json: { status: "completed_with_warnings" },
+      created_at: "2026-11-15T17:50:59.370Z"
+    };
+    const legacy = sequentialClient([
+      { data: null, error: { code: "42703", message: "column is_current does not exist" } },
+      { data: row, error: null }
+    ]);
+    assert.deepEqual(
+      await supabasePrescriptionResultsRepository.findOwnedResult(legacy.client, prescriptionId),
+      row
+    );
+    assert.deepEqual(legacy.calls, [
+      { operation: "from", value: "prescription_intelligence_results" },
+      { operation: "select", value: PRESCRIPTION_RESULT_FIELDS },
+      { operation: "eq:prescription_id", value: prescriptionId },
+      { operation: "eq:is_current", value: true },
+      { operation: "maybeSingle" },
+      { operation: "from", value: "prescription_intelligence_results" },
+      { operation: "select", value: PRESCRIPTION_RESULT_FIELDS },
+      { operation: "eq:prescription_id", value: prescriptionId },
+      { operation: "maybeSingle" }
+    ]);
+  });
+
+  it("does not treat authorization or provider errors as legacy schema detection", async () => {
+    for (const error of [{ code: "42501" }, { code: "PGRST301" }, { message: "network unavailable" }]) {
+      const failed = sequentialClient([{ data: null, error }]);
+      await assert.rejects(
+        supabasePrescriptionResultsRepository.findOwnedResult(failed.client, prescriptionId),
+        PrescriptionResultsRepositoryError
+      );
+      assert.equal(failed.calls.filter(call => call.operation === "from").length, 1);
+    }
   });
 });

@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import { existsSync } from "node:fs";
 import { Readable } from "node:stream";
+import { mkdtemp, readdir, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import test from "node:test";
 
 import { createS3WorkerDocumentReader, WorkerDocumentReadError } from "../src/services/worker-document.reader.js";
@@ -17,6 +20,19 @@ test("streams only the exact claim key into a private temporary file and cleans 
   assert.equal(existsSync(handle.path), true);
   assert.deepEqual(command?.input, { Bucket: "private-bucket", Key: claim.objectKey });
   await handle.cleanup(); await handle.cleanup(); assert.equal(existsSync(handle.path), false);
+});
+
+test("times out a stalled S3 body and removes the temporary document", async () => {
+  const root = await mkdtemp(join(tmpdir(), "meddecode-timeout-test-"));
+  const keepAlive = setTimeout(() => undefined, 500);
+  try {
+    const body = new Readable({ read() { /* intentionally stalled */ } });
+    const reader = createS3WorkerDocumentReader({ region: "test", bucket: "private-bucket", temporaryRoot: root,
+      timeoutMs: 20, client: { send: async () => ({ Body: body }) } });
+    await assert.rejects(reader.download(claim, new AbortController().signal),
+      (error: unknown) => error instanceof WorkerDocumentReadError && error.category === "UNAVAILABLE");
+    assert.deepEqual(await readdir(root), []);
+  } finally { clearTimeout(keepAlive); await rm(root, { recursive: true, force: true }); }
 });
 
 test("rejects foreign keys, oversize streams, and non-streaming provider bodies", async () => {

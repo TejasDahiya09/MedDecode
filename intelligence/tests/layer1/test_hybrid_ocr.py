@@ -5,7 +5,7 @@ from pathlib import Path
 import subprocess
 import sys
 from time import sleep
-from types import SimpleNamespace
+from types import ModuleType, SimpleNamespace
 
 import fitz
 import pytest
@@ -21,12 +21,14 @@ from app.layer1_document_processing.hybrid_ocr import (
     CloudOCRTimeoutError,
     CloudOCRDisabledError,
     EasyOCRProvider,
+    GoogleVisionTransport,
     HybridOCREngine,
     OCRPrediction,
     OCRProviderError,
     OCRRegion,
     PaddleOCRProvider,
     TrOCRHandwrittenProvider,
+    _prepare_trocr_image,
 )
 from app.layer1_document_processing.ocr_engine import PaddleOCRLocalModelConfig
 from app.layer1_document_processing.google_vision_provider import GoogleVisionProvider
@@ -252,6 +254,30 @@ def test_google_vision_adapter_maps_injected_response_without_network() -> None:
     assert result[0].raw_confidence == 0.7
 
 
+def test_google_vision_transport_handles_missing_error_metadata_safely(monkeypatch: pytest.MonkeyPatch) -> None:
+    response = SimpleNamespace(error=None, full_text_annotation=None)
+
+    class FakeVision:
+        class Image:
+            def __init__(self, *, content: bytes):
+                self.content = content
+
+        class ImageAnnotatorClient:
+            def document_text_detection(self, *, image: object, timeout: float):
+                assert image.content == b"png"
+                assert timeout == 1.0
+                return response
+
+    google_module = ModuleType("google")
+    cloud_module = ModuleType("google.cloud")
+    cloud_module.vision = FakeVision
+    google_module.cloud = cloud_module
+    monkeypatch.setitem(sys.modules, "google", google_module)
+    monkeypatch.setitem(sys.modules, "google.cloud", cloud_module)
+
+    assert GoogleVisionTransport().document_text(b"png", 1.0) is response
+
+
 def test_aws_google_and_local_predictions_reconcile_without_losing_engine_identity() -> None:
     class TextractTransport:
         def detect_document_text(self, _image_bytes: bytes, _timeout_seconds: float):
@@ -333,13 +359,106 @@ def test_easyocr_and_trocr_adapters_map_injected_local_engines(tmp_path: Path) -
             return ["Examplemed"]
 
     class Model:
-        def generate(self, pixels):
+        def generate(self, pixels, *, max_new_tokens: int):
             assert pixels == "pixels"
+            assert max_new_tokens == 64
             return [1]
 
     trocr = TrOCRHandwrittenProvider(model_directory=tmp_path, processor=Processor(), model=Model())
-    regions = [OCRRegion(_polygon(), Image.new("RGB", (20, 20), "white"))]
+    base = Image.new("RGB", (20, 20), "white")
+    for x in range(5, 15):
+        for y in range(5, 15):
+            base.putpixel((x, y), (0, 0, 0))
+    regions = [OCRRegion(_polygon(), base)]
     assert trocr.recognize_regions(regions, 1, 1.0)[0].text == "Examplemed"
+
+
+def test_trocr_rejects_blank_or_invalid_line_crops() -> None:
+    class Processor:
+        def __call__(self, *, images, return_tensors: str):
+            return SimpleNamespace(pixel_values="pixels")
+
+        def batch_decode(self, _generated, *, skip_special_tokens: bool):
+            return ["Examplemed"]
+
+    class Model:
+        def generate(self, pixels, *, max_new_tokens: int):
+            return [1]
+
+    provider = TrOCRHandwrittenProvider(model_directory=Path("."), processor=Processor(), model=Model())
+    assert provider.recognize_regions([OCRRegion(_polygon(), Image.new("RGB", (20, 20), "white"))], 1, 1.0) == []
+
+    with pytest.raises(OCRProviderError, match="too small"):
+        provider.recognize_regions([OCRRegion(_polygon(), Image.new("RGB", (4, 4), "white"))], 1, 1.0)
+
+
+def test_trocr_uses_low_memory_configuration_for_large_crops() -> None:
+    class Processor:
+        def __call__(self, *, images, return_tensors: str):
+            return SimpleNamespace(pixel_values="pixels")
+
+        def batch_decode(self, _generated, *, skip_special_tokens: bool):
+            return ["Examplemed"]
+
+    class Model:
+        def generate(self, pixels, *, max_new_tokens: int):
+            assert max_new_tokens == 32
+            return [1]
+
+    large = Image.new("RGB", (5000, 2000), "white")
+    for x in range(0, 5000, 20):
+        for y in range(100, 500):
+            large.putpixel((x, y), (0, 0, 0))
+
+    prepared = _prepare_trocr_image(large, max_pixels=200_000)
+    assert prepared is not None and prepared.size[0] < large.width and prepared.size[1] < large.height
+
+    provider = TrOCRHandwrittenProvider(
+        model_directory=Path("."),
+        processor=Processor(),
+        model=Model(),
+        max_new_tokens=32,
+        max_pixels=200_000,
+    )
+    assert provider.recognize_regions([OCRRegion(_polygon(), large)], 1, 1.0)[0].text == "Examplemed"
+
+
+def test_easyocr_retains_crop_rows_with_original_page_coordinates(tmp_path: Path) -> None:
+    class NumberedListReader:
+        image_sizes: list[tuple[int, int]] = []
+
+        def readtext(self, image, detail: int, paragraph: bool):
+            assert detail == 1 and not paragraph
+            height, width = image.shape[:2]
+            self.image_sizes.append((width, height))
+            if width == 1000:
+                return [
+                    ([[90, y], [110, y], [110, y + 20], [90, y + 20]], f"{number}.", 0.4)
+                    for number, y in enumerate((90, 290, 490), start=1)
+                ]
+            return [
+                prediction
+                for number, y in enumerate((30, 200, 370, 540), start=1)
+                for prediction in (
+                    ([[30, y], [50, y], [50, y + 20], [30, y + 20]], f"{number}.", 0.4),
+                    ([[85, y], [230, y], [230, y + 20], [85, y + 20]], "unclear daily", 0.4),
+                )
+            ]
+
+    reader = NumberedListReader()
+    provider = EasyOCRProvider(model_storage_directory=tmp_path, reader=reader)
+    result = HybridOCREngine([provider]).recognize_page(Image.new("RGB", (1000, 1000), "white"), 1)
+
+    assert len(reader.image_sizes) == 2
+    assert reader.image_sizes[0] == (1000, 1000)
+    assert len(result.unverified_numbered_rows) == 4
+    assert len(result.to_ocr_page_result().unverified_numbered_rows) == 4
+    first_row = result.unverified_numbered_rows[0]
+    assert first_row.bounding_box[0][0] > 50
+    assert first_row.evidence[0].bounding_box[0][0] > 50
+    assert first_row.observed_number == 1
+    assert not first_row.medicine_name_verified
+    assert first_row.official_catalogue_match_status == "not_attempted"
 
 
 def test_easyocr_initializes_reader_once_under_concurrency_and_reports_timings(
@@ -371,6 +490,31 @@ def test_easyocr_initializes_reader_once_under_concurrency_and_reports_timings(
     assert len(reader_options) == 1
     assert reader_options[0]["gpu"] is False
     assert reader_options[0]["download_enabled"] is False
+
+
+def test_easyocr_resolves_nested_model_directory_without_runtime_download(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    model_root = tmp_path / "easyocr-root"
+    model_root.mkdir()
+    model_dir = model_root / "model"
+    model_dir.mkdir()
+    (model_dir / "craft_mlt_25k.pth").write_bytes(b"detector")
+    (model_dir / "english_g2.pth").write_bytes(b"recognizer")
+
+    class EasyReader:
+        def readtext(self, _image, detail: int, paragraph: bool):
+            assert detail == 1 and not paragraph
+            return [([[0, 0], [1, 0], [1, 1]], "Examplemed", 0.9)]
+
+    def create_reader(languages: list[str], **options: object) -> EasyReader:
+        assert str(model_dir) in options["model_storage_directory"]
+        assert options["download_enabled"] is False
+        return EasyReader()
+
+    monkeypatch.setitem(sys.modules, "easyocr", SimpleNamespace(Reader=create_reader))
+    provider = EasyOCRProvider(model_storage_directory=model_root)
+    result = provider.recognize(Image.new("RGB", (20, 20), "white"), 1, 1.0)
+    assert result[0].text == "Examplemed"
+    assert provider.model_storage_directory == model_dir
 
 
 def test_timeout_is_reported_without_suppressing_available_provider_output() -> None:
@@ -491,3 +635,57 @@ def test_paddle_provider_maps_existing_engine_result_without_loading_models(tmp_
     provider = PaddleOCRProvider(PaddleOCRLocalModelConfig(tmp_path, tmp_path), engine=Engine())
     result = provider.recognize(Image.new("RGB", (20, 20), "white"), 1, 1.0)
     assert result[0].text == "Examplemed"
+
+
+def test_paddle_region_recognition_restores_original_page_coordinates(tmp_path: Path) -> None:
+    class Engine:
+        def process_page(self, image: Image.Image) -> OCRPageResult:
+            assert image.size == (100, 30)
+            return OCRPageResult("Examplemed", [OCRBlock("Examplemed", 0.8, [[1, 2], [90, 2], [90, 20], [1, 20]])])
+
+    provider = PaddleOCRProvider(PaddleOCRLocalModelConfig(tmp_path, tmp_path), engine=Engine())
+    region = OCRRegion(((50., 40.), (150., 40.), (150., 70.), (50., 70.)), Image.new("RGB", (100, 30), "white"))
+    prediction = provider.recognize_regions([region], 2, 1.0)[0]
+    assert prediction.page_number == 2
+    assert prediction.polygon == ((51., 42.), (140., 42.), (140., 60.), (51., 60.))
+    assert prediction.model_provenance == "local-paddle-model-directory"
+
+
+def test_paddle_provider_initializes_engine_once_under_concurrency(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    created: list[object] = []
+    class Engine:
+        def __init__(self, _config): created.append(self)
+        def process_page(self, _image): return OCRPageResult("", [])
+    monkeypatch.setattr("app.layer1_document_processing.ocr_engine.OCREngine", Engine)
+    provider = PaddleOCRProvider(PaddleOCRLocalModelConfig(tmp_path, tmp_path))
+    image = Image.new("RGB", (20, 20), "white")
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        list(executor.map(lambda page: provider.recognize(image, page, 1.0), (1, 2)))
+    assert len(created) == 1
+
+
+def test_reconciliation_withholds_high_risk_numeric_and_unit_conflicts() -> None:
+    polygon = _polygon()
+    result = HybridOCREngine([
+        StaticProvider("easyocr", [("Examplemed 0.5 mg once daily", polygon)]),
+        StaticProvider("paddleocr", [("Examplemed 5 mcg twice daily", polygon)]),
+    ]).recognize_page(Image.new("RGB", (300, 100), "white"), 1)
+    region = result.regions[0]
+    assert region.state == "disagreement"
+    assert region.selected_prediction is None
+    assert set(region.uncertainty_indicators) == {"numeric_conflict", "unit_conflict", "frequency_conflict"}
+    assert "confidence scales were not compared" in region.selection_rationale
+    assert result.to_ocr_page_result().full_text == ""
+
+
+def test_agreement_does_not_compare_uncalibrated_provider_confidence() -> None:
+    polygon = _polygon()
+    first = OCRPrediction("easyocr", "v", 1, "Examplemed 10 mg", polygon, 0.51)
+    second = OCRPrediction("paddleocr", "v", 1, "examplemed   10 mg", polygon, 0.999)
+    class Predictions:
+        engine_name = "static"
+        def recognize(self, _image, _page, _timeout): return [first, second]
+    region = HybridOCREngine([Predictions()]).recognize_page(Image.new("RGB", (300, 100), "white"), 1).regions[0]
+    assert region.state == "agreement"
+    assert region.selected_prediction is first
+    assert "without comparing confidence scales" in region.selection_rationale

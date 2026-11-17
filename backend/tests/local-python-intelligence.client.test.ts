@@ -184,6 +184,20 @@ test("real-document factory supplies the required EasyOCR directory and rejects 
     await rm(modelDirectory, { recursive: true, force: true });
   }
 });
+test("real-document factory enables local official catalogue lookup only when explicitly configured", async () => {
+  const modelDirectory = await mkdtemp(join(tmpdir(), "meddecode-easyocr-official-test-"));
+  try {
+    let received: Parameters<typeof runJsonSubprocess>[0] | undefined;
+    const factory = createRealLocalPdfIntelligenceClientFactory({
+      pythonExecutable: "test-python", intelligenceDirectory, easyOcrModelDirectory: modelDirectory,
+      officialCatalogueLocal: true,
+      run: async options => { received = options; return JSON.stringify({ schema_version: "1.0", job_id: request.job_id, prescription_id: request.prescription_id, status: "failed", error: { code: "PROCESSING_FAILED", message: "Local prescription processing failed safely.", retryable: true } }); },
+    });
+    await factory("C:\\worker-temp\\source.pdf").analyze(request);
+    assert.equal(received?.args.includes("--official-catalogue-local"), true);
+    assert.equal(received?.args.includes("--injected-ocr-fixture"), false);
+  } finally { await rm(modelDirectory, { recursive: true, force: true }); }
+});
 test("real-document factory selects Textract only through explicit worker configuration", async () => {
   let received: Parameters<typeof runJsonSubprocess>[0] | undefined;
   const factory = createRealLocalPdfIntelligenceClientFactory({
@@ -235,6 +249,31 @@ test("real-document factory selects Google Vision only through explicit worker c
   assert.equal(received?.args.includes("--easyocr-model-directory"), false);
   assert.equal(received?.args.includes("--aws-region"), false);
 });
+test("explicit local catalogue selection reaches either cloud OCR entry point", async () => {
+  for (const ocrProvider of ["aws-textract", "google-cloud-vision"] as const) {
+    let received: Parameters<typeof runJsonSubprocess>[0] | undefined;
+    const factory = createRealLocalPdfIntelligenceClientFactory({
+      pythonExecutable: "test-python", intelligenceDirectory, ocrProvider,
+      ...(ocrProvider === "aws-textract" ? { awsRegion: "test-region" } : {}),
+      officialCatalogueLocal: true,
+      run: async options => { received = options; return JSON.stringify({ schema_version: "1.0", job_id: request.job_id, prescription_id: request.prescription_id, status: "failed", error: { code: "PROCESSING_FAILED", message: "Safe failure", retryable: true } }); },
+    });
+    await factory("C:\\worker-temp\\source.pdf").analyze(request);
+    assert.equal(received?.args.includes("--official-catalogue-local"), true);
+  }
+});
+test("catalogue configuration is passed only through the child environment", async () => {
+  const child = createFakeChild();
+  let env: NodeJS.ProcessEnv | undefined;
+  const run = runJsonSubprocess({ executable: "fake", args: [], cwd: backendDirectory, input: "{}",
+    catalogueEnvironment: { MEDDECODE_CATALOGUE_ENV: "hosted", MEDDECODE_CATALOGUE_PASSWORD: "synthetic-secret" },
+    spawnProcess: (_executable, args, options) => { env = options.env; assert.equal(args.includes("synthetic-secret"), false); return child; } });
+  (child.stdout as PassThrough).end("{}"); child.emit("exit", 0, null);
+  assert.equal(await run, "{}");
+  assert.equal(env?.MEDDECODE_CATALOGUE_ENV, "hosted");
+  assert.equal(env?.MEDDECODE_CATALOGUE_PASSWORD, "synthetic-secret");
+  assert.equal(env?.PGPASSFILE, undefined);
+});
 test("reports spawn failure without exposing process details", async () => {
   const client = new LocalPythonIntelligenceClient({ pythonExecutable: join(repositoryDirectory, "missing-python.exe"), intelligenceDirectory });
   await assert.rejects(() => client.analyze(request), (error: unknown) => {
@@ -285,6 +324,35 @@ test("times out once, terminates the process tree, and releases inherited pipes"
   assert.equal(terminationCount, 1);
   assert.equal(child.stdout.destroyed, true);
   assert.equal(child.stderr.destroyed, true);
+});
+test("sanitizes synchronous subprocess launch failures", async () => {
+  await assert.rejects(
+    runJsonSubprocess({ executable: "fake", args: [], cwd: backendDirectory, input: "{}",
+      spawnProcess: () => { throw new Error("private launch detail"); } }),
+    (error: unknown) => error instanceof IntelligenceTransportError && error.code === "SPAWN_FAILED" && !error.message.includes("private"),
+  );
+});
+test("settles safely if process-tree termination throws", async () => {
+  const child = createFakeChild(54323);
+  await assert.rejects(
+    runJsonSubprocess({ executable: "fake", args: [], cwd: backendDirectory, input: "{}", timeoutMs: 10,
+      spawnProcess: () => child, terminateTree: () => { throw new Error("private termination detail"); } }),
+    (error: unknown) => error instanceof IntelligenceTransportError && error.code === "TIMEOUT" && !error.message.includes("private"),
+  );
+  assert.equal(child.stdout.destroyed, true);
+});
+test("abort terminates the active subprocess once and rejects safely", async () => {
+  const child = createFakeChild(54322);
+  const controller = new AbortController();
+  let terminations = 0;
+  const run = runJsonSubprocess({ executable: "fake", args: [], cwd: backendDirectory, input: "{}",
+    signal: controller.signal, spawnProcess: () => child,
+    terminateTree: pid => { assert.equal(pid, 54322); terminations++; } });
+  controller.abort();
+  await assert.rejects(run, (error: unknown) => error instanceof IntelligenceTransportError && error.code === "ABORTED");
+  child.emit("exit", 0, null);
+  assert.equal(terminations, 1);
+  assert.equal(child.stdout.destroyed, true);
 });
 test("bounds stdout", async () => {
   await assert.rejects(

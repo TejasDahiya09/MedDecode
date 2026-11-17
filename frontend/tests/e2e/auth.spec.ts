@@ -22,7 +22,7 @@ for (const kind of Object.keys(authScreens) as AuthScreen[]) for (const size of 
     await expect(page.getByRole('heading', { level: 1 })).toHaveText(authScreens[kind].title);
     await expect(page).toHaveTitle(`${authScreens[kind].pageTitle} | MedDecode`);
     await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
-    await expect(page.getByText(/Account access is not connected yet/)).toBeVisible();
+    await expect(page.getByText(/Secure account access/)).toBeVisible();
     await expect(page.getByRole('navigation', { name: 'Primary navigation' })).toHaveCount(0);
     await expect(page.getByRole('alert')).toHaveCount(0);
     await expect(page.getByRole('form').locator('input')).toHaveCount(authScreens[kind].fields.length);

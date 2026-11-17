@@ -10,8 +10,9 @@ export interface Destination {
 // Frontend destinations only; these paths do not declare application API endpoints.
 export const destinations: readonly Destination[] = [
   { path: '/home', label: 'Home', icon: 'home', description: 'A starting point for your MedDecode tasks.' },
-  { path: '/upload-prescription', label: 'Upload Prescription', icon: 'inbox', description: 'A place to begin the prescription upload workflow.' },
-  { path: '/medicine-insights', label: 'Medicine Insights', icon: 'search', description: 'A place to explore medicine information when available.' },
+  { path: '/prescriptions', label: 'My Prescriptions', icon: 'inbox', description: 'View and track your uploaded prescriptions and OCR results.' },
+  { path: '/upload-prescription', label: 'Upload Prescription', icon: 'plus', description: 'A place to begin the prescription upload workflow.' },
+  { path: '/medicine-library', label: 'Medicine Library', icon: 'search', description: 'Explore official Indian medicine formulations.' },
   { path: '/compare-medicines', label: 'Compare Medicines', icon: 'copy', description: 'A place to review medicine comparisons when available.' },
   { path: '/my-cabinet', label: 'My Cabinet', icon: 'briefcase', description: 'A place for your future cabinet workflow.' },
   { path: '/reminders', label: 'Reminders', icon: 'calendar', description: 'A place for your future reminder preferences.' },
@@ -20,9 +21,8 @@ export const destinations: readonly Destination[] = [
 
 export const mobileDestinations = [
   { path: '/home', label: 'Home', icon: 'home' },
-  { path: '/upload-prescription', label: 'Upload', icon: 'inbox' },
-  { path: '/medicine-insights', label: 'Insights', icon: 'search' },
+  { path: '/prescriptions', label: 'Prescriptions', icon: 'inbox' },
+  { path: '/upload-prescription', label: 'Upload', icon: 'plus' },
+  { path: '/medicine-library', label: 'Library', icon: 'search' },
   { path: '/my-cabinet', label: 'Cabinet', icon: 'briefcase' },
-  { path: '/reminders', label: 'Reminders', icon: 'calendar' },
-  { path: '/learn-resources', label: 'Learn', icon: 'bookmark' },
 ] as const;

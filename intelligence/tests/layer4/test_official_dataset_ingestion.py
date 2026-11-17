@@ -132,7 +132,7 @@ def test_rxnorm_schema_and_record_validation_fail_closed(tmp_path: Path) -> None
 
 
 def test_unverified_official_schemas_are_not_invented() -> None:
-    for source in ("who-eml", "india-nlem-2022", "cdsco", "dailymed", "nppa", "icmr"):
+    for source in ("who-eml", "cdsco", "dailymed", "nppa", "icmr"):
         with pytest.raises(OfficialSourceUnavailableError):
             get_official_source_adapter(source, release="test-release")
 

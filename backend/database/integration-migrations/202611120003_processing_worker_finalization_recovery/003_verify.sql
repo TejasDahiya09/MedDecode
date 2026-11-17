@@ -37,7 +37,7 @@ BEGIN
     SELECT 1
     FROM unnest(ARRAY[
       'public.ai_jobs', 'public.prescriptions', 'public.prescription_intelligence_results',
-      'public.prescription_medicines', 'public.prescription_recommendations',
+      'public.prescription_medicines', 'public.prescription_medicine_alternatives', 'public.prescription_recommendations',
       'public.prescription_warnings'
     ]) AS t(name)
     WHERE has_table_privilege('meddecode_worker', t.name, 'SELECT,INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER,MAINTAIN')

@@ -165,3 +165,21 @@ test("composed document failure schedules a fenced retry and never invokes Pytho
     },
   });
 });
+
+test("controlled composition finalizes a document failure without scheduling a retry", async () => {
+  const caller = new FakeWorkerRpcCaller();
+  caller.responses.push(
+    { data: [claimRow()], error: null },
+    { data: [{ job_id: JOB_ID, prescription_id: PRESCRIPTION_ID, job_status: "failed", retry_eligible: false, terminal: true, available_at: null }], error: null },
+  );
+  const setup = options(caller);
+  const composition = createDisabledProcessingWorkerComposition({
+    ...setup.options, controlledSingleAttempt: true,
+    s3: { ...setup.options.s3, client: { send: async () => { throw new Error("fictional failure"); } } },
+  });
+  await composition.runtime.start();
+  assert.equal(caller.calls.length, 2);
+  assert.equal(caller.calls[1]?.name, "fail_prescription_analysis_job_v1");
+  assert.equal(caller.calls[1]?.parameters.p_retryable, false);
+  assert.equal(caller.calls[1]?.parameters.p_retry_at, null);
+});

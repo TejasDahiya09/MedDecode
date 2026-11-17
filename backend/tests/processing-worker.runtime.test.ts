@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { WorkerStageError } from '../src/services/real-prescription-worker.handler.js';
+import { PrescriptionReviewWorkerRpcError } from '../src/repositories/prescription-review-worker.rpc-store.js';
 
-import type { WorkerJobStore } from "../src/repositories/worker-job.store.js";
+import { WorkerPriorAttemptError, type WorkerJobStore } from "../src/repositories/worker-job.store.js";
 import {
   parseWorkerRuntimeConfig,
   ProcessingWorkerRuntime
@@ -99,6 +101,45 @@ test("polls safely when no queued job exists", async () => {
   assert.equal(store.claimCalls, 1);
 });
 
+test("automatic admission failure or no authorized job cannot reach the claim RPC", async () => {
+  for (const failed of [false, true]) {
+    const store = new FakeWorkerStore();
+    let runtime!: ProcessingWorkerRuntime;
+    runtime = new ProcessingWorkerRuntime(config(), {
+      store, handler: async () => { throw new Error("must not process"); },
+      beforeClaim: async () => { if (failed) throw new Error("private issuer error"); return false; },
+      wait: async () => { void runtime.stop(); },
+    });
+    await runtime.start();
+    assert.equal(store.claimCalls, 0);
+  }
+});
+
+test('exact retry stops on the first claim error without a wait or second claim', async()=>{
+  const store=new FakeWorkerStore(); store.claims.push(new Error('private database failure'),claim());
+  let waits=0,handled=0;
+  await new ProcessingWorkerRuntime(config(),{store,exitOnClaimError:true,
+    handler:async()=>{handled++;},wait:async()=>{waits++;}}).start();
+  assert.equal(store.claimCalls,1); assert.equal(waits,0); assert.equal(handled,0);
+});
+
+test("controlled restart stops on an unavailable claim or refused prior attempt", async () => {
+  for (const priorAttempt of [false, true]) {
+    const store = new FakeWorkerStore();
+    store.claims.push(priorAttempt ? new WorkerPriorAttemptError() : null);
+    const events: string[] = [];
+    let handled = 0;
+    const runtime = new ProcessingWorkerRuntime(config(), {
+      store, beforeClaim: async () => true, exitOnEmptyClaim: true,
+      handler: async () => { handled += 1; }, logger: event => events.push(event.event),
+    });
+    await runtime.start();
+    assert.equal(store.claimCalls, 1);
+    assert.equal(handled, 0);
+    assert.ok(events.includes(priorAttempt ? "worker_prior_attempt_refused" : "worker_controlled_claim_unavailable"));
+  }
+});
+
 test("retries claim-store failures with bounded exponential backoff", async () => {
   const store = new FakeWorkerStore();
   store.claims.push(new Error("private provider detail"), new Error("again"), new Error("again"));
@@ -145,6 +186,21 @@ test("aborts the handler and logs safely when heartbeat fails", async () => {
   assert.equal(store.heartbeatCalls.length, 1);
   assert.match(JSON.stringify(events), /worker_heartbeat_failed/);
   assert.doesNotMatch(JSON.stringify(events), /database secret|private-test-bucket|source\.pdf/);
+});
+
+test('handler failure retains safe RPC stage, SQLSTATE, job and claim generation', async () => {
+  const store = new FakeWorkerStore(); store.claims.push(claim());
+  const events: unknown[] = [];
+  await new ProcessingWorkerRuntime(config(), {
+    store, now: () => NOW, logger: event => events.push(event),
+    handler: async () => { throw new WorkerStageError('review_initialization',
+      new PrescriptionReviewWorkerRpcError('INVALID', 'meddecode_initialize_prescription_review_v1', '22P02')); },
+  }).start();
+  assert.deepEqual(events.find((e: any) => e.event === 'worker_handler_failed'), {
+    level: 'error', event: 'worker_handler_failed', jobId: claim().jobId, claimGeneration: 1,
+    stage: 'review_initialization', category: 'INVALID', rpcName: 'meddecode_initialize_prescription_review_v1', sqlstate: '22P02',
+  });
+  assert.doesNotMatch(JSON.stringify(events), /source\.pdf|private-test-bucket|token/);
 });
 
 test("rejects a stale heartbeat generation", async () => {

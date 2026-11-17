@@ -262,6 +262,7 @@ button, a { -webkit-tap-highlight-color: transparent; }
   padding: 0.625rem 1rem;
   font-size: 0.875rem;
   font-weight: 675;
+  white-space: nowrap;
   transition:
     background 0.18s,
     color 0.18s,

@@ -20,6 +20,16 @@ test("finalization candidate is explicitly local-only and preserves prior migrat
   assert.doesNotMatch(up, /CREATE OR REPLACE FUNCTION public\.claim_next_prescription_analysis_job_v1/);
 });
 
+test("preflight checks result ownership through its prescription and owning job", async () => {
+  const preflight = await source("001_preflight.sql");
+  const resultCheck = preflight.slice(preflight.indexOf("FROM public.prescription_intelligence_results AS r"));
+  assert.match(resultCheck, /LEFT JOIN public\.ai_jobs AS j ON j\.id = r\.job_id/);
+  assert.match(resultCheck, /LEFT JOIN public\.prescriptions AS p ON p\.id = r\.prescription_id/);
+  assert.match(resultCheck, /j\.user_id IS DISTINCT FROM p\.user_id/);
+  assert.doesNotMatch(resultCheck, /r\.user_id/);
+  assert.match(preflight, /'completed', 'failed', 'cancelled'/);
+});
+
 test("completion is fenced, ordered, structurally bounded, and transactional", async () => {
   const up = await source("002_up.sql");
   assert.match(up, /BEGIN;[\s\S]*COMMIT;/);
@@ -35,7 +45,9 @@ test("completion is fenced, ordered, structurally bounded, and transactional", a
   assert.match(up, /v_job\.lease_expires_at <= v_now/);
   assert.ok(up.indexOf("INSERT INTO public.prescription_intelligence_results") <
     up.indexOf("UPDATE public.ai_jobs AS j SET status = 'completed'"));
-  assert.match(up, /jsonb_path_exists\(p_result_json, '\$\.medicines\[\*\]\.alternatives\[\*\]'\)/);
+  assert.match(up, /INSERT INTO public\.prescription_medicine_alternatives/);
+  assert.match(up, /match_basis,ingredient_equivalence/);
+  assert.match(up, /medicine_id, medicine_external_id/);
 });
 
 test("completion supports only exact replay and rejects conflicting or partial persistence", async () => {
@@ -47,6 +59,17 @@ test("completion supports only exact replay and rejects conflicting or partial p
   assert.match(up, /existing projections conflict/);
 });
 
+test("lease time is refreshed after row locks and checked again at final writes", async () => {
+  const up = await source("002_up.sql");
+  const completion = up.split("CREATE OR REPLACE FUNCTION public.fail_prescription_analysis_job_v1")[0]!;
+  const failure = up.split("CREATE OR REPLACE FUNCTION public.fail_prescription_analysis_job_v1")[1]!;
+  for (const body of [completion, failure]) {
+    assert.ok(body.indexOf("v_now := clock_timestamp();", body.indexOf("FOR UPDATE")) > body.indexOf("FOR UPDATE"));
+    assert.match(body, /lease_expires_at > clock_timestamp\(\)/);
+    assert.match(body, /v_prescription\.status IS DISTINCT FROM 'processing'/);
+  }
+});
+
 test("failure accepts only safe codes and models retry versus terminal outcome", async () => {
   const up = await source("002_up.sql");
   assert.match(up, /fail_prescription_analysis_job_v1/);
@@ -55,6 +78,8 @@ test("failure accepts only safe codes and models retry versus terminal outcome",
   assert.match(up, /p_retry_at > v_now \+ interval '24 hours'/);
   assert.match(up, /p_retryable IS NULL/);
   assert.match(up, /p_failure_code IS NULL/);
+  assert.match(up, /IF NOT p_retryable AND p_retry_at IS NOT NULL/);
+  assert.doesNotMatch(up, /IF NOT v_retry AND p_retry_at IS NOT NULL/);
   assert.match(up, /status = 'queued', available_at = p_retry_at/);
   assert.match(up, /status = 'failed'/);
   assert.match(up, /Do not fabricate an immutable intelligence-result row/);
@@ -125,6 +150,8 @@ test("future destructive harness is explicit, loopback-only, and reaches every r
   assert.ok(completionCall >= 0 && roleReset > completionCall);
   assert.ok(roleReset < completionAssertion);
   assert.match(failureRecovery, /NULL retryable flag unexpectedly accepted/);
+  assert.match(failureRecovery, /non-retryable failure unexpectedly accepted a retry schedule/);
+  assert.match(failureRecovery, /terminal failure unexpectedly accepted a second finalization/);
   assert.match(failureRecovery, /unsafe failure code unexpectedly accepted/);
   assert.match(failureRecovery, /wrong worker unexpectedly finalized/);
   assert.match(failureRecovery, /stale generation unexpectedly finalized/);

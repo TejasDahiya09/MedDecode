@@ -20,10 +20,18 @@ BEGIN
   FROM public.ai_jobs AS j
   WHERE j.job_type = 'prescription_analysis'
     AND (j.prescription_id IS NULL
-      OR j.status NOT IN ('queued', 'processing', 'completed', 'failed')
+      OR j.status NOT IN ('queued', 'processing', 'completed', 'failed', 'cancelled')
       OR (j.status = 'processing' AND j.completed_at IS NOT NULL));
   IF v_incompatible <> 0 THEN
     RAISE EXCEPTION 'incompatible existing prescription-analysis jobs: %', v_incompatible;
+  END IF;
+  IF EXISTS (
+    SELECT 1 FROM public.ai_jobs AS j
+    LEFT JOIN public.prescriptions AS p ON p.id = j.prescription_id
+    WHERE j.job_type = 'prescription_analysis'
+      AND (p.id IS NULL OR p.user_id IS DISTINCT FROM j.user_id)
+  ) THEN
+    RAISE EXCEPTION 'prescription-analysis job ownership lineage is invalid';
   END IF;
   IF EXISTS (
     SELECT 1 FROM public.ai_jobs AS j

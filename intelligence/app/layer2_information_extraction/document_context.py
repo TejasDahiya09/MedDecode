@@ -187,16 +187,29 @@ class PrescriptionDocumentContext:
                 for item in group
             ]
 
-            text = " ".join(
-                block.text.strip()
-                for block in blocks
-                if block.text.strip()
-            )
+            text_parts = []
+            text_blocks: list[OCRBlock] = []
+            for block in blocks:
+                block_text = block.text.strip()
+                if not block_text:
+                    continue
+                if any(
+                    prior.text.strip().casefold() == block_text.casefold()
+                    and _bounding_boxes_overlap(
+                        prior,
+                        block,
+                    ) >= 0.8
+                    for prior in text_blocks
+                ):
+                    continue
+                text_parts.append(block_text)
+                text_blocks.append(block)
+            text = " ".join(text_parts)
 
             confidence = sum(
                 block.confidence
-                for block in blocks
-            ) / len(blocks)
+                for block in text_blocks
+            ) / len(text_blocks)
 
             top = min(
                 item["top"]
@@ -317,3 +330,19 @@ def _belongs_to_same_line(
         vertical_distance
         <= vertical_threshold
     )
+
+
+def _bounding_boxes_overlap(
+    first: OCRBlock,
+    second: OCRBlock,
+) -> float:
+    """Return intersection-over-smaller-area for duplicate OCR regions."""
+    first_top, first_bottom, first_left, first_right = _get_block_bounds(first)
+    second_top, second_bottom, second_left, second_right = _get_block_bounds(second)
+    overlap_width = max(0.0, min(first_right, second_right) - max(first_left, second_left))
+    overlap_height = max(0.0, min(first_bottom, second_bottom) - max(first_top, second_top))
+    intersection = overlap_width * overlap_height
+    first_area = max(0.0, first_right - first_left) * max(0.0, first_bottom - first_top)
+    second_area = max(0.0, second_right - second_left) * max(0.0, second_bottom - second_top)
+    smaller_area = min(first_area, second_area)
+    return intersection / smaller_area if smaller_area else 0.0

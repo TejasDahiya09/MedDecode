@@ -1,5 +1,6 @@
+import { endpointFor } from '../../services/api-client';
+
 export const approvedPrescriptionId = '79dac9bf-4ea2-4949-acfa-caea7c301040';
-export const testBackendOrigin = 'http://127.0.0.1:3001';
 
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const timestamp = (value: unknown): value is string => typeof value === 'string' && Number.isFinite(Date.parse(value));
@@ -25,15 +26,23 @@ export async function requestTestBackend(path: string, accessToken: string, init
   headers.set('Authorization', `Bearer ${accessToken}`);
   headers.set('Accept', 'application/json');
   let response: Response;
-  try {
-    response = await fetch(new URL(path, testBackendOrigin), { ...init, headers });
-  } catch {
-    throw new RpcPanelError(null, 'The isolated backend could not be reached.');
-  }
+  let endpoint: URL;
+  try { endpoint = endpointFor(path); }
+  catch { throw new RpcPanelError(null, 'The application API is not configured correctly.'); }
+  try { response = await fetch(endpoint, { ...init, headers }); }
+  catch { throw new RpcPanelError(null, 'Cannot reach the local backend. Check the server and proxy.'); }
   let body: unknown;
   try { body = await response.json(); }
-  catch { throw new RpcPanelError(response.status, 'The isolated backend returned malformed JSON.'); }
-  if (!response.ok) throw new RpcPanelError(response.status, response.status === 401 ? 'Authentication failed.' : `The isolated backend rejected the request (${response.status}).`);
+  catch { throw new RpcPanelError(response.status, `The backend returned an invalid response (HTTP ${response.status}).`); }
+  if (!response.ok) {
+    if (response.status === 401) throw new RpcPanelError(401, 'The session is missing or expired (HTTP 401). Sign in again.');
+    if (response.status === 404 && path.startsWith('/api/v1/prescriptions/')) {
+      throw new RpcPanelError(404, 'The prescription or job is not accessible to this account (HTTP 404). It may be missing or owned by another account.');
+    }
+    if (response.status === 403) throw new RpcPanelError(403, 'The account is not allowed to access this resource (HTTP 403).');
+    if (response.status === 503) throw new RpcPanelError(503, 'The processing service is unavailable (HTTP 503). Check the backend configuration.');
+    throw new RpcPanelError(response.status, `The backend rejected the check (HTTP ${response.status}).`);
+  }
   return { status: response.status, body };
 }
 
@@ -46,14 +55,14 @@ export function verifiedIdentity(value: unknown, expectedUserId: string): boolea
   return candidate.id === expectedUserId && uuid.test(expectedUserId);
 }
 
-export function verifiedOwnedPrescription(value: unknown): boolean {
+export function verifiedOwnedPrescription(value: unknown, expectedStatus: 'uploaded' | 'queued' = 'uploaded'): boolean {
   if (!value || typeof value !== 'object' || !exactKeys(value, ['prescription'])) return false;
   const prescription = (value as { prescription?: unknown }).prescription;
   if (!prescription || typeof prescription !== 'object' || !exactKeys(prescription, [
     'created_at', 'file_size_bytes', 'file_type', 'id', 'prescription_date', 'processed_at', 'status', 'updated_at'
   ])) return false;
   const row = prescription as Record<string, unknown>;
-  return row.id === approvedPrescriptionId && row.status === 'uploaded' &&
+  return row.id === approvedPrescriptionId && row.status === expectedStatus &&
     ['image/jpeg', 'image/png', 'application/pdf'].includes(String(row.file_type)) &&
     (row.file_size_bytes === null || (typeof row.file_size_bytes === 'string' && /^(0|[1-9]\d*)$/.test(row.file_size_bytes))) &&
     timestamp(row.created_at) && timestamp(row.updated_at) &&
@@ -61,7 +70,13 @@ export function verifiedOwnedPrescription(value: unknown): boolean {
     (row.processed_at === null || timestamp(row.processed_at));
 }
 
-export type Processing = null | { readonly job_id: string; readonly status: 'queued'; readonly created_at: string; readonly started_at: null; readonly completed_at: null };
+export type Processing = null | {
+  readonly job_id: string;
+  readonly status: 'queued' | 'cancelled';
+  readonly created_at: string;
+  readonly started_at: string | null;
+  readonly completed_at: string | null;
+};
 
 export function processingStatus(value: unknown): Processing | undefined {
   if (!value || typeof value !== 'object' || !exactKeys(value, ['prescription_id', 'processing'])) return undefined;
@@ -72,9 +87,11 @@ export function processingStatus(value: unknown): Processing | undefined {
     'completed_at', 'created_at', 'job_id', 'started_at', 'status'
   ])) return undefined;
   const job = candidate.processing as Record<string, unknown>;
-  if (typeof job.job_id !== 'string' || !uuid.test(job.job_id) || job.status !== 'queued' ||
-      !timestamp(job.created_at) || job.started_at !== null || job.completed_at !== null) return undefined;
-  return job as Processing;
+  if (typeof job.job_id !== 'string' || !uuid.test(job.job_id) || !timestamp(job.created_at)) return undefined;
+  if (job.status === 'queued' && job.started_at === null && job.completed_at === null) return job as Processing;
+  if (job.status === 'cancelled' && (job.started_at === null || timestamp(job.started_at)) &&
+      timestamp(job.completed_at)) return job as Processing;
+  return undefined;
 }
 
 export type Submission = { readonly jobId: string; readonly createdAt: string };

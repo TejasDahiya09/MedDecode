@@ -669,7 +669,9 @@ def _validate_prices(
                 value=price_record.price,
                 field_name=f"{prefix}.price",
                 errors=errors,
-                allow_zero=False,
+                # PMBI lists literal zero-MRP cells. Preserve this as a source
+                # observation, without interpreting it as a free product.
+                allow_zero=price_record.price_basis == "pmbi_listed_mrp",
             )
 
         # Currency is required by the database contract.

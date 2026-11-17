@@ -69,6 +69,8 @@ test("runs the injected local lifecycle from claimed fictional S3 object through
     const client: IntelligenceClient = { analyze: async request => {
       assert.equal(existsSync(path), true);
       assert.equal(request.job_id, jobId); assert.equal(request.prescription_id, prescriptionId);
+      assert.equal(request.requested_analysis.generate_recommendations, true);
+      assert.equal(request.requested_analysis.find_alternatives, false);
       return result();
     } };
     return client;

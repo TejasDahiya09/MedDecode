@@ -18,7 +18,7 @@ describe('API transport', () => {
     vi.stubEnv('VITE_API_BASE_URL', '/backend');
     fetchMock.mockResolvedValue(new Response('{"ok":true}', { headers: { 'Content-Type': 'application/json' } }));
     await expect(requestJson('/probe')).resolves.toEqual({ ok: true });
-    expect(String(fetchMock.mock.calls[0][0])).toBe(`${window.location.origin}/backend/probe`);
+    expect(String(fetchMock.mock.calls[0][0])).toBe(`${window.location.origin}/probe`);
   });
   it.each(['probe', '//other.invalid', '/../probe', '/./probe', '/%2e%2E/probe', '/%252e%252e/probe', '/%2fprobe', '/%5cprobe', '/probe?x=1', '/probe#x', '/%00probe', '/%zz', '/a\\b', '/a b'])('rejects unsafe path %s', async (path) => {
     await expect(requestJson(path)).rejects.toMatchObject({ kind: 'path' });

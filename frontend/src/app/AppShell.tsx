@@ -10,12 +10,26 @@ import './app-shell.css';
 const focusableSelector = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 function NavigationLinks({ onNavigate }: { readonly onNavigate?: () => void }) {
-  return destinations.map((item) => (
-    <NavLink key={item.path} to={item.path} end onClick={onNavigate} className={({ isActive }) => cn('cc-explore-link', isActive && 'is-active')}>
-      <span className="cc-explore-icon"><Icon className="size-5" name={item.icon} /></span>
-      <span><strong>{item.label}</strong><small>{item.description}</small></span>
-    </NavLink>
-  ));
+  const location = useLocation();
+  return destinations.map((item) => {
+    const isCurrentActive = item.path === '/prescriptions'
+      ? location.pathname === '/prescriptions' || location.pathname.startsWith('/prescriptions/')
+      : (item.path === '/medicine-library'
+         ? location.pathname === '/medicine-library' || location.pathname === '/medicine-insights'
+         : location.pathname === item.path);
+    return (
+      <NavLink
+        key={item.path}
+        to={item.path}
+        end={item.path !== '/prescriptions'}
+        onClick={onNavigate}
+        className={({ isActive }) => cn('cc-explore-link', (isCurrentActive || isActive) && 'is-active')}
+      >
+        <span className="cc-explore-icon"><Icon className="size-5" name={item.icon} /></span>
+        <span><strong>{item.label}</strong><small>{item.description}</small></span>
+      </NavLink>
+    );
+  });
 }
 
 function ExploreSheet({ onClose, triggerRef }: { readonly onClose: () => void; readonly triggerRef: RefObject<HTMLButtonElement | null> }) {
@@ -100,8 +114,24 @@ export function AppShell() {
         <WorkspaceHeader onExplore={(event) => open(event, 'header')} expanded={drawer === 'header'} />
         <main className="md-main" id="main-content" aria-label={title} tabIndex={-1} ref={main}><Outlet /></main>
         <nav className="cc-mobile-nav" aria-label="Mobile navigation">
-          {mobileDestinations.map((item) => <NavLink key={item.path} to={item.path} end className={({ isActive }) => cn('cc-mobile-nav-link', isActive && 'cc-mobile-nav-link--active')}><Icon className="size-5" name={item.icon} /><span>{item.label}</span></NavLink>)}
-
+          {mobileDestinations.map((item) => {
+            const isCurrentActive = item.path === '/prescriptions'
+              ? location.pathname === '/prescriptions' || location.pathname.startsWith('/prescriptions/')
+              : (item.path === '/medicine-library'
+                 ? location.pathname === '/medicine-library' || location.pathname === '/medicine-insights'
+                 : location.pathname === item.path);
+            return (
+              <NavLink
+                key={item.path}
+                to={item.path}
+                end={item.path !== '/prescriptions'}
+                className={({ isActive }) => cn('cc-mobile-nav-link', (isCurrentActive || isActive) && 'cc-mobile-nav-link--active')}
+              >
+                <Icon className="size-5" name={item.icon} />
+                <span>{item.label}</span>
+              </NavLink>
+            );
+          })}
         </nav>
       </div>
       {drawer ? <ExploreSheet onClose={close} triggerRef={trigger} /> : null}

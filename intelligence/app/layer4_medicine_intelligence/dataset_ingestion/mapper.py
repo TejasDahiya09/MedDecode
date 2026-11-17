@@ -765,6 +765,24 @@ def _build_prices(
             region=region,
             package_description=package_description,
             quantity=quantity,
+            source=_to_string(data.get("price_source")),
+            price_basis=_to_string(data.get("price_basis")),
+            price_unit=_to_string(data.get("price_unit")),
+            package_quantity_unit=_to_string(data.get("price_package_quantity_unit")),
+            notification_number=_to_string(data.get("price_notification_number")),
+            notification_date=_to_string(data.get("price_notification_date")),
+            nlem_version=_to_string(data.get("price_nlem_version")),
+            source_record_id=_to_string(data.get("price_source_record_id")),
+            source_release=_to_string(data.get("price_source_release")),
+            special_feature=data.get("price_special_feature") if isinstance(data.get("price_special_feature"), bool) else None,
+            special_feature_qualifier=_to_string(
+                data.get("price_special_feature_qualifier")
+            ),
+            original_price_text=_to_string(data.get("price_original_text")),
+            previous_price=_to_decimal(data.get("price_previous_value")),
+            previous_price_text=_to_string(data.get("price_previous_original_text")),
+            effective_date=_to_string(data.get("price_effective_date")),
+            publication_date=_to_string(data.get("price_publication_date")),
         )
     ]
 

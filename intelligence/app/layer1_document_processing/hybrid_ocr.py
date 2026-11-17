@@ -16,9 +16,12 @@ from time import perf_counter
 from typing import TYPE_CHECKING, Any, Protocol, Sequence
 
 import numpy as np
-from PIL import Image
-
-from app.schemas.ocr import OCRBlock, OCRPageResult
+from PIL import Image, ImageOps
+from app.layer2_information_extraction.numbered_medicine_rows import (
+    detect_unverified_numbered_rows,
+    infer_numbered_list_region,
+)
+from app.schemas.ocr import OCRBlock, OCRPageResult, UnverifiedNumberedRow
 
 if TYPE_CHECKING:
     from app.layer1_document_processing.ocr_engine import OCREngine, PaddleOCRLocalModelConfig
@@ -80,6 +83,8 @@ class ReconciledOCRRegion:
     predictions: tuple[OCRPrediction, ...]
     state: str
     selected_prediction: OCRPrediction | None
+    selection_rationale: str = ""
+    uncertainty_indicators: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -89,6 +94,8 @@ class HybridOCRPageResult:
     regions: tuple[ReconciledOCRRegion, ...]
     failures: tuple[OCRProviderFailure, ...]
     elapsed_ms: float
+    unverified_numbered_rows: tuple[UnverifiedNumberedRow, ...] = ()
+    review_warnings: tuple[str, ...] = ()
 
     def to_ocr_page_result(self) -> OCRPageResult:
         """Return only non-conflicting evidence to Layers 2-5.
@@ -110,7 +117,12 @@ class HybridOCRPageResult:
             )
             for item in accepted
         ]
-        return OCRPageResult(full_text="\n".join(block.text for block in blocks), blocks=blocks)
+        return OCRPageResult(
+            full_text="\n".join(block.text for block in blocks),
+            blocks=blocks,
+            unverified_numbered_rows=list(self.unverified_numbered_rows),
+            processing_warnings=list(self.review_warnings),
+        )
 
 
 class WholePageOCRProvider(Protocol):
@@ -125,18 +137,26 @@ class HandwrittenRegionOCRProvider(Protocol):
     def recognize_regions(self, regions: Sequence[OCRRegion], page_number: int, timeout_seconds: float) -> list[OCRPrediction]: ...
 
 
-@dataclass(frozen=True)
+@dataclass
 class PaddleOCRProvider:
     local_model_config: PaddleOCRLocalModelConfig
     engine: OCREngine | None = None
     engine_name: str = "paddleocr"
+    _engine_lock: Lock = field(default_factory=Lock, init=False, repr=False)
+
+    def _engine_or_create(self) -> OCREngine:
+        if self.engine is not None:
+            return self.engine
+        with self._engine_lock:
+            if self.engine is None:
+                from app.layer1_document_processing.ocr_engine import OCREngine
+                self.engine = OCREngine(self.local_model_config)
+        return self.engine
 
     def recognize(self, image: Image.Image, page_number: int, timeout_seconds: float) -> list[OCRPrediction]:
         # PaddleOCR has no per-call cancellation API. The hybrid coordinator
         # enforces a caller-visible deadline and records a timeout safely.
-        from app.layer1_document_processing.ocr_engine import OCREngine
-
-        engine = self.engine or OCREngine(self.local_model_config)
+        engine = self._engine_or_create()
         result = engine.process_page(image)
         return [
             OCRPrediction(
@@ -151,6 +171,15 @@ class PaddleOCRProvider:
             for block in result.blocks
             if block.text.strip()
         ]
+
+    def recognize_regions(self, regions: Sequence[OCRRegion], page_number: int, timeout_seconds: float) -> list[OCRPrediction]:
+        """Run the local engine only on bounded crops and restore page coordinates."""
+        output: list[OCRPrediction] = []
+        for region in regions:
+            left, top, _, _ = _bounds(region.polygon)
+            for prediction in self.recognize(region.image, page_number, timeout_seconds):
+                output.append(_translate_prediction(prediction, left, top))
+        return output
 
 
 class EasyOCRProvider:
@@ -171,6 +200,22 @@ class EasyOCRProvider:
         self._last_inference_elapsed_ms: float | None = None
 
     @property
+    def model_storage_directory(self) -> Path:
+        return self._model_storage_directory
+
+    def _resolved_model_storage_directory(self) -> Path:
+        candidates = [self._model_storage_directory]
+        nested = self._model_storage_directory / "model"
+        if nested.exists():
+            candidates.append(nested)
+        for candidate in candidates:
+            if not candidate.is_dir():
+                continue
+            if any(candidate.joinpath(name).is_file() for name in ("english_g2.pth", "craft_mlt_25k.pth")):
+                return candidate
+        return self._model_storage_directory
+
+    @property
     def initialization_elapsed_ms(self) -> float | None:
         return self._initialization_elapsed_ms
 
@@ -181,7 +226,8 @@ class EasyOCRProvider:
     def _reader_or_raise(self) -> Any:
         if self._reader is not None:
             return self._reader
-        if not self._model_storage_directory.is_dir():
+        model_directory = self._resolved_model_storage_directory()
+        if not model_directory.is_dir():
             raise OCRProviderError("EasyOCR local model assets are unavailable.")
         with self._reader_lock:
             if self._reader is not None:
@@ -193,15 +239,19 @@ class EasyOCRProvider:
                 except ImportError as error:
                     raise OCRProviderError("EasyOCR is not installed.") from error
                 # EasyOCR is explicitly prevented from downloading weights at runtime.
-                self._reader = easyocr.Reader(
-                    list(self._languages),
-                    gpu=False,
-                    model_storage_directory=str(self._model_storage_directory),
-                    download_enabled=False,
-                    verbose=False,
-                )
+                try:
+                    self._reader = easyocr.Reader(
+                        list(self._languages),
+                        gpu=False,
+                        model_storage_directory=str(model_directory),
+                        download_enabled=False,
+                        verbose=False,
+                    )
+                except FileNotFoundError as error:
+                    raise OCRProviderError("EasyOCR local model assets are unavailable.") from error
             finally:
                 self._initialization_elapsed_ms = (perf_counter() - started) * 1000
+        self._model_storage_directory = model_directory
         return self._reader
 
     def recognize(self, image: Image.Image, page_number: int, timeout_seconds: float) -> list[OCRPrediction]:
@@ -225,14 +275,40 @@ class EasyOCRProvider:
             if str(text).strip()
         ]
 
+    def recognize_regions(self, regions: Sequence[OCRRegion], page_number: int, timeout_seconds: float) -> list[OCRPrediction]:
+        output: list[OCRPrediction] = []
+        for region in regions:
+            left, top, _, _ = _bounds(region.polygon)
+            for prediction in self.recognize(region.image, page_number, timeout_seconds):
+                output.append(_translate_prediction(prediction, left, top))
+        return output
+
 
 class TrOCRHandwrittenProvider:
     engine_name = "trocr_base_handwritten"
 
-    def __init__(self, *, model_directory: Path, processor: Any | None = None, model: Any | None = None) -> None:
+    def __init__(
+        self,
+        *,
+        model_directory: Path,
+        processor: Any | None = None,
+        model: Any | None = None,
+        max_new_tokens: int = 64,
+        max_pixels: int = 2_000_000,
+        torch_num_threads: int = 1,
+        torch_num_interop_threads: int = 1,
+    ) -> None:
         self._model_directory = model_directory
         self._processor = processor
         self._model = model
+        self._max_new_tokens = max_new_tokens
+        self._max_pixels = max_pixels
+        self._torch_num_threads = int(torch_num_threads)
+        self._torch_num_interop_threads = int(torch_num_interop_threads)
+
+    @property
+    def model_directory(self) -> Path:
+        return self._model_directory
 
     def _load_or_raise(self) -> tuple[Any, Any]:
         if self._processor is not None and self._model is not None:
@@ -240,9 +316,16 @@ class TrOCRHandwrittenProvider:
         if not self._model_directory.is_dir():
             raise OCRProviderError("TrOCR local model assets are unavailable.")
         try:
+            import torch
             from transformers import TrOCRProcessor, VisionEncoderDecoderModel
         except ImportError as error:
             raise OCRProviderError("TrOCR requires transformers and torch.") from error
+
+        if self._torch_num_threads > 0:
+            torch.set_num_threads(self._torch_num_threads)
+        if self._torch_num_interop_threads > 0:
+            torch.set_num_interop_threads(self._torch_num_interop_threads)
+
         # local_files_only is the no-download boundary for this provider.
         self._processor = TrOCRProcessor.from_pretrained(str(self._model_directory), local_files_only=True)
         self._model = VisionEncoderDecoderModel.from_pretrained(str(self._model_directory), local_files_only=True)
@@ -253,25 +336,69 @@ class TrOCRHandwrittenProvider:
     def recognize_regions(self, regions: Sequence[OCRRegion], page_number: int, timeout_seconds: float) -> list[OCRPrediction]:
         if not regions:
             return []
+        if timeout_seconds <= 0:
+            raise OCRProviderError("TrOCR requires a positive timeout.")
+
         processor, model = self._load_or_raise()
-        images = [region.image.convert("RGB") for region in regions]
+        prepared: list[tuple[OCRRegion, Image.Image]] = []
+        for region in regions:
+            prepared_image = _prepare_trocr_image(region.image, self._max_pixels)
+            if prepared_image is None:
+                continue
+            prepared.append((region, prepared_image))
+        if not prepared:
+            return []
+
+        images = [image for _, image in prepared]
         pixel_values = processor(images=images, return_tensors="pt").pixel_values
-        generated = model.generate(pixel_values)
+        import torch
+
+        with torch.inference_mode():
+            generated = model.generate(pixel_values, max_new_tokens=self._max_new_tokens)
         texts = processor.batch_decode(generated, skip_special_tokens=True)
-        return [
-            OCRPrediction(
-                engine_name=self.engine_name,
-                engine_version="microsoft-trocr-base-handwritten",
-                page_number=page_number,
-                text=str(text).strip(),
-                polygon=region.polygon,
-                raw_confidence=None,
-                content_style="handwritten",
-                model_provenance="local-transformers-model-directory",
+        predictions: list[OCRPrediction] = []
+        for (region, _), text in zip(prepared, texts, strict=True):
+            cleaned = str(text).strip()
+            if not cleaned:
+                continue
+            predictions.append(
+                OCRPrediction(
+                    engine_name=self.engine_name,
+                    engine_version="microsoft-trocr-base-handwritten",
+                    page_number=page_number,
+                    text=cleaned,
+                    polygon=region.polygon,
+                    raw_confidence=None,
+                    content_style="handwritten",
+                    model_provenance="local-transformers-model-directory",
+                )
             )
-            for region, text in zip(regions, texts, strict=True)
-            if str(text).strip()
-        ]
+        return predictions
+
+
+def _prepare_trocr_image(image: Image.Image, max_pixels: int = 2_000_000) -> Image.Image | None:
+    rgb = image.convert("RGB")
+    width, height = rgb.size
+    if width <= 0 or height <= 0:
+        return None
+    if max_pixels <= 0:
+        raise OCRProviderError("TrOCR crop limit must be positive.")
+    if width * height > max_pixels:
+        scale = (max_pixels / float(width * height)) ** 0.5
+        rgb = rgb.resize((max(1, int(width * scale)), max(1, int(height * scale))), Image.Resampling.BILINEAR)
+        width, height = rgb.size
+    if min(width, height) < 8:
+        raise OCRProviderError("TrOCR crop is too small for handwriting recognition.")
+    if width * height > max_pixels:
+        raise OCRProviderError("TrOCR crop exceeds the supported maximum dimensions.")
+
+    gray = np.asarray(rgb.convert("L"), dtype=np.float32)
+    if gray.size == 0 or float(gray.std()) < 6.0:
+        return None
+
+    padding = max(8, int(min(width, height) * 0.08))
+    padded = ImageOps.expand(rgb, border=padding, fill="white")
+    return padded
 
 
 class Boto3TextractTransport:
@@ -386,7 +513,10 @@ class GoogleVisionTransport:
         response = vision.ImageAnnotatorClient().document_text_detection(
             image=vision.Image(content=image_bytes), timeout=timeout_seconds
         )
-        if response.error.message:
+        if response is None:
+            raise OCRProviderError("Google Vision returned a malformed response.")
+        api_error = getattr(getattr(response, "error", None), "message", "")
+        if api_error:
             raise OCRProviderError("Google Vision returned an OCR error.")
         return response
 
@@ -433,6 +563,71 @@ class HybridOCREngine:
     def recognize_page(self, image: Image.Image, page_number: int) -> HybridOCRPageResult:
         started = perf_counter()
         predictions, failures = self._run_whole_page(image, page_number)
+        numbered_rows: tuple[UnverifiedNumberedRow, ...] = ()
+        review_warnings: tuple[str, ...] = ()
+        easyocr_provider = next(
+            (
+                provider
+                for provider in self.whole_page_providers
+                if isinstance(provider, EasyOCRProvider)
+            ),
+            None,
+        )
+        if easyocr_provider is not None:
+            easyocr_predictions = [
+                prediction
+                for prediction in predictions
+                if prediction.engine_name == easyocr_provider.engine_name
+            ]
+            review_blocks = [
+                OCRBlock(
+                    text=prediction.text,
+                    confidence=prediction.raw_confidence or 0.0,
+                    bounding_box=[list(point) for point in prediction.polygon or ()],
+                )
+                for prediction in easyocr_predictions
+                if prediction.polygon
+            ]
+            region = infer_numbered_list_region(review_blocks, image.size)
+            if region is not None:
+                try:
+                    left, top, _, _ = region
+                    crop = image.crop(region)
+                    crop_predictions = easyocr_provider.recognize(
+                        crop,
+                        page_number,
+                        self.per_engine_timeout_seconds,
+                    )
+                    crop_blocks = [
+                        OCRBlock(
+                            text=prediction.text,
+                            confidence=prediction.raw_confidence or 0.0,
+                            bounding_box=[list(point) for point in prediction.polygon or ()],
+                        )
+                        for prediction in crop_predictions
+                        if prediction.polygon
+                    ]
+                    crop_page = OCRPageResult(
+                        full_text="\n".join(block.text for block in crop_blocks),
+                        blocks=crop_blocks,
+                    )
+                    detected_rows = detect_unverified_numbered_rows(
+                        crop_page,
+                        page_number=page_number,
+                        page_size=crop.size,
+                    )
+                    numbered_rows = tuple(
+                        _translate_numbered_row(row, left, top)
+                        for row in detected_rows
+                    )
+                    if not numbered_rows:
+                        review_warnings = (
+                            "A numbered text region was found but could not be segmented into review rows.",
+                        )
+                except Exception:
+                    review_warnings = (
+                        "A numbered text region was found but OCR row review was unavailable.",
+                    )
         if self.handwritten_provider is not None:
             regions = _line_crops(image, predictions)
             if regions:
@@ -451,6 +646,8 @@ class HybridOCREngine:
             regions=tuple(regions),
             failures=tuple(failures),
             elapsed_ms=(perf_counter() - started) * 1000,
+            unverified_numbered_rows=numbered_rows,
+            review_warnings=review_warnings,
         )
 
     def _run_whole_page(self, image: Image.Image, page_number: int) -> tuple[list[OCRPrediction], list[OCRProviderFailure]]:
@@ -495,6 +692,36 @@ def _safe_failure(engine_name: str, error: Exception) -> OCRProviderFailure:
     if isinstance(error, CloudOCRDisabledError):
         return OCRProviderFailure(engine_name, "DISABLED")
     return OCRProviderFailure(engine_name, "UNAVAILABLE")
+
+
+def _translate_numbered_row(
+    row: UnverifiedNumberedRow,
+    horizontal_offset: int,
+    vertical_offset: int,
+) -> UnverifiedNumberedRow:
+    def translate(points: list[list[float]]) -> list[list[float]]:
+        return [
+            [x + horizontal_offset, y + vertical_offset]
+            for x, y in points
+        ]
+
+    evidence = tuple(
+        OCRBlock(
+            text=block.text,
+            confidence=block.confidence,
+            bounding_box=translate(block.bounding_box),
+        )
+        for block in row.evidence
+    )
+    return UnverifiedNumberedRow(
+        candidate_sequence_number=row.candidate_sequence_number,
+        observed_number=row.observed_number,
+        raw_text=row.raw_text,
+        page_number=row.page_number,
+        confidence=row.confidence,
+        bounding_box=translate(row.bounding_box),
+        evidence=evidence,
+    )
 
 
 def _polygon(value: Any) -> Polygon | None:
@@ -591,6 +818,35 @@ def _line_crops(image: Image.Image, predictions: Sequence[OCRPrediction]) -> lis
     return regions
 
 
+def _translate_prediction(prediction: OCRPrediction, horizontal: float, vertical: float) -> OCRPrediction:
+    polygon = None if prediction.polygon is None else tuple(
+        (x + horizontal, y + vertical) for x, y in prediction.polygon
+    )
+    return OCRPrediction(
+        prediction.engine_name, prediction.engine_version, prediction.page_number,
+        prediction.text, polygon, prediction.raw_confidence, prediction.content_style,
+        prediction.model_provenance,
+    )
+
+
+def _conflict_indicators(predictions: Sequence[OCRPrediction]) -> tuple[str, ...]:
+    import re
+    normalized = [" ".join(item.text.casefold().split()) for item in predictions]
+    indicators: list[str] = []
+    numbers = [{value for value in re.findall(r"(?<!\w)\d+(?:\.\d+)?", text)} for text in normalized]
+    units = [{value for value in re.findall(r"\b(?:mg|mcg|g|ml|iu|units?)\b", text)} for text in normalized]
+    frequencies = [{value for value in re.findall(r"\b(?:od|bd|bid|tds|tid|qid|once|twice|daily)\b", text)} for text in normalized]
+    if len({tuple(sorted(value)) for value in numbers}) > 1:
+        indicators.append("numeric_conflict")
+    if len({tuple(sorted(value)) for value in units}) > 1:
+        indicators.append("unit_conflict")
+    if len({tuple(sorted(value)) for value in frequencies}) > 1:
+        indicators.append("frequency_conflict")
+    if len(set(normalized)) > 1 and not indicators:
+        indicators.append("text_conflict")
+    return tuple(indicators)
+
+
 def _reconcile(predictions: Sequence[OCRPrediction]) -> list[ReconciledOCRRegion]:
     groups: list[list[OCRPrediction]] = []
     for prediction in predictions:
@@ -608,10 +864,19 @@ def _reconcile(predictions: Sequence[OCRPrediction]) -> list[ReconciledOCRRegion
         normalized = {" ".join(item.text.casefold().split()) for item in group}
         ordered = tuple(group)
         if len(normalized) > 1:
-            reconciled.append(ReconciledOCRRegion(ordered, "disagreement", None))
+            reconciled.append(ReconciledOCRRegion(
+                ordered, "disagreement", None,
+                "Conflicting provider text was withheld; provider confidence scales were not compared.",
+                _conflict_indicators(ordered),
+            ))
         else:
-            chosen = max(group, key=lambda item: item.raw_confidence if item.raw_confidence is not None else -1.0)
-            reconciled.append(ReconciledOCRRegion(ordered, "agreement" if len(group) > 1 else "single_source", chosen))
+            # Cross-provider scores are not calibrated. Preserve provider order
+            # and select the first observation when normalized text agrees.
+            chosen = group[0]
+            state = "agreement" if len(group) > 1 else "single_source"
+            rationale = ("Normalized provider text agreed; the primary observation was retained without comparing confidence scales."
+                         if len(group) > 1 else "Only one provider supplied this region.")
+            reconciled.append(ReconciledOCRRegion(ordered, state, chosen, rationale, ()))
     return reconciled
 
 

@@ -5,5 +5,10 @@ paddleocr
 paddlepaddle
 python-dotenv
 supabase
+psycopg[binary]
 boto3
 google-cloud-vision
+fastapi==0.136.1
+uvicorn==0.46.0
+starlette==1.0.0
+annotated-doc==0.0.4

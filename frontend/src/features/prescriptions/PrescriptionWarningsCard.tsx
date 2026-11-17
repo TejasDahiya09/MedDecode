@@ -30,7 +30,7 @@ export function PrescriptionWarningsCard({ warnings }: WarningsCardProps) {
       <div className="flex items-center justify-between">
         <SectionHeader
           title={`Warnings & Discrepancies (${warnings.length})`}
-          description="Issues identified during optical character recognition and catalog matching."
+          description="Warnings returned with this analysis."
         />
         <Badge tone={hasHighOrMedium ? 'warning' : 'info'}>
           {hasHighOrMedium ? 'Attention required' : 'Informational'}
