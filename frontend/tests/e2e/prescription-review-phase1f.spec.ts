@@ -38,6 +38,14 @@ test('genuine browser -> Express -> PostgreSQL two-revision workflow', async ({ 
   await page.goto(`/prescriptions/${prescriptionId}/review`);
   await expect(page.getByRole('heading', { level: 1, name: 'Review & Edit Prescription' })).toBeVisible();
   await expect(page.locator('object[type="application/pdf"], iframe, embed').first()).toBeVisible();
+  const preview = await request.get(`http://127.0.0.1:3011/api/v1/prescriptions/${prescriptionId}/document/preview`, {
+    headers: { Authorization: `Bearer ${ownerToken}` },
+  });
+  expect(preview.status()).toBe(200);
+  expect(preview.headers()['content-type']).toContain('application/pdf');
+  expect((await preview.body()).byteLength).toBeGreaterThan(0);
+  const anonymousPreview = await request.get(`http://127.0.0.1:3011/api/v1/prescriptions/${prescriptionId}/document/preview`);
+  expect(anonymousPreview.status()).toBe(401);
   const name = page.getByRole('textbox', { name: /Medicine Name/ });
   await name.fill('Examplemed Revision One');
   await page.getByRole('button', { name: 'Save Draft' }).click();
@@ -48,7 +56,13 @@ test('genuine browser -> Express -> PostgreSQL two-revision workflow', async ({ 
   await page.getByRole('button', { name: 'Confirm prescription review' }).first().click();
   await page.getByLabel('Confirmation statement checkbox').check();
   await page.getByRole('dialog').getByRole('button', { name: 'Confirm Review' }).click();
-  await expect(page.getByText('Revision 1 is Confirmed')).toBeVisible();
+  await expect(page).toHaveURL(new RegExp(`/prescriptions/${prescriptionId}$`));
+  await expect(page.getByText(/Review Confirmed.*Intelligence Processing/)).toBeVisible();
+  await expect(page.getByText('Results pending')).toBeVisible();
+  const pendingResult = await request.get(`http://127.0.0.1:3011/api/v1/prescriptions/${prescriptionId}/results`, {
+    headers: { Authorization: `Bearer ${ownerToken}` },
+  });
+  expect(pendingResult.status()).toBe(409);
   const finalize1 = await page.evaluate(async ({ id, token }) => {
     const response = await fetch(`/__acceptance/prescriptions/${id}/finalize`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
     return { status: response.status, body: await response.json() };
@@ -56,6 +70,9 @@ test('genuine browser -> Express -> PostgreSQL two-revision workflow', async ({ 
   expect(finalize1.status).toBe(200);
   expect(finalize1.body.result.status).toMatch(/^completed/);
 
+  await page.reload();
+  await expect(page.getByText(/Examplemed Revision One/).first()).toBeVisible();
+  await page.goto(`/prescriptions/${prescriptionId}/review`);
   await page.getByRole('button', { name: /Reopen/i }).click();
   await expect(page.getByText(/Revision 2/).first()).toBeVisible();
   await page.getByRole('textbox', { name: /Medicine Name/ }).fill('Examplemed Revision Two');
@@ -64,7 +81,8 @@ test('genuine browser -> Express -> PostgreSQL two-revision workflow', async ({ 
   await page.getByRole('button', { name: 'Confirm prescription review' }).first().click();
   await page.getByLabel('Confirmation statement checkbox').check();
   await page.getByRole('dialog').getByRole('button', { name: 'Confirm Review' }).click();
-  await expect(page.getByText('Revision 2 is Confirmed')).toBeVisible();
+  await expect(page).toHaveURL(new RegExp(`/prescriptions/${prescriptionId}$`));
+  await expect(page.getByText(/Review Confirmed.*Intelligence Processing/)).toBeVisible();
   const finalize2 = await page.evaluate(async ({ id, token }) => {
     const response = await fetch(`/__acceptance/prescriptions/${id}/finalize`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
     return { status: response.status, body: await response.json() };
@@ -84,6 +102,19 @@ test('genuine browser -> Express -> PostgreSQL two-revision workflow', async ({ 
   expect(persisted.history.results[0].is_current).toBe(false);
   expect(persisted.history.results[1].is_current).toBe(true);
 
+  await page.reload();
+  await expect(page.getByText(/Examplemed Revision Two/).first()).toBeVisible();
+  await page.getByRole('link', { name: 'All Prescriptions' }).click();
+  await expect(page).toHaveURL(/\/prescriptions$/);
+  const historyEntry = page.getByRole('link', { name: /PDF Prescription.*View analysis/ });
+  await expect(historyEntry).toBeVisible();
+  await historyEntry.click();
+  await expect(page.getByText(/Examplemed Revision Two/).first()).toBeVisible();
+  await page.goBack();
+  await expect(page).toHaveURL(/\/prescriptions$/);
+  await page.goForward();
+  await expect(page.getByText(/Examplemed Revision Two/).first()).toBeVisible();
+  await page.goto(`/prescriptions/${prescriptionId}/review`);
   await page.getByRole('button', { name: 'View prescription revision history' }).click();
   await expect(page.getByRole('dialog')).toContainText('Revision 1');
   await expect(page.getByRole('dialog')).toContainText('Revision 2');
@@ -92,6 +123,8 @@ test('genuine browser -> Express -> PostgreSQL two-revision workflow', async ({ 
   const bobToken = (await bob.json() as { token: string }).token;
   const crossOwner = await request.get(`http://127.0.0.1:3011/api/v1/prescriptions/${prescriptionId}/review`, { headers: { Authorization: `Bearer ${bobToken}` } });
   expect(crossOwner.status()).toBe(404);
+  const crossOwnerPreview = await request.get(`http://127.0.0.1:3011/api/v1/prescriptions/${prescriptionId}/document/preview`, { headers: { Authorization: `Bearer ${bobToken}` } });
+  expect(crossOwnerPreview.status()).toBe(404);
   const cleanup = await request.post('http://127.0.0.1:3011/__acceptance/cleanup', { headers: { Authorization: `Bearer ${ownerToken}` } });
   expect(cleanup.status()).toBe(200);
   expect(await cleanup.json()).toEqual({ marker: 'PHASE1F_FIXTURE_CLEANUP_OK' });

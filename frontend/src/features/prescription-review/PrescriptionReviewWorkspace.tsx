@@ -83,6 +83,8 @@ export const PrescriptionReviewWorkspace: React.FC = () => {
   const [confirming, setConfirming] = useState<boolean>(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState<boolean>(false);
   const [selectedMedicineId, setSelectedMedicineId] = useState<string | null>(null);
+  const [showAddMedicineModal, setShowAddMedicineModal] = useState<boolean>(false);
+  const [newMedicineName, setNewMedicineName] = useState<string>('');
   const [showConfirmModal, setShowConfirmModal] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isConflictStale, setIsConflictStale] = useState<boolean>(false);
@@ -225,7 +227,7 @@ export const PrescriptionReviewWorkspace: React.FC = () => {
     }
   };
 
-  const handleAddMedicine = () => {
+  const handleAddMedicine = (medicineName: string) => {
     if (!workingReview || workingReview.status === 'confirmed') return;
     try {
       const newMedId = generateUuid();
@@ -235,7 +237,7 @@ export const PrescriptionReviewWorkspace: React.FC = () => {
         medicineId: newMedId,
         commandId: newCommandId,
         fields: {
-          medicineName: null,
+          medicineName: medicineName.trim(),
           brandName: null,
           genericName: null,
           strength: { value: null, unit: 'mg' },
@@ -252,6 +254,8 @@ export const PrescriptionReviewWorkspace: React.FC = () => {
       setWorkingReview(updated);
       setSelectedMedicineId(newMedId);
       setHasUnsavedChanges(true);
+      setNewMedicineName('');
+      setShowAddMedicineModal(false);
     } catch (err: unknown) {
       setErrorMessage(toErrorMessage(err));
     }
@@ -893,7 +897,7 @@ export const PrescriptionReviewWorkspace: React.FC = () => {
                   <button
                     type="button"
                     className="btn-add-medicine"
-                    onClick={handleAddMedicine}
+                    onClick={() => setShowAddMedicineModal(true)}
                     aria-label="Add a new medication row manually"
                   >
                     ＋ Add Missing Medicine
@@ -924,7 +928,7 @@ export const PrescriptionReviewWorkspace: React.FC = () => {
                 <div className="empty-medicines-card">
                   <p>No medicines recorded for this prescription.</p>
                   {!isConfirmed && (
-                    <button type="button" className="btn-primary btn-sm" onClick={handleAddMedicine}>
+                    <button type="button" className="btn-primary btn-sm" onClick={() => setShowAddMedicineModal(true)}>
                       Add First Medicine
                     </button>
                   )}
@@ -1084,6 +1088,58 @@ export const PrescriptionReviewWorkspace: React.FC = () => {
                 Close
               </button>
             </footer>
+          </div>
+        </div>
+      )}
+
+      {showAddMedicineModal && (
+        <div className="review-modal-backdrop" role="presentation">
+          <div
+            className="review-modal-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="add-medicine-modal-title"
+          >
+            <header className="review-modal-header">
+              <h3 id="add-medicine-modal-title" className="modal-heading">Add Missing Medicine</h3>
+              <button
+                type="button"
+                className="modal-close-btn"
+                aria-label="Close add medicine dialog"
+                onClick={() => { setNewMedicineName(''); setShowAddMedicineModal(false); }}
+              >
+                X
+              </button>
+            </header>
+            <form
+              onSubmit={(event) => {
+                event.preventDefault();
+                if (newMedicineName.trim()) handleAddMedicine(newMedicineName);
+              }}
+            >
+              <div className="review-modal-body">
+                <label htmlFor="new-medicine-name" className="field-label">Medicine Name</label>
+                <input
+                  id="new-medicine-name"
+                  className="form-input"
+                  value={newMedicineName}
+                  onChange={(event) => setNewMedicineName(event.target.value)}
+                  autoFocus
+                  required
+                  maxLength={200}
+                  placeholder="Enter the name shown on the prescription"
+                />
+                <p className="field-help">Enter only the medicine identity you can verify from the prescription. Other details can remain unresolved.</p>
+              </div>
+              <footer className="review-modal-footer">
+                <button type="button" className="btn-secondary" onClick={() => { setNewMedicineName(''); setShowAddMedicineModal(false); }}>
+                  Cancel
+                </button>
+                <button type="submit" className="btn-primary" disabled={!newMedicineName.trim()}>
+                  Add Medicine
+                </button>
+              </footer>
+            </form>
           </div>
         </div>
       )}

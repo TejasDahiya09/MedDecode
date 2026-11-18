@@ -18,6 +18,7 @@ import {
 import { PrescriptionStatusBadge } from './PrescriptionStatusBadge';
 import { PrescriptionResultsView } from './PrescriptionResultsView';
 import { PrescriptionProcessingStepper } from './PrescriptionProcessingStepper';
+import { isResultCurrentForReview } from './prescription-result-state';
 import { SaveToCabinetModal } from './SaveToCabinetModal';
 import { isPrescriptionAutoSubmitEnabled, type PrescriptionUploadProcessing } from './prescription-upload';
 import { ReviewAndEditButton } from '../prescription-review/ReviewActionControl';
@@ -84,8 +85,7 @@ export function PrescriptionResultsPage({ initialPrescriptionId, initialResult, 
   const [review, setReview] = useState<PrescriptionReviewContractV1 | null>(null);
   const [reviewError, setReviewError] = useState<string | null>(null);
   const v3Enabled = isPrescriptionReviewFeatureEnabled();
-  const hasCurrentResult = analysisOutcome?.kind === 'available'
-    && (review?.status !== 'confirmed' || !processing || analysisOutcome.result.job_id === processing.job_id);
+  const hasCurrentResult = isResultCurrentForReview(analysisOutcome, review?.status, processing);
   useEffect(() => {
     if (!v3Enabled || !prescriptionId) return;
     let active = true;

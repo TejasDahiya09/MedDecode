@@ -7,7 +7,9 @@ import { createApp } from "../src/app.js";
 import type { UserSupabaseClient } from "../src/config/supabase-user.js";
 import { createAuthenticateMiddleware, requireAuthenticatedIdentity } from "../src/middleware/authenticate.middleware.js";
 import { PostgresPrescriptionReviewRepository } from "../src/repositories/postgres-prescription-review.repository.js";
+import type { PrescriptionHistoryRepository } from "../src/repositories/prescription-history.repository.js";
 import type { PrescriptionResultsRepository } from "../src/repositories/prescription-results.repository.js";
+import type { ProcessingJobStoreFactory } from "../src/repositories/processing-job.store.js";
 import { LocalConfirmedReviewIntelligenceClient } from "../src/services/confirmed-review-intelligence.client.js";
 import { createLocalSyntheticAuth } from "../src/services/local-synthetic-auth.js";
 import { createLocalSyntheticDocumentStore } from "../src/services/local-synthetic-document.store.js";
@@ -20,6 +22,7 @@ const OTHER = "20000000-0000-4000-8000-000000000002";
 const PRESCRIPTION = "f1000000-0000-4000-8000-000000000001";
 const EVIDENCE = "f2000000-0000-4000-8000-000000000001";
 const OCR_JOB = "f3000000-0000-4000-8000-000000000001";
+const PENDING_REVIEW_JOB = "f4000000-0000-4000-8000-000000000001";
 const WORKER_INSTANCE = "phase1f-browser-worker";
 const DATABASE = "meddecode_phase1f_20261115";
 
@@ -127,6 +130,39 @@ async function main(): Promise<void> {
       return row ? { ...row, created_at: row.created_at instanceof Date ? row.created_at.toISOString() : row.created_at } : null;
     },
   };
+  const history: PrescriptionHistoryRepository = {
+    async listOwned(_client, userId, pagination) {
+      if (pagination.offset > 0) return [];
+      const row = await ownedPrescriptionHistory(adminPool, userId, PRESCRIPTION, documentBytes.byteLength);
+      return row ? [row] : [];
+    },
+    async findOwnedDetail(_client, userId, prescriptionId) {
+      return ownedPrescriptionHistory(adminPool, userId, prescriptionId, documentBytes.byteLength);
+    },
+  };
+  const processingJobs: ProcessingJobStoreFactory = () => ({
+    async submitOwned() { return { kind: "not_processable" }; },
+    async findOwnedStatus(userId, prescriptionId) {
+      const revision = await adminPool.query(
+        "SELECT intelligence_state,processing_job_id,updated_at FROM public.prescription_review_revisions WHERE prescription_id=$1 AND user_id=$2 AND is_current ORDER BY revision_number DESC LIMIT 1",
+        [prescriptionId, userId]
+      );
+      const current = revision.rows[0];
+      if (current?.intelligence_state === "pending" && current.processing_job_id === null) {
+        const createdAt = current.updated_at instanceof Date ? current.updated_at.toISOString() : String(current.updated_at);
+        return { kind: "job", job: { id: PENDING_REVIEW_JOB, userId, prescriptionId, jobType: "prescription_analysis", requestedAnalysis: { extract_prescription: true, match_medicines: true, find_alternatives: false, generate_recommendations: true }, status: "queued", createdAt, startedAt: null, completedAt: null, failure: null } };
+      }
+      const jobId = current?.processing_job_id ?? OCR_JOB;
+      const job = await adminPool.query(
+        "SELECT id,status,created_at,started_at,completed_at FROM public.ai_jobs WHERE id=$1 AND user_id=$2 AND prescription_id=$3",
+        [jobId, userId, prescriptionId]
+      );
+      const row = job.rows[0];
+      if (!row) return { kind: "prescription_not_found" };
+      const timestamp = (value: unknown): string | null => value instanceof Date ? value.toISOString() : value === null ? null : String(value);
+      return { kind: "job", job: { id: row.id, userId, prescriptionId, jobType: "prescription_analysis", requestedAnalysis: { extract_prescription: true, match_medicines: true, find_alternatives: false, generate_recommendations: true }, status: row.status, createdAt: timestamp(row.created_at)!, startedAt: timestamp(row.started_at), completedAt: timestamp(row.completed_at), failure: null } };
+    },
+  });
   const preview: PrescriptionDocumentPreviewService = { async load(_client, ownerId, prescriptionId) {
     const owned = await adminPool.query("SELECT object_key FROM public.prescriptions WHERE id=$1 AND user_id=$2", [prescriptionId, ownerId]);
     if (!owned.rowCount) throw new PrescriptionDocumentPreviewError("NOT_FOUND", "metadata_lookup", "not_found");
@@ -176,11 +212,39 @@ async function main(): Promise<void> {
       await localStore.storage.delete(objectKey).catch(() => undefined);
       return response.status(200).json({ marker: "PHASE1F_FIXTURE_CLEANUP_OK" });
     });
-  }, localAuth.verifier, clients, undefined, undefined, undefined, undefined, undefined, undefined, results, { enabled: true, repositoryFactory: (client) => new PostgresPrescriptionReviewRepository(client), documentPreviewService: preview });
+  }, localAuth.verifier, clients, undefined, undefined, history, undefined, undefined, processingJobs, results, { enabled: true, repositoryFactory: (client) => new PostgresPrescriptionReviewRepository(client), documentPreviewService: preview });
   const server = app.listen(3011, "127.0.0.1", () => console.log(`PHASE1F_SERVER_READY:${PRESCRIPTION}`));
   const stop = async () => { server.close(); await adminPool.end(); await workerPool.end(); };
   process.once("SIGINT", () => void stop().finally(() => process.exit(0)));
   process.once("SIGTERM", () => void stop().finally(() => process.exit(0)));
+}
+
+async function ownedPrescriptionHistory(
+  pool: Pool,
+  userId: string,
+  prescriptionId: string,
+  fileSizeBytes: number
+) {
+  const result = await pool.query(
+    "SELECT id,user_id,status,created_at,updated_at,processed_at FROM public.prescriptions WHERE id=$1 AND user_id=$2",
+    [prescriptionId, userId]
+  );
+  const row = result.rows[0];
+  if (!row) return null;
+  const iso = (value: unknown): string | null => value instanceof Date
+    ? value.toISOString()
+    : typeof value === "string" ? value : null;
+  return {
+    id: row.id as string,
+    user_id: row.user_id as string,
+    file_type: "application/pdf" as const,
+    file_size_bytes: fileSizeBytes,
+    status: row.status,
+    prescription_date: null,
+    created_at: iso(row.created_at) ?? new Date(0).toISOString(),
+    updated_at: iso(row.updated_at) ?? new Date(0).toISOString(),
+    processed_at: iso(row.processed_at),
+  };
 }
 
 async function cleanup(pool: Pool): Promise<void> {

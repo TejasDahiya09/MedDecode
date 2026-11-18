@@ -233,8 +233,12 @@ test.describe('Prescription Review & Confirmation Integration (Phase 1C.3)', () 
     await page.goto('/prescriptions/scenario-a/review?mock=true&dev_review=true');
     await page.getByRole('button', { name: 'Add a new medication row manually' }).click();
 
-    await expect(page.locator('input[value="New Medication"]')).toBeVisible();
-    await page.locator('input[value="New Medication"]').fill('Ibuprofen');
+    const addDialog = page.getByRole('dialog', { name: 'Add Missing Medicine' });
+    const addedName = addDialog.getByRole('textbox', { name: 'Medicine Name' });
+    await expect(addedName).toBeVisible();
+    await expect(addedName).toHaveValue('');
+    await addedName.fill('Ibuprofen');
+    await addDialog.getByRole('button', { name: 'Add Medicine', exact: true }).click();
     await expect(page.locator('input[value="Ibuprofen"]')).toBeVisible();
   });
 
