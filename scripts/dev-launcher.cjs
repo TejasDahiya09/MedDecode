@@ -33,13 +33,29 @@ async function chooseFrontendPort(probe = probePort) {
 }
 function prefix(stream, name, target) {
   let pending = '';
-  stream.setEncoding('utf8');
-  stream.on('data', data => {
+  let disposed = false;
+  const flush = () => { if (pending) target.write(`[${name}] ${pending}\n`); pending = ''; };
+  const cleanup = () => {
+    if (disposed) return; disposed = true;
+    stream.removeListener('data', onData);
+    stream.removeListener('end', onEnd);
+    stream.removeListener('close', onClose);
+    stream.removeListener('error', onError);
+  };
+  const onData = data => {
     pending += data;
     const lines = pending.split(/\r?\n/); pending = lines.pop();
     for (const line of lines) if (line) target.write(`[${name}] ${line}\n`);
-  });
-  stream.on('end', () => { if (pending) target.write(`[${name}] ${pending}\n`); });
+  };
+  const onEnd = () => { flush(); cleanup(); };
+  const onClose = () => { flush(); cleanup(); };
+  const onError = () => { cleanup(); };
+  stream.setEncoding('utf8');
+  stream.on('data', onData);
+  stream.once('end', onEnd);
+  stream.once('close', onClose);
+  stream.once('error', onError);
+  return cleanup;
 }
 function waitForHealth(child, timeout = 20000, port = 3000, route = '/health') {
   return new Promise((resolve, reject) => {
@@ -185,4 +201,4 @@ async function main() {
   } catch (error) { stop(1); throw error; }
 }
 if (require.main === module) main().catch(error => { console.error(`[dev] ${error.message}`); process.exitCode = 1; });
-module.exports = { checkSettings, chooseFrontendPort, probePort, childEnvironment, pythonServiceEnvironment, controlledWorkerEnvironment };
+module.exports = { checkSettings, chooseFrontendPort, probePort, childEnvironment, pythonServiceEnvironment, controlledWorkerEnvironment, prefix };

@@ -18,7 +18,7 @@ test("job submission migration enforces authenticated ownership and atomic reuse
   const sql = await source("002_up.sql");
   assert.match(sql, /SECURITY DEFINER/);
   assert.match(sql, /SET search_path = ''/);
-  assert.match(sql, /AS \$function\$\n#variable_conflict use_column\nDECLARE/);
+  assert.match(sql, /AS \$function\$\r?\n#variable_conflict use_column\r?\nDECLARE/);
   assert.match(sql, /v_user_id uuid := auth\.uid\(\)/);
   assert.match(sql, /p\.user_id = v_user_id[\s\S]*FOR UPDATE/);
   assert.match(sql, /prescription_intelligence_results/);

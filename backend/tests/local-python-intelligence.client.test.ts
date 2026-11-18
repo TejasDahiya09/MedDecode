@@ -52,6 +52,9 @@ test("performs a real Layer 2-5 offline round trip and validates its non-empty r
     pythonExecutable,
     intelligenceDirectory,
     worker: "real-layers-offline",
+    // This test verifies the real cross-language contract, not the production
+    // timeout threshold. Leave the dedicated timeout tests below strict.
+    timeoutMs: 15_000,
   });
   const response = await client.analyze(request);
   assert.equal(response.status, "completed_with_warnings");
@@ -324,6 +327,11 @@ test("times out once, terminates the process tree, and releases inherited pipes"
   assert.equal(terminationCount, 1);
   assert.equal(child.stdout.destroyed, true);
   assert.equal(child.stderr.destroyed, true);
+  assert.equal(child.listenerCount("exit"), 0);
+  assert.equal(child.listenerCount("close"), 0);
+  assert.equal(child.listenerCount("error"), 0);
+  assert.equal(child.stdout.listenerCount("data"), 0);
+  assert.equal(child.stderr.listenerCount("data"), 0);
 });
 test("sanitizes synchronous subprocess launch failures", async () => {
   await assert.rejects(

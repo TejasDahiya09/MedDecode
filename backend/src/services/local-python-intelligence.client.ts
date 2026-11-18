@@ -93,8 +93,10 @@ export async function runJsonSubprocess(options: JsonSubprocessOptions): Promise
     const stdout: Buffer[] = [];
 
     let drainTimer: NodeJS.Timeout | undefined;
+    let removeProcessListeners = () => undefined;
     const releaseHandles = () => {
       if (drainTimer !== undefined) clearTimeout(drainTimer);
+      removeProcessListeners();
       child.stdin.destroy();
       child.stdout.destroy();
       child.stderr.destroy();
@@ -126,16 +128,16 @@ export async function runJsonSubprocess(options: JsonSubprocessOptions): Promise
     options.signal?.addEventListener("abort", abort, { once: true });
     if (options.signal?.aborted) { abort(); return; }
 
-    child.once("error", () => finish(new IntelligenceTransportError("SPAWN_FAILED")));
-    child.stdout.on("data", (chunk: Buffer) => {
+    const onChildError = () => finish(new IntelligenceTransportError("SPAWN_FAILED"));
+    const onStdoutData = (chunk: Buffer) => {
       stdoutBytes += chunk.length;
       if (stdoutBytes > maxStdoutBytes) return terminate(new IntelligenceTransportError("OUTPUT_LIMIT"));
       stdout.push(chunk);
-    });
-    child.stderr.on("data", (chunk: Buffer) => {
+    };
+    const onStderrData = (chunk: Buffer) => {
       stderrBytes += chunk.length;
       if (stderrBytes > maxStderrBytes) terminate(new IntelligenceTransportError("OUTPUT_LIMIT"));
-    });
+    };
     const handleExit = (code: number | null) => {
       if (code !== 0) return finish(new IntelligenceTransportError("PROCESS_EXIT"));
       const complete = () => {
@@ -148,9 +150,21 @@ export async function runJsonSubprocess(options: JsonSubprocessOptions): Promise
     // `close` can wait forever when a Python descendant inherits a pipe. The
     // direct child's `exit` is authoritative; allow a short stdout drain and
     // then release inherited pipe handles.
+    const onStdinError = () => terminate(new IntelligenceTransportError("PROCESS_EXIT"));
+    child.once("error", onChildError);
+    child.stdout.on("data", onStdoutData);
+    child.stderr.on("data", onStderrData);
     child.once("exit", handleExit);
     child.once("close", handleExit);
-    child.stdin.once("error", () => terminate(new IntelligenceTransportError("PROCESS_EXIT")));
+    child.stdin.once("error", onStdinError);
+    removeProcessListeners = () => {
+      child.removeListener("error", onChildError);
+      child.stdout.removeListener("data", onStdoutData);
+      child.stderr.removeListener("data", onStderrData);
+      child.removeListener("exit", handleExit);
+      child.removeListener("close", handleExit);
+      child.stdin.removeListener("error", onStdinError);
+    };
     child.stdin.end(options.input, "utf8");
   });
 }

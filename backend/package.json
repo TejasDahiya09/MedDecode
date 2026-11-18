@@ -13,7 +13,7 @@
     "start": "node dist/server.js",
     "worker:start": "node dist/worker.js",
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.tools.json",
-    "test": "tsx --test tests/*.test.ts",
+    "test": "tsx --test --test-concurrency=1 tests/*.test.ts",
     "smoke:auth": "tsx scripts/auth-smoke.ts",
     "smoke:profile-write": "tsx scripts/profile-write-smoke.ts"
   },

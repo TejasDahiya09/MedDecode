@@ -2,7 +2,8 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const net = require('node:net');
-const { checkSettings, chooseFrontendPort, probePort, childEnvironment, pythonServiceEnvironment, controlledWorkerEnvironment } = require('./dev-launcher.cjs');
+const { PassThrough } = require('node:stream');
+const { checkSettings, chooseFrontendPort, probePort, childEnvironment, pythonServiceEnvironment, controlledWorkerEnvironment, prefix } = require('./dev-launcher.cjs');
 const valid = { MEDICINE_CATALOGUE_READ_ENABLED: 'true', MEDICINE_CATALOGUE_DEFAULT_SOURCE: 'official_catalogue', PROCESSING_JOB_STORE_ENABLED: 'true', PROCESSING_WORKER_ENABLED: 'false', SUPABASE_URL: 'https://example.invalid', SUPABASE_PUBLISHABLE_KEY: 'test' };
 test('requires catalogue and job configuration and rejects a live worker', () => {
   assert.deepEqual(checkSettings(valid), []);
@@ -20,6 +21,18 @@ test('detects an actually occupied loopback port without touching its owner', as
   await new Promise((resolve, reject) => { server.once('error', reject); server.listen(0, '127.0.0.1', resolve); });
   try { assert.equal(await probePort(server.address().port), false); assert.equal(server.listening, true); }
   finally { await new Promise(resolve => server.close(resolve)); }
+});
+test('prefix stream lifecycle removes every listener after repeated initialization', async () => {
+  const target = new PassThrough();
+  for (let index = 0; index < 25; index += 1) {
+    const source = new PassThrough();
+    prefix(source, `child-${index}`, target);
+    source.end('ready\n');
+    await new Promise(resolve => source.once('close', resolve));
+    for (const event of ['data', 'end', 'close', 'error']) assert.equal(source.listenerCount(event), 0);
+  }
+  assert.equal(target.listenerCount('error'), 0);
+  target.destroy();
 });
 test('service token and worker credentials are withheld from the frontend', () => {
   const source = { WORKER_DATABASE_URL: 'secret', AWS_SECRET_ACCESS_KEY: 'secret', SUPABASE_SECRET_KEY: 'secret', MEDDECODE_CATALOGUE_PASSWORD: 'secret', PROCESSING_WORKER_ENABLED: 'true' };

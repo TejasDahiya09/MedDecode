@@ -129,7 +129,7 @@ async function main(): Promise<void> {
   };
   const preview: PrescriptionDocumentPreviewService = { async load(_client, ownerId, prescriptionId) {
     const owned = await adminPool.query("SELECT object_key FROM public.prescriptions WHERE id=$1 AND user_id=$2", [prescriptionId, ownerId]);
-    if (!owned.rowCount) throw new PrescriptionDocumentPreviewError("NOT_FOUND");
+    if (!owned.rowCount) throw new PrescriptionDocumentPreviewError("NOT_FOUND", "metadata_lookup", "not_found");
     const response = await localStore.client.send({ input: { Bucket: "meddecode-local-synthetic", Key: owned.rows[0].object_key } } as never);
     const chunks: Buffer[] = []; for await (const chunk of response.Body) chunks.push(Buffer.from(chunk));
     return { bytes: Buffer.concat(chunks), contentType: "application/pdf" };
