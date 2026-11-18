@@ -39,6 +39,24 @@ JOB_ID = "11111111-1111-4111-8111-111111111111"
 PRESCRIPTION_ID = "22222222-2222-4222-8222-222222222222"
 
 
+def test_explicit_textract_provider_fails_safely_when_optional_sdk_is_missing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import builtins
+
+    real_import = builtins.__import__
+
+    def reject_aws_import(name: str, *args, **kwargs):
+        if name == "boto3" or name.startswith("botocore"):
+            raise ImportError("synthetic missing optional AWS SDK")
+        return real_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", reject_aws_import)
+    with pytest.raises(OCRProviderError, match="requires boto3") as error:
+        Boto3TextractTransport(region="ap-south-1").detect_document_text(b"rendered-page", 1.0)
+    assert "synthetic missing" not in str(error.value)
+
+
 class StaticProvider:
     def __init__(self, name: str, lines: list[tuple[str, tuple[tuple[float, float], ...]]]) -> None:
         self.engine_name = name

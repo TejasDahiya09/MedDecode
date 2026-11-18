@@ -26,14 +26,35 @@ Python 3.10 or newer is required by the current type syntax. Python 3.12 is the
 candidate interpreter for the first controlled compatibility test; it is not
 yet a verified or locked project requirement.
 
-Runtime dependencies are declared in `requirements.txt`. Test dependencies are
-declared in `requirements-test.txt`. The required direct packages include
-Pillow, PyMuPDF, NumPy, PaddleOCR, PaddlePaddle, python-dotenv, and the Supabase
-Python client.
+Local-default runtime dependencies are declared in `requirements.txt`. Test
+dependencies are declared in `requirements-test.txt`. The required direct
+packages include Pillow, PyMuPDF, NumPy, PaddleOCR, PaddlePaddle,
+python-dotenv, and the Supabase Python client. Cloud OCR SDKs are deliberately
+excluded from both files.
 
-The newly added direct dependencies are intentionally not version-pinned until
-a compatible PaddleOCR/PaddlePaddle/Python combination has been verified. These
-files are dependency declarations, not a reproducible lockfile.
+AWS Textract and Google Cloud Vision remain optional, explicit providers. A
+deployment that has separately approved a cloud provider may install exactly
+one additional profile after installing the local runtime:
+
+```powershell
+py -3.12 -m pip install -r requirements.txt
+# Choose only the approved provider, if any:
+py -3.12 -m pip install -r requirements-cloud-aws.txt
+py -3.12 -m pip install -r requirements-cloud-google.txt
+```
+
+Installing an optional SDK does not enable its provider. Normal FastAPI and
+supervised-worker execution continues to select local EasyOCR (and optionally
+local adaptive PaddleOCR) only. The diagnostic `local_pdf_worker` accepts a
+cloud provider solely through an explicit `--ocr-provider aws-textract` or
+`--ocr-provider google-cloud-vision` argument; the AWS branch also requires an
+explicit region. Missing optional SDKs fail with a sanitized provider error,
+not an import-time service failure or a local-to-cloud fallback. Cloud calls
+still require separate authorization, credentials, and deployment review.
+
+The unpinned OCR and optional-cloud packages remain dependency declarations,
+not a reproducible lockfile. Batch 7 intentionally changes dependency grouping
+only and does not perform broad package upgrades.
 
 ## Safe offline tests
 

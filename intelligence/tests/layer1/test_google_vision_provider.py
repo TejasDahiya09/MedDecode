@@ -247,3 +247,23 @@ def test_module_import_and_default_provider_construction_do_not_load_google_clie
     provider = GoogleVisionProvider()
     with pytest.raises(CloudOCRDisabledError):
         provider.recognize(Image.new("RGB", (10, 10)), 1, 1.0)
+
+
+def test_explicit_google_provider_fails_safely_when_optional_sdk_is_missing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import builtins
+
+    from app.layer1_document_processing.google_vision_provider import GoogleVisionTransport
+
+    real_import = builtins.__import__
+
+    def reject_google_import(name: str, *args, **kwargs):
+        if name == "google.cloud" or name.startswith("google.cloud."):
+            raise ImportError("synthetic missing optional Google SDK")
+        return real_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", reject_google_import)
+    with pytest.raises(OCRProviderError, match="client is not installed") as error:
+        GoogleVisionTransport().document_text(b"rendered-page", 1.0)
+    assert "synthetic missing" not in str(error.value)

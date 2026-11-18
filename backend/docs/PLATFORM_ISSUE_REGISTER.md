@@ -245,13 +245,19 @@ No critical issue was proven in this audit. That does not mean hosted security i
 
 ### AUD-INT-003 — Genuine OCR/resource behavior was not revalidated for this tree
 
-- **State / severity:** SUSPECTED COVERAGE GAP / MEDIUM
+- **State / severity:** PARTIALLY VERIFIED / MEDIUM
 - **Module:** FastAPI/EasyOCR/PaddleOCR
 - **Location:** `intelligence/app/integration/http_service.py`, supervisor and Layer 1
 - **Description:** full unit regression ran, but no genuine PDF/JPEG/PNG inference or process-tree measurement was repeated.
 - **Reproduction:** privacy-safe fictional harness with adaptive off/on, TrOCR off.
 - **Expected:** current evidence for bytes/pages/pixels/memory/timeout/cleanup and provider routing.
-- **Actual:** historical evidence only; one Python regression is red.
+- **Actual:** Batch 7 repeated genuine local EasyOCR on fictional scanned PDF,
+  JPEG, and PNG inputs. All expected synthetic medicine names and strengths
+  were recognized, with measured process-tree peaks of 1.50--1.52 GiB. The
+  451-test Python suite and 96 focused resource/clinical tests pass. Adaptive
+  PaddleOCR genuine inference remains unverified because this checkout has no
+  explicitly configured, readable pair of local model directories; no model
+  download was authorized.
 - **Root cause:** genuine models are expensive and should not be casually repeated during static audits.
 - **Impact:** resource/configuration drift could be missed.
 - **Fix:** run after Batch 2 in a controlled sequential environment.
@@ -260,13 +266,16 @@ No critical issue was proven in this audit. That does not mean hosted security i
 
 ### AUD-DEP-001 — Cloud OCR is a mandatory Python dependency despite local-default policy
 
-- **State / severity:** CONFIRMED OPEN / MEDIUM
+- **State / severity:** RESOLVED IN BATCH 7 / MEDIUM
 - **Module:** Python packaging/provider surface
 - **Location:** `intelligence/requirements.txt:10`, Google provider branches in Layer 1 and local worker
 - **Description:** `google-cloud-vision` is installed in the base requirements even though cloud OCR must remain explicit and disabled by default.
 - **Reproduction:** inspect requirements and provider selection.
 - **Expected:** local baseline installs only local runtime; cloud providers are optional extras with explicit credentials/approval.
-- **Actual:** cloud SDK is always part of the environment and supply chain.
+- **Actual:** `boto3` and `google-cloud-vision` are excluded from the local
+  default and test dependency profiles and declared in separate provider
+  profiles. Provider imports remain lazy, selection remains explicit, and
+  missing optional SDKs produce sanitized failures without cloud fallback.
 - **Root cause:** provider experiments were added to one flat requirements file.
 - **Impact:** larger install/attack surface and accidental configuration complexity; no evidence of an actual cloud call.
 - **Fix:** split locked base/dev/provider requirement groups and retain explicit runtime allowlisting.

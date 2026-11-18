@@ -1,0 +1,3 @@
+# Optional AWS Textract transport. Install only for an explicitly approved
+# cloud-OCR deployment; the local-default runtime does not require it.
+boto3
