@@ -69,6 +69,17 @@ describe('MedDecode Header Navigation & Redundancy Removal', () => {
     expect(mobileLibrary?.path).toBe('/medicine-library');
   });
 
+  it('describes implemented workspace capabilities without placeholder or clinical overclaim wording', () => {
+    expect(destinations.find((item) => item.path === '/upload-prescription')?.description)
+      .toBe('Upload a PDF or image and track prescription processing.');
+    expect(destinations.find((item) => item.path === '/compare-medicines')?.description)
+      .toBe('Compare selected catalogue formulations without implying clinical equivalence.');
+    expect(destinations.find((item) => item.path === '/my-cabinet')?.description)
+      .toBe('Organize saved medicines, quantities, refill dates and expiry details.');
+    expect(destinations.find((item) => item.path === '/reminders')?.description)
+      .toBe('Create and manage medication schedules and recorded dose events.');
+  });
+
   it('renders My Prescriptions in the primary navigation linking to /prescriptions', () => {
     mount('/home');
     const primaryNav = screen.getByRole('navigation', { name: 'Primary navigation' });

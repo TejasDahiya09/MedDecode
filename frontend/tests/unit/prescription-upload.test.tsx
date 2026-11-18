@@ -123,7 +123,7 @@ describe('upload page integration', () => {
       ? Promise.resolve(new Response(JSON.stringify({ user: testSession.user }), { headers: { 'Content-Type': 'application/json' } }))
       : pending);
     mount(fetchMock);
-    fireEvent.change(screen.getByLabelText('Choose prescription file'), { target: { files: [new File(['synthetic-data'], 'synthetic.pdf', { type: 'application/pdf' })] } });
+    fireEvent.change(await screen.findByLabelText('Choose prescription file'), { target: { files: [new File(['synthetic-data'], 'synthetic.pdf', { type: 'application/pdf' })] } });
     const upload = screen.getByRole('button', { name: 'Upload prescription' });
     fireEvent.click(upload); fireEvent.click(upload);
     await waitFor(() => expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith('/api/v1/prescriptions/upload'))).toHaveLength(1));
@@ -139,7 +139,7 @@ describe('upload page integration', () => {
       ? new Response(JSON.stringify({ user: testSession.user }), { headers: { 'Content-Type': 'application/json' } })
       : new Response(JSON.stringify(successfulResponse), { status: 201, headers: { 'Content-Type': 'application/json' } }));
     mount(fetchMock);
-    fireEvent.change(screen.getByLabelText('Choose prescription file'), { target: { files: [new File(['synthetic-data'], 'synthetic.pdf', { type: 'application/pdf' })] } });
+    fireEvent.change(await screen.findByLabelText('Choose prescription file'), { target: { files: [new File(['synthetic-data'], 'synthetic.pdf', { type: 'application/pdf' })] } });
     fireEvent.click(screen.getByRole('button', { name: 'Upload prescription' }));
     expect(await screen.findByText(prescriptionId)).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: /View Sample Analysis/ }));
@@ -153,7 +153,7 @@ describe('upload page integration', () => {
       ? new Response(JSON.stringify({ user: testSession.user }), { headers: { 'Content-Type': 'application/json' } })
       : new Response('{}', { status: 401, headers: { 'Content-Type': 'application/json' } }));
     mount(fetchMock);
-    fireEvent.change(screen.getByLabelText('Choose prescription file'), { target: { files: [new File(['synthetic-data'], 'synthetic.pdf', { type: 'application/pdf' })] } });
+    fireEvent.change(await screen.findByLabelText('Choose prescription file'), { target: { files: [new File(['synthetic-data'], 'synthetic.pdf', { type: 'application/pdf' })] } });
     fireEvent.click(screen.getByRole('button', { name: 'Upload prescription' }));
     expect(await screen.findAllByText(/session expired or is invalid/i)).toHaveLength(2);
     expect(screen.getByRole('link', { name: 'Sign in again' })).toBeTruthy();
@@ -168,7 +168,7 @@ describe('upload page integration', () => {
           headers: { 'Content-Type': 'application/json' },
         }));
     mount(fetchMock);
-    fireEvent.change(screen.getByLabelText('Choose prescription file'), { target: { files: [new File(['synthetic-data'], 'synthetic.pdf', { type: 'application/pdf' })] } });
+    fireEvent.change(await screen.findByLabelText('Choose prescription file'), { target: { files: [new File(['synthetic-data'], 'synthetic.pdf', { type: 'application/pdf' })] } });
     fireEvent.click(screen.getByRole('button', { name: 'Upload prescription' }));
     expect(await screen.findAllByText(/document content does not match its declared type or appears malformed/i)).toHaveLength(2);
     expect(screen.queryByText('Prescription uploaded successfully')).toBeNull();
@@ -184,7 +184,7 @@ describe('upload page integration', () => {
       ? new Response(JSON.stringify({ user: testSession.user }), { headers: { 'Content-Type': 'application/json' } })
       : new Response(JSON.stringify(imageUploadResponse), { status: 201, headers: { 'Content-Type': 'application/json' } }));
     mount(fetchMock);
-    fireEvent.change(screen.getByLabelText('Choose prescription file'), { target: { files: [new File(['synthetic-image-data'], 'scan.jpg', { type: 'image/jpeg' })] } });
+    fireEvent.change(await screen.findByLabelText('Choose prescription file'), { target: { files: [new File(['synthetic-image-data'], 'scan.jpg', { type: 'image/jpeg' })] } });
     expect(screen.getByText(/Supported format \(PDF, JPEG, PNG\)/i)).toBeTruthy();
     expect(screen.getByText(/Hosted worker currently disabled/i)).toBeTruthy();
 
@@ -218,7 +218,7 @@ describe('upload page integration', () => {
       return new Response('{}', { status: 404, headers: { 'Content-Type': 'application/json' } });
     });
     mount(fetchMock);
-    fireEvent.change(screen.getByLabelText('Choose prescription file'), { target: { files: [new File(['synthetic-data'], 'synthetic.pdf', { type: 'application/pdf' })] } });
+    fireEvent.change(await screen.findByLabelText('Choose prescription file'), { target: { files: [new File(['synthetic-data'], 'synthetic.pdf', { type: 'application/pdf' })] } });
     fireEvent.click(screen.getByRole('button', { name: 'Upload prescription' }));
 
     expect(await screen.findByText('Prescription Details & Results')).toBeTruthy();

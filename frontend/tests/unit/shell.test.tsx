@@ -77,9 +77,9 @@ it('closes the complete directory after navigation and keeps the route active', 
   expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Compare Medicines');
   expect(within(screen.getByRole('navigation',{name:'Primary navigation'})).getAllByRole('link',{name:'Compare Medicines'})[0]!.getAttribute('aria-current')).toBe('page');
 });
-it('keeps fictional catalogue fixtures behind a separate labelled demo route', () => {
+it('keeps fictional catalogue fixtures behind a separate labelled demo route', async () => {
   mount('/demo/medicine-insights');
-  expect(screen.getByRole('heading', { name: 'Fictional interface fixtures' })).toBeTruthy();
+  expect(await screen.findByRole('heading', { name: 'Fictional interface fixtures' })).toBeTruthy();
   expect(screen.getByText('Demo Mode')).toBeTruthy();
   expect(screen.getByText('Fictional references, thoughtfully organized.')).toBeTruthy();
 });

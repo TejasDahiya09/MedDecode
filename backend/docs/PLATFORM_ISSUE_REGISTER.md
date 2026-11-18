@@ -183,7 +183,7 @@ No critical issue was proven in this audit. That does not mean hosted security i
 
 ### AUD-UI-001 — Frontend main bundle exceeds the build threshold
 
-- **State / severity:** CONFIRMED OPEN / MEDIUM
+- **State / severity:** RESOLVED IN BATCH 6 / MEDIUM
 - **Module:** frontend performance
 - **Location:** Vite production output
 - **Description:** main JavaScript is 962.14 kB minified (261.11 kB gzip), triggering the 500 kB warning.
@@ -195,10 +195,11 @@ No critical issue was proven in this audit. That does not mean hosted security i
 - **Fix:** lazy-load workspace features and split vendor/OCR-independent UI chunks; measure rather than suppress warning.
 - **Tests:** bundle budget, cold-load Lighthouse/Web Vitals, route smoke tests.
 - **Dependencies:** Batch 6.
+- **Resolution evidence (2026-11-18):** route-level lazy loading and explicit React, Supabase and TanStack Query vendor chunks reduced the application entry from 963.67 kB (261.39 kB gzip) to 102.89 kB (29.36 kB gzip). No emitted JavaScript chunk exceeds 500 kB; production build, typecheck and the complete 378-test frontend unit suite passed.
 
 ### AUD-UI-002 — Navigation describes implemented features as future placeholders
 
-- **State / severity:** CONFIRMED OPEN / LOW
+- **State / severity:** RESOLVED IN BATCH 6 / LOW
 - **Module:** frontend navigation
 - **Location:** `frontend/src/app/navigation.ts:17-18`
 - **Description:** Cabinet and Reminders descriptions say “future” although functional pages and APIs exist.
@@ -210,6 +211,7 @@ No critical issue was proven in this audit. That does not mean hosted security i
 - **Fix:** update copy after feature/security readiness is confirmed.
 - **Tests:** navigation/search copy assertions.
 - **Dependencies:** Batch 6.
+- **Resolution evidence (2026-11-18):** Upload, Compare, Cabinet and Reminders descriptions now match implemented behavior and avoid clinical-equivalence claims. Unit copy assertions and authenticated desktop/mobile Playwright navigation checks passed.
 
 ### AUD-QA-003 — Frontend lint gate fails
 

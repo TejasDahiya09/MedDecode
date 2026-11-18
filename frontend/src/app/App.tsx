@@ -1,4 +1,4 @@
-import { lazy, Suspense, useLayoutEffect, useRef } from 'react';
+import { lazy, Suspense, useLayoutEffect, useRef, type ReactNode } from 'react';
 import { BrowserRouter, Navigate, Outlet, Route, Routes, useLocation } from 'react-router-dom';
 import { LandingPage } from '../features/landing/LandingPage';
 import { PublicLayout } from '../features/landing/PublicChrome';
@@ -8,12 +8,13 @@ import { AppShell } from './AppShell';
 import { destinations } from './navigation';
 import { NotFound } from './SectionPlaceholder';
 import { DemoProvider } from '../features/demo/DemoProvider';
-import { DemoWorkspaceRoute } from '../features/demo/DemoWorkspaceRoute';
 import { ProtectedRoute } from '../features/auth/ProtectedRoute';
-import { PrescriptionHistoryPage } from '../features/prescriptions/PrescriptionHistoryPage';
-import { PrescriptionResultsPage } from '../features/prescriptions/PrescriptionResultsPage';
-import { PrescriptionReviewWorkspace } from '../features/prescription-review/PrescriptionReviewWorkspace';
 import { WorkspacePage } from './WorkspacePage';
+
+const DemoWorkspaceRoute = lazy(() => import('../features/demo/DemoWorkspaceRoute').then((module) => ({ default: module.DemoWorkspaceRoute })));
+const PrescriptionHistoryPage = lazy(() => import('../features/prescriptions/PrescriptionHistoryPage').then((module) => ({ default: module.PrescriptionHistoryPage })));
+const PrescriptionResultsPage = lazy(() => import('../features/prescriptions/PrescriptionResultsPage').then((module) => ({ default: module.PrescriptionResultsPage })));
+const PrescriptionReviewWorkspace = lazy(() => import('../features/prescription-review/PrescriptionReviewWorkspace').then((module) => ({ default: module.PrescriptionReviewWorkspace })));
 
 const ProcessingRpcTestPanel = import.meta.env.DEV
   ? lazy(() => import('../features/dev/ProcessingRpcTestPanel'))
@@ -25,6 +26,14 @@ const FictionalIntelligenceDemo = import.meta.env.DEV
 function MedicineInsightsRedirect() {
   const location = useLocation();
   return <Navigate to={`/medicine-library${location.search}`} replace />;
+}
+
+function DeferredRoute({ children, label }: { readonly children: ReactNode; readonly label: string }) {
+  return (
+    <Suspense fallback={<div role="status" aria-live="polite" aria-busy="true">Loading {label}â€¦</div>}>
+      {children}
+    </Suspense>
+  );
 }
 
 export function AppRoutes() {
@@ -39,16 +48,16 @@ export function AppRoutes() {
       {(Object.keys(authScreens) as AuthScreen[]).map((screen) => <Route key={screen} path={screen} element={<AuthPage key={screen} screen={screen} />} />)}
       <Route element={<DemoProvider><Outlet /></DemoProvider>}>
        <Route path="demo" element={<Navigate replace to="/demo/home" />} />
-       <Route path="demo/:section" element={<DemoWorkspaceRoute />} />
+       <Route path="demo/:section" element={<DeferredRoute label="demonstration workspace"><DemoWorkspaceRoute /></DeferredRoute>} />
       </Route>
       <Route element={<ProtectedRoute />}>
        {ProcessingRpcTestPanel ? <Route path="__dev/processing-rpc-test" element={<Suspense fallback={<main tabIndex={-1}><p>Loading local test panel…</p></main>}><ProcessingRpcTestPanel /></Suspense>} /> : null}
        {FictionalIntelligenceDemo ? <Route path="__dev/fictional-intelligence" element={<Suspense fallback={<main tabIndex={-1}><p>Loading fictional fixture…</p></main>}><FictionalIntelligenceDemo /></Suspense>} /> : null}
        <Route element={<AppShell />}>
         {destinations.filter((d) => d.path !== '/prescriptions').map((destination) => <Route key={destination.path} path={destination.path} element={<WorkspacePage key={destination.path} path={destination.path} />} />)}
-        <Route path="prescriptions" element={<PrescriptionHistoryPage />} />
-        <Route path="prescriptions/:id" element={<PrescriptionResultsPage />} />
-        <Route path="prescriptions/:id/review" element={<PrescriptionReviewWorkspace />} />
+        <Route path="prescriptions" element={<DeferredRoute label="prescription history"><PrescriptionHistoryPage /></DeferredRoute>} />
+        <Route path="prescriptions/:id" element={<DeferredRoute label="prescription analysis"><PrescriptionResultsPage /></DeferredRoute>} />
+        <Route path="prescriptions/:id/review" element={<DeferredRoute label="prescription review"><PrescriptionReviewWorkspace /></DeferredRoute>} />
         <Route path="medicine-insights" element={<MedicineInsightsRedirect />} />
         <Route path="cabinet" element={<Navigate replace to="/my-cabinet" />} />
        </Route>

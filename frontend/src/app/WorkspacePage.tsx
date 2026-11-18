@@ -1,29 +1,36 @@
-import { DashboardPage } from '../features/dashboard/DashboardPage';
-import { PrescriptionHistoryPage } from '../features/prescriptions/PrescriptionHistoryPage';
-import { MedicineCabinetPage } from '../features/cabinet/MedicineCabinetPage';
-import { UploadPage } from '../features/demo/UploadPage';
-import { MedicineInsightsPage } from '../features/catalogue/MedicineInsightsPage';
-import { CompareMedicinesPage } from '../features/catalogue/CompareMedicinesPage';
-import { RemindersPage } from '../features/reminders/RemindersPage';
+import { lazy, Suspense, type ComponentType, type LazyExoticComponent } from 'react';
 import { BackendUnavailablePage } from '../features/workspace/BackendUnavailablePage';
+import { DashboardPage } from '../features/dashboard/DashboardPage';
+
+const MedicineCabinetPage = lazy(() => import('../features/cabinet/MedicineCabinetPage').then((module) => ({ default: module.MedicineCabinetPage })));
+const UploadPage = lazy(() => import('../features/demo/UploadPage').then((module) => ({ default: module.UploadPage })));
+const MedicineInsightsPage = lazy(() => import('../features/catalogue/MedicineInsightsPage').then((module) => ({ default: module.MedicineInsightsPage })));
+const CompareMedicinesPage = lazy(() => import('../features/catalogue/CompareMedicinesPage').then((module) => ({ default: module.CompareMedicinesPage })));
+const RemindersPage = lazy(() => import('../features/reminders/RemindersPage').then((module) => ({ default: module.RemindersPage })));
+
+function FeatureRoute({ component: Component, label }: { readonly component: LazyExoticComponent<ComponentType>; readonly label: string }) {
+  return (
+    <Suspense fallback={<div role="status" aria-live="polite" aria-busy="true">Loading {label}â€¦</div>}>
+      <Component />
+    </Suspense>
+  );
+}
 
 export function WorkspacePage({ path }: { readonly path: string }) {
   switch (path) {
     case '/home':
       return <DashboardPage />;
-    case '/prescriptions':
-      return <PrescriptionHistoryPage />;
     case '/upload-prescription':
-      return <UploadPage />;
+      return <FeatureRoute component={UploadPage} label="prescription upload" />;
     case '/my-cabinet':
-      return <MedicineCabinetPage />;
+      return <FeatureRoute component={MedicineCabinetPage} label="medicine cabinet" />;
     case '/medicine-library':
     case '/medicine-insights':
-      return <MedicineInsightsPage />;
+      return <FeatureRoute component={MedicineInsightsPage} label="medicine library" />;
     case '/compare-medicines':
-      return <CompareMedicinesPage />;
+      return <FeatureRoute component={CompareMedicinesPage} label="medicine comparison" />;
     case '/reminders':
-      return <RemindersPage />;
+      return <FeatureRoute component={RemindersPage} label="medication reminders" />;
     case '/learn-resources':
       return (
         <BackendUnavailablePage

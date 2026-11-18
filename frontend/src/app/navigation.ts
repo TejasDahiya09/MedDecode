@@ -11,11 +11,11 @@ export interface Destination {
 export const destinations: readonly Destination[] = [
   { path: '/home', label: 'Home', icon: 'home', description: 'A starting point for your MedDecode tasks.' },
   { path: '/prescriptions', label: 'My Prescriptions', icon: 'inbox', description: 'View and track your uploaded prescriptions and OCR results.' },
-  { path: '/upload-prescription', label: 'Upload Prescription', icon: 'plus', description: 'A place to begin the prescription upload workflow.' },
+  { path: '/upload-prescription', label: 'Upload Prescription', icon: 'plus', description: 'Upload a PDF or image and track prescription processing.' },
   { path: '/medicine-library', label: 'Medicine Library', icon: 'search', description: 'Explore official Indian medicine formulations.' },
-  { path: '/compare-medicines', label: 'Compare Medicines', icon: 'copy', description: 'A place to review medicine comparisons when available.' },
-  { path: '/my-cabinet', label: 'My Cabinet', icon: 'briefcase', description: 'A place for your future cabinet workflow.' },
-  { path: '/reminders', label: 'Reminders', icon: 'calendar', description: 'A place for your future reminder preferences.' },
+  { path: '/compare-medicines', label: 'Compare Medicines', icon: 'copy', description: 'Compare selected catalogue formulations without implying clinical equivalence.' },
+  { path: '/my-cabinet', label: 'My Cabinet', icon: 'briefcase', description: 'Organize saved medicines, quantities, refill dates and expiry details.' },
+  { path: '/reminders', label: 'Reminders', icon: 'calendar', description: 'Create and manage medication schedules and recorded dose events.' },
   { path: '/learn-resources', label: 'Learn & Resources', icon: 'bookmark', description: 'A place for future learning materials and resources.' },
 ];
 

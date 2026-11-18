@@ -4,6 +4,21 @@ import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig(({ command, isPreview }) => ({
   plugins: [react(), tailwindcss()],
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return undefined;
+          if (id.includes('@supabase') || id.includes('@gotrue') || id.includes('@realtime') || id.includes('@postgrest') || id.includes('@storage')) {
+            return 'vendor-supabase';
+          }
+          if (id.includes('@tanstack')) return 'vendor-query';
+          if (id.includes('react') || id.includes('scheduler')) return 'vendor-react';
+          return undefined;
+        },
+      },
+    },
+  },
   ...(command === 'serve' && !isPreview ? {
     server: {
       proxy: {
