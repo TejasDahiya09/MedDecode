@@ -90,3 +90,13 @@ The three skipped backend tests are approval-gated PostgreSQL integration paths 
 - AUD-WF-001: application defects corrected and locally verified; live S3 outcome remains externally unverified.
 - AUD-OBS-001: listener cleanup corrected; historical warning root cause remains partially unverified.
 - AUD-OBS-002: resolved for preview and existing worker stage/RPC diagnostics with safe allowlisted fields.
+
+## Finalization and owner-authenticated preview verification
+
+The reviewed Batch 4 source, tests, and this report were committed as `bda2f5f8` (`fix(backend): harden preview and worker reliability`) and pushed normally to `origin/main`. The branch was synchronized with the remote before staging, and the staged set contained only the 11 reviewed Batch 4 paths. A staged-content scan found no credential patterns, target prescription identifier, or private medical information.
+
+Preview verification result: `UNVERIFIED`.
+
+The Windows/browser automation helper was unavailable after its prescribed retry and session-reset recovery sequence, so no owner-authenticated browser session could be inspected. In accordance with the authorization boundary, no browser storage, cookie, bearer token, environment credential, or direct hosted credential was extracted or substituted. No preview request reached the application, so there is no response code, diagnostic stage, S3 authorization result, content type, or byte count to report. This outcome does not establish `APP_ERROR`, `STORAGE_DENIED`, `OBJECT_MISSING`, or `CONFIG_DRIFT`.
+
+AUD-WF-001 cannot yet be closed. Completion requires the user to make an already signed-in owner browser session available and rerun the narrowly scoped preview request. The other Batch 4 dispositions above are unchanged.
