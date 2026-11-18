@@ -19,7 +19,11 @@ The reference SQL enables row-level security and defines user-scoped policies fo
 
 `backend/database/` contains reference SQL, integration migrations, and local test harnesses. The integration migration folders include job-submission and worker-processing changes with preflight/up/verify steps. Local harness results do not prove hosted behavior. Do not run migrations against a hosted Supabase or AWS-backed environment without separate approval and a reviewed deployment plan.
 
-The worker claim/heartbeat migration (`202611120002_processing_job_claim_heartbeat`) and finalization/recovery migration (`202611120003_processing_worker_finalization_recovery`) are local integration candidates only. They have not been hosted-verified or applied to Supabase. No database or hosted operation was performed during the final publication audit.
+Migration source being present in Git does not establish hosted installation.
+Conversely, several later phase reports record separately authorized hosted
+deployments. The current release evidence index distinguishes those historical
+hosted verification records from checks executed in the current checkout; do
+not infer deployment state from directory names or from this overview.
 
 For any deployment proposal:
 
@@ -30,6 +34,22 @@ For any deployment proposal:
 5. Run independent post-deployment checks and retain evidence.
 
 Never use a disposable-test reset against a non-disposable database. Do not widen inventory allowlists to make unexpected objects disappear from safety checks.
+
+### Backup, deployment, and rollback boundary
+
+Before any hosted migration, record the exact project/database/session identity,
+require TLS `verify-full`, hash the immutable SQL candidate, run its read-only
+preflight, and create a current logical backup outside Git. Restore that archive
+into a task-owned PostgreSQL 17 database and compare aggregate counts and
+required objects before requesting execution approval. A logical application
+backup does not restore Supabase platform configuration, global role state,
+Storage/S3 objects, or every original ownership/ACL relationship.
+
+Each migration requires its own explicit approval. Execute only its reviewed
+deployment file once, then run its independent read-only verifier. A rollback
+review file is analysis, not standing authorization: rollback can be destructive
+after new records exist and must be separately approved. Never run a test
+cleanup, schema reset, or recovery procedure against a shared or hosted target.
 
 ## Medicine catalogue
 

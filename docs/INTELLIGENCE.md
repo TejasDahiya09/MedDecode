@@ -15,10 +15,10 @@ These are code-layer boundaries, not independent deployable services. Layer 4 in
 
 ## OCR providers and limits
 
-- EasyOCR can be selected independently by the local PDF worker when an explicit local model-cache directory is supplied.
-- PaddleOCR has had Windows CPU runtime failures in this environment; it must not be treated as a required fallback for EasyOCR.
-- TrOCR dependencies/model availability are not established.
-- A Google Vision provider module has deterministic fake-transport tests, but no live cloud call is established or authorized by those tests.
+- EasyOCR is the local default when an explicit local model-cache directory is supplied. Batch 7 genuinely exercised fictional PDF, JPEG and PNG fixtures.
+- PaddleOCR is optional adaptive fallback and requires both explicit local model directories. Package installation alone is not model availability; current genuine adaptive inference remains unverified.
+- TrOCR uses a separate optional interpreter/model path, remains disabled by default, and must not be enabled without resource approval under the unchanged 2 GiB tree limit.
+- AWS Textract and Google Cloud Vision SDKs are excluded from the default environment. Their separate requirement profiles and explicit provider selection do not authorize a cloud call.
 - Provider availability, model files, memory use, and real document recognition are runtime concerns. A Contract v1 response can be valid even when it contains no recognized medicine.
 
 Do not silently replace OCR results with fixture data. Preserve raw evidence, provenance, confidence where actually supplied, and uncertainty.
@@ -32,8 +32,14 @@ The local PDF worker is a subprocess entry point used by the Node bridge. Its st
 The service README documents the reviewed offline suite and its exclusions. Common command:
 
 ```powershell
-py -3.12 -m pytest
+.venv\Scripts\python.exe -m pytest
 ```
+
+Install `requirements.txt` for the local runtime and
+`requirements-test.txt` for tests. Install one of
+`requirements-cloud-aws.txt` or `requirements-cloud-google.txt` only after a
+specific cloud provider, data flow, region, retention policy, credentials and
+cost have been approved. There is no automatic cloud fallback.
 
 This command excludes specific live Supabase tests, but it does not prove that the local OCR models initialize or that database writers are safe. Do not run real-prescription, model-runtime, Supabase, or database-write diagnostics without explicit authorization.
 

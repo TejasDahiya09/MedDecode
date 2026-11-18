@@ -1,24 +1,35 @@
 # MedDecode Platform Issue Register
 
-**Snapshot:** 2026-11-17, branch `integration/full-project`
-**Conventions:** Confirmed means reproduced by command, direct source inspection, or a recorded runtime symptom with an exact path. Suspected means plausible but requiring a controlled reproduction. Severity reflects release and patient-safety risk, not implementation effort.
+**Original audit snapshot:** 2026-11-17, branch `integration/full-project`
+
+**Disposition refreshed:** 2026-11-18, branch `main`, through Batch 8
+
+**Conventions:** Issue descriptions retain the original reproduction baseline;
+the state line records the latest evidence-backed disposition. Confirmed means
+reproduced by command, direct source inspection, or a recorded runtime symptom
+with an exact path. Suspected means plausible but requiring a controlled
+reproduction. Severity reflects release and patient-safety risk, not
+implementation effort. See `docs/MEDECODE_RELEASE_EVIDENCE_MANIFEST.md` for the
+current-versus-historical evidence boundary.
 
 ## Summary
 
-| Severity | Confirmed open | Suspected/open verification | Fixed but not released |
-|---|---:|---:|---:|
-| Critical | 0 | 0 | 0 |
-| High | 4 | 2 | 2 |
-| Medium | 6 | 3 | 2 |
-| Low | 5 | 0 | 0 |
+| Severity | Open or partially verified | Resolved or mitigated |
+|---|---:|---:|
+| Critical | 0 | 0 |
+| High | 1 | 7 |
+| Medium | 5 | 6 |
+| Low | 1 | 4 |
 
-No critical issue was proven in this audit. That does not mean hosted security is verified; hosted parity was out of scope and is tracked as a high-severity verification blocker.
+No critical issue was proven. Hosted Reminder parity was later verified and
+remediated under Batch 3 authorization, but other hosted behavior remains
+unverified as detailed in the release-readiness decision.
 
 ## Register
 
 ### AUD-REL-001 — Working tree and database lineage are not reproducible
 
-- **State / severity:** CONFIRMED OPEN / HIGH
+- **State / severity:** RESOLVED THROUGH BATCH 2 / HIGH
 - **Module:** repository and release engineering
 - **Location:** repository-wide; especially `backend/database/integration-migrations/`
 - **Description:** 490 paths differ from Git: 103 modified, 386 untracked, 1 deleted. Nineteen migration directories are untracked.
@@ -33,7 +44,7 @@ No critical issue was proven in this audit. That does not mean hosted security i
 
 ### AUD-INT-001 — Unverified numbered rows leak into Contract v1 medicines
 
-- **State / severity:** CONFIRMED OPEN / HIGH
+- **State / severity:** RESOLVED IN BATCH 2 / HIGH
 - **Module:** Python Layers 1-2 and Contract v1 mapping
 - **Location:** `intelligence/app/layer2_information_extraction/pipeline.py:57-84`, `intelligence/app/integration/contract_v1_mapper.py:68-100`, failing assertion `intelligence/tests/layer2/test_numbered_medicine_rows.py:112`
 - **Description:** four rows marked `unverified_numbered_rows` also become medicine records in the mapped response.
@@ -48,7 +59,7 @@ No critical issue was proven in this audit. That does not mean hosted security i
 
 ### AUD-DB-001 — Reminder security integration tests use a cwd-dependent duplicated path
 
-- **State / severity:** CONFIRMED OPEN / HIGH
+- **State / severity:** RESOLVED IN BATCH 1 / HIGH
 - **Module:** database security test harness
 - **Location:** `backend/tests/reminders-security-fix-pg17-disposable-integration.test.ts:14-15`, `backend/tests/reminders-security-v2.pg17.test.ts:14-15`
 - **Description:** running the documented backend suite from `backend/` resolves `process.cwd()/backend/database`, producing `backend/backend/database` and ENOENT.
@@ -63,7 +74,7 @@ No critical issue was proven in this audit. That does not mean hosted security i
 
 ### AUD-DB-002 — Current hosted Reminder ACL/RLS parity is not independently established
 
-- **State / severity:** SUSPECTED / HIGH
+- **State / severity:** RESOLVED BY BATCH 3 HOSTED VERIFICATION / HIGH
 - **Module:** Supabase PostgreSQL Reminders
 - **Location:** migrations `202611160001`, `202611160009`, `202611160012`
 - **Description:** source contains multiple reminder security repair generations, while the current local security harness is broken and this audit did not query hosted catalogs.
@@ -78,7 +89,7 @@ No critical issue was proven in this audit. That does not mean hosted security i
 
 ### AUD-QA-001 — Backend repository typecheck fails
 
-- **State / severity:** CONFIRMED OPEN / HIGH
+- **State / severity:** RESOLVED IN BATCH 1 / HIGH
 - **Module:** backend tests/tools
 - **Location:** `confirmed-review-intelligence.client.test.ts:14-15`, `prescription-review-initial-completion.pg17.test.ts:24`, `reminders-migration-and-persistence.test.ts:14`, `reminders.test.ts:8,104`
 - **Description:** `npm --prefix backend run typecheck` returns six TypeScript diagnostics.
@@ -93,7 +104,7 @@ No critical issue was proven in this audit. That does not mean hosted security i
 
 ### AUD-QA-002 — Full backend suite is red
 
-- **State / severity:** CONFIRMED OPEN / HIGH
+- **State / severity:** RESOLVED IN BATCH 1 / HIGH
 - **Module:** backend-wide
 - **Location:** four failures described in the master audit
 - **Description:** 582 pass, 4 fail, 3 skip out of 589.
@@ -123,7 +134,7 @@ No critical issue was proven in this audit. That does not mean hosted security i
 
 ### AUD-BE-001 — Local Python adapter test is timeout-sensitive under full load
 
-- **State / severity:** CONFIRMED OPEN / MEDIUM
+- **State / severity:** RESOLVED IN BATCH 4 / MEDIUM
 - **Module:** backend subprocess integration
 - **Location:** `backend/src/services/local-python-intelligence.client.ts:124`, `backend/tests/local-python-intelligence.client.test.ts:75`
 - **Description:** the Contract v1 local-PDF adapter timed out in the full parallel suite but all 22 file tests passed alone, including the same test in ~1.2 s.
@@ -153,7 +164,7 @@ No critical issue was proven in this audit. That does not mean hosted security i
 
 ### AUD-OBS-001 — Worker listener-growth warning is unresolved
 
-- **State / severity:** SUSPECTED / MEDIUM
+- **State / severity:** MITIGATED; ORIGINAL EMITTER UNPROVEN / MEDIUM
 - **Module:** launcher/worker process streams
 - **Location:** controlled worker runtime; historical `MaxListenersExceededWarning` on `WriteStream`
 - **Description:** a completed run reported 11 error listeners on a WriteStream. Focused tests did not reproduce it.
@@ -168,7 +179,7 @@ No critical issue was proven in this audit. That does not mean hosted security i
 
 ### AUD-OBS-002 — Preview error sanitization lacks actionable server telemetry
 
-- **State / severity:** CONFIRMED OPEN / MEDIUM
+- **State / severity:** RESOLVED IN BATCH 4 / MEDIUM
 - **Module:** backend observability
 - **Location:** `prescription-document-preview.service.ts:55-69`
 - **Description:** provider exceptions are converted to a code with no preserved safe stage, provider status class, or correlation metadata.
@@ -215,7 +226,7 @@ No critical issue was proven in this audit. That does not mean hosted security i
 
 ### AUD-QA-003 — Frontend lint gate fails
 
-- **State / severity:** CONFIRMED OPEN / LOW
+- **State / severity:** RESOLVED IN BATCH 1 / LOW
 - **Module:** Playwright test code
 - **Location:** `frontend/tests/e2e/genuine-hosted-results-verification.spec.ts:15,61`
 - **Description:** `no-explicit-any` and `no-useless-assignment` fail `eslint --max-warnings 0`.
@@ -230,7 +241,7 @@ No critical issue was proven in this audit. That does not mean hosted security i
 
 ### AUD-INT-002 — Manual-review exclusion is not a single invariant
 
-- **State / severity:** FIXED LOCALLY / MEDIUM
+- **State / severity:** RESOLVED THROUGH BATCH 2 / MEDIUM
 - **Module:** intelligence evidence/reconciliation
 - **Location:** numbered-row detection, Layer 2 extraction, Contract mapper
 - **Description:** classification and exclusion are separate operations, allowing the AUD-INT-001 overlap.
@@ -299,7 +310,7 @@ No critical issue was proven in this audit. That does not mean hosted security i
 
 ### AUD-DOC-001 — Root README contradicts the actual launcher
 
-- **State / severity:** CONFIRMED OPEN / LOW
+- **State / severity:** RESOLVED IN BATCH 8 / LOW
 - **Module:** documentation
 - **Location:** `README.md:15` versus root `package.json`
 - **Description:** README says no root-level start command; root provides `dev`, `build`, `test`, and E2E scripts.
@@ -314,7 +325,7 @@ No critical issue was proven in this audit. That does not mean hosted security i
 
 ### AUD-DOC-002 — Historical phase reports are not a current release manifest
 
-- **State / severity:** CONFIRMED OPEN / LOW
+- **State / severity:** RESOLVED IN BATCH 8 / LOW
 - **Module:** documentation/evidence
 - **Location:** `backend/docs/`, `intelligence/docs/`
 - **Description:** many phase reports contain dated pass counts and deployment statements without one current index.

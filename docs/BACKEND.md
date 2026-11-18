@@ -42,6 +42,22 @@ Use the current source (`src/config/env.ts`) for the exact validation and requir
 - The development fixture integration executes a local Python worker only under its explicit development gate.
 - No local unit test or successful fixture request authorizes hosted configuration changes.
 
+### Private document storage
+
+The ordinary backend and the restricted worker use separate credential
+boundaries. The backend upload/preview path requires the configured region and
+private bucket plus only the S3 actions needed by those routes; the controlled
+worker uses separately named worker credentials and must not inherit a broad
+developer or administrator identity. KMS-encrypted objects also require the
+corresponding narrowly scoped key permission. Keep object keys, signed URLs,
+raw provider errors, and document bytes out of logs.
+
+An owner-scoped metadata lookup is required before preview. A local mocked or
+synthetic preview does not prove hosted S3/IAM/KMS access. Diagnose a hosted
+failure through the bounded correlation/stage/category log fields and prepare a
+separate IAM or storage remediation proposal; never widen permissions merely to
+turn a 503 into a success.
+
 ## Security notes
 
 Routes use bearer authentication and dependency-injected repositories/clients to support tests. Verify authorization and RLS independently before any live deployment. Never send the Supabase secret key to the browser. The frontend publishable key is public by design; it is not an authorization substitute.

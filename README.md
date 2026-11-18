@@ -12,7 +12,9 @@ MedDecode is a prototype for organizing prescription and medicine information. T
 | `backend/database/` | Database migrations and local migration test harnesses |
 | `docs/` | Architecture, service guides, safety boundaries, testing, data sources, and implementation status |
 
-Services have independent dependency manifests and commands. There is no root-level install or start command.
+Services have independent dependency manifests. The reviewed root launcher is
+the primary local start command; service-level commands remain available for
+diagnosis and isolated development.
 
 ## Current product boundaries
 
@@ -27,7 +29,24 @@ See [architecture](docs/ARCHITECTURE.md), [implementation status](docs/IMPLEMENT
 
 ## Local development
 
-Install dependencies in each service using its lockfile and package instructions. Use separate terminals:
+Install dependencies in each service using its lockfile and package
+instructions. On Windows, configure the ignored service environment files from
+their `.env.example` templates, then start the reviewed local stack from the
+repository root:
+
+```powershell
+npm run dev
+```
+
+The launcher starts FastAPI on `127.0.0.1:8000`, Express on
+`127.0.0.1:3000`, and Vite on `127.0.0.1:5174` (or 5175 when necessary). It
+does not start the restricted worker by default. Press Ctrl+C in the launcher
+terminal to stop only its child process trees. See
+[local runtime](docs/platform-local-runtime.md) for the exact safety gates and
+the separately authorized controlled-worker procedure.
+
+Manual service starts are a troubleshooting alternative, not a second
+deployment model:
 
 ```powershell
 Set-Location frontend
@@ -41,7 +60,11 @@ npm ci
 npm run dev
 ```
 
-The frontend development server defaults to `http://127.0.0.1:5174`; the backend defaults to port `3000`. The frontend can render local demo pages without backend connectivity. Authenticated API functions and storage/database-backed operations require correctly configured local environment variables. Do not copy production credentials into a development environment.
+The frontend can render local demo pages without backend connectivity.
+Authenticated API functions and storage/database-backed operations require
+correctly configured local environment variables. Do not copy production
+credentials into a development environment, and never start the controlled
+worker merely to make an ordinary page load.
 
 Python setup and the safe offline-test boundary are documented in [intelligence](docs/INTELLIGENCE.md) and [testing](docs/TESTING.md). Do not run live, database-writing, real-prescription, or model-initialization diagnostics as part of ordinary tests.
 
@@ -54,6 +77,9 @@ The root `.gitignore` excludes root `datasets/` and `test-results/`; the latter 
 ## Documentation
 
 - [Architecture and data flow](docs/ARCHITECTURE.md)
+- [Current architecture](docs/MEDECODE_CURRENT_ARCHITECTURE.md)
+- [Release readiness](docs/MEDECODE_RELEASE_READINESS.md)
+- [Release evidence manifest](docs/MEDECODE_RELEASE_EVIDENCE_MANIFEST.md)
 - [Backend API and configuration](docs/BACKEND.md)
 - [Frontend routes and boundaries](docs/FRONTEND.md)
 - [Python intelligence and OCR](docs/INTELLIGENCE.md)
