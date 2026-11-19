@@ -1,7 +1,3 @@
--r requirements.txt
-
-pytest==9.1.1
-iniconfig==2.3.0
-packaging==26.3
-pluggy==1.6.0
-Pygments==2.21.0
+# Windows CPython 3.12 test environment.
+# Regenerate from requirements/test.in; do not edit the lock directly.
+-r requirements/locks/win-py312-test.txt

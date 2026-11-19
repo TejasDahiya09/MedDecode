@@ -1,12 +1,3 @@
-pillow==12.3.0
-pymupdf==1.28.2
-numpy
-paddleocr
-paddlepaddle
-python-dotenv
-supabase
-psycopg[binary]
-fastapi==0.136.1
-uvicorn==0.46.0
-starlette==1.0.0
-annotated-doc==0.0.4
+# Windows CPython 3.12 local-default runtime.
+# Regenerate from requirements/runtime-local.in; do not edit the lock directly.
+-r requirements/locks/win-py312-runtime-local.txt

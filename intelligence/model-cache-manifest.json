@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "provider": "easyocr",
+  "provider_version": "1.7.2",
+  "languages": ["en"],
+  "source_review": "Existing EasyOCR assets; artifact origin and redistribution rights require independent release review.",
+  "files": [
+    {
+      "name": "craft_mlt_25k.pth",
+      "bytes": 83152330,
+      "sha256": "4a5efbfb48b4081100544e75e1e2b57f8de3d84f213004b14b85fd4b3748db17"
+    },
+    {
+      "name": "english_g2.pth",
+      "bytes": 15143997,
+      "sha256": "e2272681d9d67a04e2dff396b6e95077bc19001f8f6d3593c307b9852e1c29e8"
+    }
+  ]
+}

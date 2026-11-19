@@ -1,3 +1,4 @@
 # Optional Google Cloud Vision transport. Install only for an explicitly
 # approved cloud-OCR deployment; the local-default runtime does not require it.
-google-cloud-vision
+# Optional Google Vision profile; not installed by the local-default runtime.
+-r requirements/locks/win-py312-cloud-google.txt

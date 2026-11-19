@@ -1,0 +1,4 @@
+-r runtime-local.in
+
+paddleocr==3.7.0
+paddlepaddle==3.2.2
