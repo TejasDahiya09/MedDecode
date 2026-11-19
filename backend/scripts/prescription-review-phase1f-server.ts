@@ -10,12 +10,18 @@ import { PostgresPrescriptionReviewRepository } from "../src/repositories/postgr
 import type { PrescriptionHistoryRepository } from "../src/repositories/prescription-history.repository.js";
 import type { PrescriptionResultsRepository } from "../src/repositories/prescription-results.repository.js";
 import type { ProcessingJobStoreFactory } from "../src/repositories/processing-job.store.js";
+import type { PrescriptionRepository } from "../src/repositories/prescription.repository.js";
+import type { PrescriptionUploadDependenciesFactory } from "../src/routes/prescription-upload.routes.js";
 import { LocalConfirmedReviewIntelligenceClient } from "../src/services/confirmed-review-intelligence.client.js";
 import { createLocalSyntheticAuth } from "../src/services/local-synthetic-auth.js";
 import { createLocalSyntheticDocumentStore } from "../src/services/local-synthetic-document.store.js";
 import { PrescriptionDocumentPreviewError, type PrescriptionDocumentPreviewService } from "../src/services/prescription-document-preview.service.js";
 import { createInitialReviewFromIntelligence } from "../src/services/prescription-review-initializer.js";
 import { validateIntelligenceResponseV1 } from "../src/services/intelligence-contract-v1.validator.js";
+import { PostgresWorkerRpcCaller } from "../src/repositories/postgres-worker-rpc.transport.js";
+import { RpcPrescriptionReviewWorkerStore } from "../src/repositories/prescription-review-worker.rpc-store.js";
+import { createRc1aDisabledWorker } from "./rc1a-local-runtime.js";
+import { DEFAULT_REQUESTED_ANALYSIS } from "../src/types/intelligence-jobs.js";
 
 const OWNER = "10000000-0000-4000-8000-000000000001";
 const OTHER = "20000000-0000-4000-8000-000000000002";
@@ -69,6 +75,7 @@ async function workerCall(client: PoolClient, sql: string, values: unknown[]): P
 }
 
 async function main(): Promise<void> {
+  const rc1b = process.env.RC1B_REAL_OCR === "true";
   if (process.env.NODE_ENV !== "test") throw new Error("PHASE1F_TEST_ENVIRONMENT_GUARD_FAILED");
   if (required("PHASE1F_DATABASE") !== DATABASE || required("PGHOST") !== "127.0.0.1" || required("PGPORT") !== "55440") {
     throw new Error("PHASE1F_LOCAL_DATABASE_GUARD_FAILED");
@@ -77,9 +84,10 @@ async function main(): Promise<void> {
     throw new Error("PHASE1F_PRODUCTION_FEATURE_GUARD_FAILED");
   }
   const documentPath = resolve(required("PHASE1F_DOCUMENT"));
-  const contractPath = resolve(required("PHASE1F_CONTRACT"));
+  const contractPath = rc1b ? null : resolve(required("PHASE1F_CONTRACT"));
   const storageRoot = resolve(required("PHASE1F_STORAGE_ROOT"));
   await mkdir(storageRoot, { recursive: true });
+  await mkdir(resolve(storageRoot, "worker-tmp"), { recursive: true });
   const adminPool = new Pool({ host: "127.0.0.1", port: 55440, database: DATABASE, user: "phase1f_admin", max: 4 });
   const workerPool = new Pool({ host: "127.0.0.1", port: 55440, database: DATABASE, user: "meddecode_scoped_login", max: 1 });
   const localAuth = createLocalSyntheticAuth({ alice: required("PHASE1F_ALICE_SECRET"), bob: required("PHASE1F_BOB_SECRET") }, true);
@@ -88,31 +96,30 @@ async function main(): Promise<void> {
   const documentBytes = await readFile(documentPath);
   const objectKey = `private/prescriptions/${PRESCRIPTION}/source.pdf`;
   await localStore.storage.delete(objectKey).catch(() => undefined);
-  await localStore.storage.upload({ objectKey, bytes: documentBytes, fileType: "application/pdf" });
-
-  const source = JSON.parse(await readFile(contractPath, "utf8")) as Record<string, unknown>;
-  source.job_id = OCR_JOB; source.prescription_id = PRESCRIPTION;
-  const ocr = validateIntelligenceResponseV1(source, { jobId: OCR_JOB, prescriptionId: PRESCRIPTION });
-  if (ocr.status === "failed") throw new Error("PHASE1F_OCR_CONTRACT_FAILED");
-  const initial = createInitialReviewFromIntelligence({
-    result: ocr, evidenceSetId: EVIDENCE, evidenceSchemaVersion: "1.0",
-    documentSha256: createHash("sha256").update(documentBytes).digest("hex"), now: new Date().toISOString(),
-  });
   await cleanup(adminPool);
   await adminPool.query("INSERT INTO public.users(id) VALUES($1),($2) ON CONFLICT DO NOTHING", [OWNER, OTHER]);
-  await adminPool.query("INSERT INTO public.prescriptions(id,user_id,storage_provider,storage_bucket,object_key,status) VALUES($1,$2,'local','meddecode-local-synthetic',$3,'processing')", [PRESCRIPTION, OWNER, objectKey]);
-  await adminPool.query("INSERT INTO public.ai_jobs(id,user_id,prescription_id,job_type,status) VALUES($1,$2,$3,'prescription_analysis','queued')", [OCR_JOB, OWNER, PRESCRIPTION]);
-  await adminPool.query("INSERT INTO public.meddecode_scoped_worker_scope(job_id,prescription_id,user_id,worker_login,worker_instance_id,enabled,expires_at) VALUES($1,$2,$3,'meddecode_scoped_login',$4,true,clock_timestamp()+interval '1 hour')", [OCR_JOB, PRESCRIPTION, OWNER, WORKER_INSTANCE]);
-  const worker = await workerPool.connect();
-  try {
-    await workerCall(worker, "SELECT public.meddecode_initialize_prescription_review_v1($1,$2,$3,$4,$5,$6)", [
-      OCR_JOB, PRESCRIPTION,
-      { evidenceSetId: EVIDENCE, schemaVersion: "1.0", documentSha256: initial.evidence.documentSha256, pageCount: 1, providerCount: 1, payload: {} },
-      initial,
+  if (rc1b) {
+    await adminPool.query("UPDATE public.meddecode_auto_worker_policy SET enabled=true,activated_at=clock_timestamp(),current_rollout_generation=2,worker_login='meddecode_scoped_login',worker_instance_id=$1 WHERE singleton", ["rc1a-local-worker-001"]);
+    await adminPool.query("DELETE FROM public.meddecode_auto_test_account");
+    await adminPool.query("INSERT INTO public.meddecode_auto_test_account(singleton,user_id) VALUES(true,$1)", [OWNER]);
+  } else {
+    await localStore.storage.upload({ objectKey, bytes: documentBytes, fileType: "application/pdf" });
+    const source = JSON.parse(await readFile(contractPath!, "utf8")) as Record<string, unknown>;
+    source.job_id = OCR_JOB; source.prescription_id = PRESCRIPTION;
+    const ocr = validateIntelligenceResponseV1(source, { jobId: OCR_JOB, prescriptionId: PRESCRIPTION });
+    if (ocr.status === "failed") throw new Error("PHASE1F_OCR_CONTRACT_FAILED");
+    const initial = createInitialReviewFromIntelligence({ result: ocr, evidenceSetId: EVIDENCE, evidenceSchemaVersion: "1.0",
+      documentSha256: createHash("sha256").update(documentBytes).digest("hex"), now: new Date().toISOString() });
+    await adminPool.query("INSERT INTO public.prescriptions(id,user_id,storage_provider,storage_bucket,object_key,status) VALUES($1,$2,'local','meddecode-local-synthetic',$3,'processing')", [PRESCRIPTION, OWNER, objectKey]);
+    await adminPool.query("INSERT INTO public.ai_jobs(id,user_id,prescription_id,job_type,status) VALUES($1,$2,$3,'prescription_analysis','queued')", [OCR_JOB, OWNER, PRESCRIPTION]);
+    await adminPool.query("INSERT INTO public.meddecode_scoped_worker_scope(job_id,prescription_id,user_id,worker_login,worker_instance_id,enabled,expires_at) VALUES($1,$2,$3,'meddecode_scoped_login',$4,true,clock_timestamp()+interval '1 hour')", [OCR_JOB, PRESCRIPTION, WORKER_INSTANCE]);
+    const worker = await workerPool.connect();
+    try { await workerCall(worker, "SELECT public.meddecode_initialize_prescription_review_v1($1,$2,$3,$4,$5,$6)", [OCR_JOB, PRESCRIPTION,
+      { evidenceSetId: EVIDENCE, schemaVersion: "1.0", documentSha256: initial.evidence.documentSha256, pageCount: 1, providerCount: 1, payload: {} }, initial,
       JSON.stringify(initial.medicines.map((medicine) => ({ medicineId: medicine.medicineId, origin: medicine.origin, status: medicine.status, position: medicine.position, original: medicine.original, current: medicine.current, provenance: medicine.provenance, addedByCommandId: medicine.addedByCommandId, removedAt: medicine.removedAt }))),
-      JSON.stringify({ eventId: randomUUID(), type: "draft_created", medicineId: null, changedFields: [], idempotencyKey: "phase1f-init", occurredAt: initial.createdAt }),
-    ]);
-  } finally { worker.release(); }
+      JSON.stringify({ eventId: randomUUID(), type: "draft_created", medicineId: null, changedFields: [], idempotencyKey: "phase1f-init", occurredAt: initial.createdAt })]); }
+    finally { worker.release(); }
+  }
 
   const clients = (token: string) => {
     const owner = tokenOwners.get(token);
@@ -163,6 +170,69 @@ async function main(): Promise<void> {
       return { kind: "job", job: { id: row.id, userId, prescriptionId, jobType: "prescription_analysis", requestedAnalysis: { extract_prescription: true, match_medicines: true, find_alternatives: false, generate_recommendations: true }, status: row.status, createdAt: timestamp(row.created_at)!, startedAt: timestamp(row.started_at), completedAt: timestamp(row.completed_at), failure: null } };
     },
   });
+  const uploadRepository: PrescriptionRepository = {
+    async create(_client, input) {
+      if (!rc1b || input.id !== PRESCRIPTION || input.user_id !== OWNER || input.storage_bucket !== "meddecode-local-synthetic") throw new Error("RC1B_UPLOAD_SCOPE_REJECTED");
+      const result = await adminPool.query("INSERT INTO public.prescriptions(id,user_id,storage_provider,storage_bucket,object_key,file_type,file_size_bytes,status) VALUES($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id,user_id,storage_provider,storage_bucket,object_key,file_type,file_size_bytes,status,created_at,updated_at", [input.id,input.user_id,input.storage_provider,input.storage_bucket,input.object_key,input.file_type,input.file_size_bytes,input.status]);
+      return result.rows[0];
+    },
+    async findOwnedById(_client, userId, prescriptionId) {
+      const result = await adminPool.query("SELECT id,user_id,storage_provider,storage_bucket,object_key,file_type,file_size_bytes,status,created_at,updated_at FROM public.prescriptions WHERE id=$1 AND user_id=$2", [prescriptionId,userId]);
+      return result.rows[0] ?? null;
+    },
+  };
+  const uploadDependencies: PrescriptionUploadDependenciesFactory = () => ({
+    storage: localStore.storage, repository: uploadRepository, bucket: "meddecode-local-synthetic",
+    maximumFileSizeBytes: 10 * 1024 * 1024, uploadTimeoutMs: 30_000, generatePrescriptionId: () => PRESCRIPTION,
+  });
+  let heartbeatCount = 0;
+  const postgresRpcCaller = new PostgresWorkerRpcCaller(workerPool, "scoped", true);
+  const rpcCaller = { rpc(functionName: string, parameters: Readonly<Record<string, unknown>>) {
+    if (functionName === "heartbeat_prescription_analysis_job_v1") heartbeatCount += 1;
+    return postgresRpcCaller.rpc(functionName, parameters);
+  } };
+  const reviewStore = new RpcPrescriptionReviewWorkerStore(rpcCaller);
+  const catalogueEnvironment = {
+    MEDDECODE_CATALOGUE_ENV: "local", MEDDECODE_CATALOGUE_HOST: "127.0.0.1", MEDDECODE_CATALOGUE_PORT: "55440",
+    MEDDECODE_CATALOGUE_DATABASE: DATABASE, MEDDECODE_CATALOGUE_USER: "meddecode_catalogue_rc1a_reader", MEDDECODE_CATALOGUE_SSLMODE: "disable",
+  };
+  const confirmed = new LocalConfirmedReviewIntelligenceClient({ pythonExecutable: required("MEDDECODE_PYTHON"), intelligenceDirectory: required("MEDDECODE_INTELLIGENCE_DIR"),
+    officialCatalogue: rc1b, ...(rc1b ? { catalogueEnvironment } : {}) });
+  const workerComposition = rc1b ? createRc1aDisabledWorker({
+    configuration: { databaseUrl: `postgresql://meddecode_scoped_login@127.0.0.1:55440/${DATABASE}`,
+      intelligenceUrl: required("PYTHON_INTELLIGENCE_URL"), storageRoot, temporaryRoot: resolve(storageRoot,"worker-tmp"), repositoryRoot: storageRoot,
+      workerInstanceId: "rc1a-local-worker-001", internalToken: required("MEDDECODE_INTERNAL_TOKEN"), catalogueEnvironment },
+    rpcCaller, storageClient: localStore.client, reviewStore, confirmedIntelligence: confirmed,
+  }) : null;
+  const automaticJobs: ProcessingJobStoreFactory = () => ({
+    async submitOwned(input) {
+      if (!rc1b || input.userId !== OWNER || input.prescriptionId !== PRESCRIPTION) return { kind: "prescription_not_found" };
+      const existing = await adminPool.query("SELECT id,status,created_at,started_at,completed_at FROM public.ai_jobs WHERE prescription_id=$1 ORDER BY created_at DESC LIMIT 1", [PRESCRIPTION]);
+      if (existing.rowCount) return { kind: "active", job: jobRecord(existing.rows[0], OWNER, PRESCRIPTION) };
+      const connection = await adminPool.connect();
+      try {
+        await connection.query("BEGIN");
+        await connection.query("INSERT INTO public.ai_jobs(id,user_id,prescription_id,job_type,status) VALUES($1,$2,$3,'prescription_analysis','queued')", [OCR_JOB,OWNER,PRESCRIPTION]);
+        await connection.query("INSERT INTO public.meddecode_auto_authorized_jobs(job_id,prescription_id,user_id,rollout_generation) VALUES($1,$2,$3,2)", [OCR_JOB,PRESCRIPTION,OWNER]);
+        await connection.query("INSERT INTO public.meddecode_scoped_worker_scope(job_id,prescription_id,user_id,worker_login,worker_instance_id,enabled,expires_at) VALUES($1,$2,$3,'meddecode_scoped_login','rc1a-local-worker-001',true,clock_timestamp()+interval '30 minutes')", [OCR_JOB,PRESCRIPTION,OWNER]);
+        await connection.query("UPDATE public.prescriptions SET status='queued' WHERE id=$1 AND user_id=$2", [PRESCRIPTION,OWNER]);
+        await connection.query("COMMIT");
+      } catch(error) {
+        await connection.query("ROLLBACK");
+        throw error;
+      } finally {
+        connection.release();
+      }
+      const row = (await adminPool.query("SELECT id,status,created_at,started_at,completed_at FROM public.ai_jobs WHERE id=$1",[OCR_JOB])).rows[0];
+      setImmediate(() => void workerComposition!.runtime.start().catch(() => console.error("RC1B_WORKER_FAILED_SAFE")));
+      return { kind: "created", job: jobRecord(row, OWNER, PRESCRIPTION) };
+    },
+    async findOwnedStatus(userId,prescriptionId) {
+      if (userId !== OWNER || prescriptionId !== PRESCRIPTION) return { kind: "prescription_not_found" };
+      const row = (await adminPool.query("SELECT id,status,created_at,started_at,completed_at FROM public.ai_jobs WHERE prescription_id=$1 ORDER BY created_at DESC LIMIT 1",[prescriptionId])).rows[0];
+      return row ? { kind: "job", job: jobRecord(row,userId,prescriptionId) } : { kind: "none" };
+    },
+  });
   const preview: PrescriptionDocumentPreviewService = { async load(_client, ownerId, prescriptionId) {
     const owned = await adminPool.query("SELECT object_key FROM public.prescriptions WHERE id=$1 AND user_id=$2", [prescriptionId, ownerId]);
     if (!owned.rowCount) throw new PrescriptionDocumentPreviewError("NOT_FOUND", "metadata_lookup", "not_found");
@@ -171,7 +241,7 @@ async function main(): Promise<void> {
     return { bytes: Buffer.concat(chunks), contentType: "application/pdf" };
   } };
   const authenticate = createAuthenticateMiddleware(localAuth.verifier, clients);
-  const python = new LocalConfirmedReviewIntelligenceClient({ pythonExecutable: required("MEDDECODE_PYTHON"), intelligenceDirectory: required("MEDDECODE_INTELLIGENCE_DIR"), timeoutMs: 30_000 });
+  const python = confirmed;
   const app = createApp((router) => {
     router.post("/__acceptance/auth/sign-in", (request, response) => {
       const account = request.body?.account; const secret = request.body?.secret;
@@ -205,18 +275,49 @@ async function main(): Promise<void> {
       const result = await adminPool.query("SELECT r.job_id,r.review_revision_id,r.is_current,r.status,r.result_json FROM public.prescription_intelligence_results r JOIN public.prescriptions p ON p.id=r.prescription_id WHERE r.prescription_id=$1 AND p.user_id=$2 ORDER BY r.created_at", [PRESCRIPTION, identity.userId]);
       return response.status(200).json({ results: result.rows });
     });
+    router.get("/__acceptance/prescriptions/:prescriptionId/runtime-evidence", authenticate, async (request, response) => {
+      const identity = requireAuthenticatedIdentity(request);
+      if (request.params.prescriptionId !== PRESCRIPTION || identity.userId !== OWNER) return response.status(404).end();
+      const result = await adminPool.query(
+        `SELECT j.status AS job_status,
+                j.attempt_count,
+                j.claim_generation,
+                (SELECT count(*)::integer FROM public.prescription_ocr_evidence_sets e WHERE e.prescription_id=j.prescription_id) AS evidence_count,
+                (SELECT count(*)::integer FROM public.prescription_review_revisions r WHERE r.prescription_id=j.prescription_id) AS review_count,
+                (SELECT count(*)::integer FROM public.prescription_intelligence_results i WHERE i.prescription_id=j.prescription_id) AS result_count
+           FROM public.ai_jobs j
+          WHERE j.id=$1 AND j.prescription_id=$2 AND j.user_id=$3`,
+        [OCR_JOB, PRESCRIPTION, OWNER]
+      );
+      if (!result.rowCount) return response.status(404).end();
+      return response.status(200).json({ ...result.rows[0], heartbeat_recorded: heartbeatCount > 0 });
+    });
     router.post("/__acceptance/cleanup", authenticate, async (request, response) => {
       const identity = requireAuthenticatedIdentity(request);
       if (identity.userId !== OWNER) return response.status(404).end();
       await cleanup(adminPool);
       await localStore.storage.delete(objectKey).catch(() => undefined);
+      if (rc1b) {
+        await adminPool.query("UPDATE public.meddecode_auto_worker_policy SET enabled=false,activated_at=NULL WHERE singleton");
+        await adminPool.query("DELETE FROM public.meddecode_auto_test_account");
+      }
       return response.status(200).json({ marker: "PHASE1F_FIXTURE_CLEANUP_OK" });
     });
-  }, localAuth.verifier, clients, undefined, undefined, history, undefined, undefined, processingJobs, results, { enabled: true, repositoryFactory: (client) => new PostgresPrescriptionReviewRepository(client), documentPreviewService: preview });
+  }, localAuth.verifier, clients, undefined, rc1b ? uploadDependencies : undefined, history, undefined, undefined, processingJobs, results,
+    { enabled: true, repositoryFactory: (client) => new PostgresPrescriptionReviewRepository(client), documentPreviewService: preview }, undefined,
+    rc1b ? automaticJobs : undefined);
   const server = app.listen(3011, "127.0.0.1", () => console.log(`PHASE1F_SERVER_READY:${PRESCRIPTION}`));
-  const stop = async () => { server.close(); await adminPool.end(); await workerPool.end(); };
+  const stop = async () => { await workerComposition?.runtime.stop().catch(() => undefined); server.close(); await adminPool.end(); await workerPool.end(); };
   process.once("SIGINT", () => void stop().finally(() => process.exit(0)));
   process.once("SIGTERM", () => void stop().finally(() => process.exit(0)));
+}
+
+function jobRecord(row: Record<string, unknown>, userId: string, prescriptionId: string) {
+  const iso = (value: unknown): string | null => value instanceof Date ? value.toISOString() : value === null || value === undefined ? null : String(value);
+  return { id: String(row.id), userId, prescriptionId, jobType: "prescription_analysis" as const,
+    requestedAnalysis: DEFAULT_REQUESTED_ANALYSIS,
+    status: row.status as "queued"|"processing"|"completed"|"failed"|"cancelled", createdAt: iso(row.created_at)!,
+    startedAt: iso(row.started_at), completedAt: iso(row.completed_at), failure: null };
 }
 
 async function ownedPrescriptionHistory(
@@ -258,6 +359,7 @@ async function cleanup(pool: Pool): Promise<void> {
   await pool.query("DELETE FROM public.prescription_review_medicines WHERE prescription_id=$1", [PRESCRIPTION]);
   await pool.query("DELETE FROM public.prescription_review_revisions WHERE prescription_id=$1", [PRESCRIPTION]);
   await pool.query("DELETE FROM public.prescription_ocr_evidence_sets WHERE prescription_id=$1", [PRESCRIPTION]);
+  await pool.query("DELETE FROM public.meddecode_auto_authorized_jobs WHERE prescription_id=$1", [PRESCRIPTION]);
   await pool.query("DELETE FROM public.ai_jobs WHERE prescription_id=$1", [PRESCRIPTION]);
   await pool.query("DELETE FROM public.prescriptions WHERE id=$1", [PRESCRIPTION]);
 }

@@ -96,7 +96,9 @@ export function createApp(
     repositoryFactory: createPostgresPrescriptionReviewRepository,
     autoDispatchConfirmed: env.prescriptionReviewV3Enabled,
   },
-  remindersRepository: RemindersRepository = defaultRemindersRepository
+  remindersRepository: RemindersRepository = defaultRemindersRepository,
+  automaticProcessingJobStoreFactory: ProcessingJobStoreFactory =
+    createConfiguredAutomaticProcessingJobStore
 ): Express {
   if (env.prescriptionAutoSubmitEnabled && !env.processingJobStoreEnabled) {
     throw new Error("Automatic prescription submission requires the durable job store.");
@@ -120,7 +122,7 @@ export function createApp(
     authVerifier,
     userClientFactory,
     uploadDependenciesFactory,
-    { enabled: env.prescriptionAutoSubmitEnabled, storeFactory: createConfiguredAutomaticProcessingJobStore }
+    { enabled: env.prescriptionAutoSubmitEnabled, storeFactory: automaticProcessingJobStoreFactory }
   ));
   app.use(createPrescriptionHistoryRouter(
     authVerifier,
