@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
-import { execFile, spawn } from "node:child_process";
-import { mkdtemp, rm } from "node:fs/promises";
+import { execFile, spawn, type ChildProcess } from "node:child_process";
+import { mkdtemp, open, rm } from "node:fs/promises";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { basename, join, resolve } from "node:path";
@@ -44,6 +44,32 @@ async function availablePort(): Promise<number> {
   return port;
 }
 
+async function startWindowsServerDirectly(data: string, log: string, port: number): Promise<ChildProcess> {
+  const logHandle = await open(log, "a");
+  const child = spawn(join(postgresBin, "postgres.exe"), [
+    "-D", data,
+    "-h", "127.0.0.1",
+    "-p", String(port),
+  ], { stdio: ["ignore", logHandle.fd, logHandle.fd], windowsHide: true });
+  await logHandle.close();
+  const error = new Promise<never>((_, reject) => child.once("error", reject));
+  const deadline = Date.now() + 30_000;
+  while (Date.now() < deadline) {
+    if (child.exitCode !== null) throw new Error(`PostgreSQL server exited during startup with code ${child.exitCode}.`);
+    try {
+      await execute(join(postgresBin, "pg_isready.exe"), ["-h", "127.0.0.1", "-p", String(port)], {
+        windowsHide: true,
+        timeout: 2000,
+      });
+      return child;
+    } catch {
+      await Promise.race([new Promise(resolveDelay => setTimeout(resolveDelay, 100)), error]);
+    }
+  }
+  child.kill();
+  throw new Error("PostgreSQL direct server startup timed out.");
+}
+
 export interface PrivatePostgres17 {
   readonly config: {
     readonly host: "127.0.0.1";
@@ -60,6 +86,7 @@ export async function startPrivatePostgres17(): Promise<PrivatePostgres17> {
   const log = join(root, "postgres.log");
   const port = await availablePort();
   let started = false;
+  let directServer: ChildProcess | undefined;
 
   try {
     await execute(join(postgresBin, "initdb.exe"), [
@@ -71,14 +98,22 @@ export async function startPrivatePostgres17(): Promise<PrivatePostgres17> {
       "--no-locale",
       "--no-sync",
     ], { windowsHide: true, timeout: utilityTimeoutMs });
-    await runWithoutInheritedPipes(join(postgresBin, "pg_ctl.exe"), [
-      "-D", data,
-      "-l", log,
-      "-o", `-h 127.0.0.1 -p ${port}`,
-      "-t", "30",
-      "-w",
-      "start",
-    ]);
+    if (process.platform === "win32") {
+      // pg_ctl.exe invokes CreateRestrictedToken on Windows. That operation
+      // fails with error 87 inside the restricted Codex token even though the
+      // task-owned data directory is writable. Launching postgres.exe directly
+      // preserves the same loopback/data boundaries without elevating rights.
+      directServer = await startWindowsServerDirectly(data, log, port);
+    } else {
+      await runWithoutInheritedPipes(join(postgresBin, "pg_ctl.exe"), [
+        "-D", data,
+        "-l", log,
+        "-o", `-h 127.0.0.1 -p ${port}`,
+        "-t", "30",
+        "-w",
+        "start",
+      ]);
+    }
     started = true;
 
     let stopped = false;
@@ -90,6 +125,9 @@ export async function startPrivatePostgres17(): Promise<PrivatePostgres17> {
         if (started) {
           await runWithoutInheritedPipes(join(postgresBin, "pg_ctl.exe"), ["-D", data, "-m", "fast", "-t", "30", "-w", "stop"]);
           started = false;
+          if (directServer?.exitCode === null) {
+            await new Promise<void>(resolveExit => directServer!.once("exit", () => resolveExit()));
+          }
         }
         const resolvedRoot = resolve(root);
         const resolvedTemp = resolve(tmpdir());
@@ -101,6 +139,7 @@ export async function startPrivatePostgres17(): Promise<PrivatePostgres17> {
   } catch (error) {
     if (started) {
       await runWithoutInheritedPipes(join(postgresBin, "pg_ctl.exe"), ["-D", data, "-m", "immediate", "-t", "30", "-w", "stop"]).catch(() => undefined);
+      if (directServer?.exitCode === null) directServer.kill();
     }
     const resolvedRoot = resolve(root);
     if (resolvedRoot.startsWith(resolve(tmpdir()) + "\\") && basename(resolvedRoot).startsWith(taskPrefix)) {
