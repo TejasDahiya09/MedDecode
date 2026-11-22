@@ -9,6 +9,7 @@ import { createAuthenticateMiddleware, requireAuthenticatedIdentity } from "../s
 import { PostgresPrescriptionReviewRepository } from "../src/repositories/postgres-prescription-review.repository.js";
 import type { PrescriptionHistoryRepository } from "../src/repositories/prescription-history.repository.js";
 import type { PrescriptionResultsRepository } from "../src/repositories/prescription-results.repository.js";
+import type { ProfileRepository } from "../src/repositories/profile.repository.js";
 import type { ProcessingJobStoreFactory } from "../src/repositories/processing-job.store.js";
 import type { PrescriptionRepository } from "../src/repositories/prescription.repository.js";
 import type { PrescriptionUploadDependenciesFactory } from "../src/routes/prescription-upload.routes.js";
@@ -251,6 +252,16 @@ async function main(): Promise<void> {
   const cabinet = createPhase1fCabinetRepository(adminPool);
   const reminders = createPhase1fRemindersRepository(adminPool);
   const catalogue = createPhase1fCatalogueRepository(adminPool);
+  const profiles: ProfileRepository = {
+    async findApplicationUser(_client, userId) {
+      const email = userId === OWNER ? "alice@synthetic.invalid" : userId === OTHER ? "bob@synthetic.invalid" : null;
+      return email ? { id: userId, email, name: userId === OWNER ? "Alice Synthetic" : "Bob Synthetic", created_at: "2026-01-01T00:00:00.000Z", updated_at: "2026-01-01T00:00:00.000Z" } : null;
+    },
+    async findHealthProfile() { return null; },
+    async updateApplicationUser() { return null; },
+    async createHealthProfile() { throw new Error("Local acceptance health-profile writes are unavailable."); },
+    async updateHealthProfile() { return null; },
+  };
   const app = createApp((router) => {
     router.post("/__acceptance/auth/sign-in", (request, response) => {
       const account = request.body?.account; const secret = request.body?.secret;
@@ -313,7 +324,7 @@ async function main(): Promise<void> {
       await rm(storageRoot, { recursive: true, force: true });
       return response.status(200).json({ marker: "PHASE1F_FIXTURE_CLEANUP_OK" });
     });
-  }, localAuth.verifier, clients, undefined, rc1b ? uploadDependencies : undefined, history, cabinet, undefined, processingJobs, results,
+  }, localAuth.verifier, clients, profiles, rc1b ? uploadDependencies : undefined, history, cabinet, undefined, processingJobs, results,
     { enabled: true, repositoryFactory: (client) => new PostgresPrescriptionReviewRepository(client), documentPreviewService: preview }, reminders,
     rc1b ? automaticJobs : undefined,
     { repository: catalogue, enabled: true, defaultSource: "official_catalogue" });

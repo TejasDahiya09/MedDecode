@@ -16,6 +16,7 @@ const DemoWorkspaceRoute = lazy(() => import('../features/demo/DemoWorkspaceRout
 const PrescriptionHistoryPage = lazy(() => import('../features/prescriptions/PrescriptionHistoryPage').then((module) => ({ default: module.PrescriptionHistoryPage })));
 const PrescriptionResultsPage = lazy(() => import('../features/prescriptions/PrescriptionResultsPage').then((module) => ({ default: module.PrescriptionResultsPage })));
 const PrescriptionReviewWorkspace = lazy(() => import('../features/prescription-review/PrescriptionReviewWorkspace').then((module) => ({ default: module.PrescriptionReviewWorkspace })));
+const AccountPage = lazy(() => import('../features/profile/AccountPage').then((module) => ({ default: module.AccountPage })));
 
 const ProcessingRpcTestPanel = import.meta.env.DEV
   ? lazy(() => import('../features/dev/ProcessingRpcTestPanel'))
@@ -59,6 +60,7 @@ export function AppRoutes() {
         <Route path="prescriptions" element={<DeferredRoute label="prescription history"><PrescriptionHistoryPage /></DeferredRoute>} />
         <Route path="prescriptions/:id" element={<DeferredRoute label="prescription analysis"><PrescriptionResultsPage /></DeferredRoute>} />
         <Route path="prescriptions/:id/review" element={<DeferredRoute label="prescription review"><PrescriptionReviewWorkspace /></DeferredRoute>} />
+        <Route path="account" element={<DeferredRoute label="account information"><AccountPage /></DeferredRoute>} />
         <Route path="medicine-insights" element={<MedicineInsightsRedirect />} />
         <Route path="cabinet" element={<Navigate replace to="/my-cabinet" />} />
        </Route>

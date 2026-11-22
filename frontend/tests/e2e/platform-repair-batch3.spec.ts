@@ -21,6 +21,7 @@ async function signIn(page: Page, request: APIRequestContext, secret: string): P
         user: { id: value.user.id, email: value.user.email, aud: 'authenticated', role: 'authenticated', app_metadata: {}, user_metadata: {}, identities: [] } });
     }
     if (path.endsWith('/user')) return json(route, 200, { id: '10000000-0000-4000-8000-000000000001', email: 'alice@synthetic.invalid' });
+    if (path.endsWith('/logout')) return json(route, 200, {});
     return json(route, 404, {});
   });
   await page.goto('/sign-in');
@@ -122,5 +123,48 @@ test('Cabinet, Reminders, Catalogue and comparison remain persistent and owner s
   }
   const cleanup = await request.post(`${API}/__acceptance/cleanup`, { headers });
   expect(cleanup.status()).toBe(200);
+  expect(browserErrors).toEqual([]);
+});
+
+test('authentication, protected navigation, session refresh and sign-out work in the connected app', async ({ page, request }) => {
+  const metadata = test.info().config.metadata as { phase1fAliceSecret: string };
+  const browserErrors: string[] = [];
+  page.on('pageerror', error => browserErrors.push(error.message));
+
+  await page.goto('/my-cabinet');
+  await expect(page).toHaveURL(/\/sign-in/);
+  expect((await request.get(`${API}/api/v1/medicine-cabinet`, { headers: { Authorization: 'Bearer invalid-session' } })).status()).toBe(401);
+
+  await signIn(page, request, metadata.phase1fAliceSecret);
+  await page.goto('/home');
+  await expect(page.getByRole('link', { name: 'Medicine Library' })).toBeVisible();
+  await page.reload();
+  await expect(page).toHaveURL(/\/home$/);
+  await page.getByRole('link', { name: 'My Cabinet' }).first().click();
+  await expect(page).toHaveURL(/\/my-cabinet$/);
+  await page.goBack(); await expect(page).toHaveURL(/\/home$/);
+  await page.goForward(); await expect(page).toHaveURL(/\/my-cabinet$/);
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.getByRole('link', { name: 'Library', exact: true })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
+
+  const accountMenu = page.locator('summary[aria-label="Account menu"]');
+  await accountMenu.focus();
+  await page.keyboard.press('Enter');
+  await expect(page.getByText('Verified account')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(accountMenu).toBeFocused();
+  await page.keyboard.press('Enter');
+  await page.getByRole('link', { name: 'Account & settings' }).click();
+  await expect(page).toHaveURL(/\/account$/);
+  await expect(page.getByRole('heading', { name: 'Verified account' })).toBeVisible();
+  await expect(page.getByText('Alice Synthetic')).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole('heading', { name: 'Account & settings' })).toBeVisible();
+  await page.getByRole('button', { name: 'Sign out' }).click();
+  await expect(page).toHaveURL(/\/sign-in/);
+  await page.goto('/reminders');
+  await expect(page).toHaveURL(/\/sign-in/);
   expect(browserErrors).toEqual([]);
 });

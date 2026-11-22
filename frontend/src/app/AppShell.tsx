@@ -89,6 +89,8 @@ export function AppShell() {
       title = 'Prescription History';
     } else if (location.pathname.startsWith('/prescriptions/')) {
       title = 'Prescription Analysis';
+    } else if (location.pathname === '/account') {
+      title = 'Account & settings';
     } else {
       title = 'Page not found';
     }

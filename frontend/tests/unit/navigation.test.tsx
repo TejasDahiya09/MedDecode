@@ -121,6 +121,13 @@ describe('MedDecode Header Navigation & Redundancy Removal', () => {
     expect(within(utilities as HTMLElement).queryByRole('link', { name: /Resources shortcut/i })).toBeNull();
   });
 
+  it('offers the supported account page from the account menu', () => {
+    mount('/home');
+    const menu = document.querySelector('.cc-shell-account-menu');
+    expect(menu).toBeTruthy();
+    expect(within(menu as HTMLElement).getByRole('link', { name: 'Account & settings' }).getAttribute('href')).toBe('/account');
+  });
+
   it('renders Cabinet, Reminders, and Resources in direct primary navigation links and overflow menu', () => {
     mount('/home');
     const primaryNav = screen.getByRole('navigation', { name: 'Primary navigation' });
