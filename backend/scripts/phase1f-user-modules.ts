@@ -1,7 +1,7 @@
 import type { Pool } from "pg";
 
 import type { MedicineCabinetRepository } from "../src/repositories/medicine-cabinet.repository.js";
-import type { RemindersRepository } from "../src/repositories/reminders.repository.js";
+import { ReminderNotFoundError, type RemindersRepository } from "../src/repositories/reminders.repository.js";
 import type { MedicineCatalogueRepository, MedicineCataloguePage } from "../src/routes/medicine-catalogue.routes.js";
 import type { MedicineCabinetCreate, MedicineCabinetRow, MedicineCabinetUpdate } from "../src/types/medicine-cabinet.js";
 import type { CreateReminderInput, DoseLogRow, LogDoseInput, MedicationReminderRow, UpdateReminderInput } from "../src/types/reminders.js";
@@ -99,8 +99,8 @@ export function createPhase1fRemindersRepository(pool: Pool): RemindersRepositor
       const values: unknown[] = [];
       for (const name of allowed) {
         if (input[name] === undefined) continue;
-        const value = name === "scheduled_times" ? JSON.stringify(input[name]) : input[name];
-        columns.push(`${name}=$${values.length + 1}${name === "scheduled_times" ? "::jsonb" : ""}`);
+        const value = name === "scheduled_times" && input[name] !== null ? JSON.stringify(input[name]) : input[name];
+        columns.push(`${name}=$${values.length + 1}${name === "scheduled_times" && value !== null ? "::jsonb" : ""}`);
         values.push(value);
       }
       if (!columns.length) return repository.findById(_client,userId,reminderId);
@@ -119,7 +119,7 @@ export function createPhase1fRemindersRepository(pool: Pool): RemindersRepositor
         await connection.query("BEGIN");
         const reminder = (await connection.query<MedicationReminderRow>(
           `SELECT ${REMINDER_COLUMNS} FROM public.medication_reminders WHERE id=$1 AND user_id=$2 FOR UPDATE`,[reminderId,userId])).rows[0];
-        if (!reminder) throw new Error("Reminder not found.");
+        if (!reminder) throw new ReminderNotFoundError();
         const doseTime = input.dose_time ?? new Date().toISOString();
         let dose = (await connection.query<DoseLogRow>(
           `INSERT INTO public.medication_dose_logs(reminder_id,user_id,dose_time,status,notes)

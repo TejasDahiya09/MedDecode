@@ -15,6 +15,7 @@ import type {
 } from "../types/reminders.js";
 import {
   defaultRemindersRepository,
+  ReminderNotFoundError,
   RemindersRepositoryError,
   RemindersStorageUnavailableError,
   type RemindersRepository,
@@ -44,6 +45,9 @@ function reminderNotFound(): AppError {
 }
 
 function handleStorageError(err: unknown): never {
+  if (err instanceof ReminderNotFoundError) {
+    throw reminderNotFound();
+  }
   if (err instanceof RemindersStorageUnavailableError) {
     throw new AppError(503, err.code, err.message);
   }

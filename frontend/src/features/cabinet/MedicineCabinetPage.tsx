@@ -76,6 +76,8 @@ export function MedicineCabinetPage() {
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'expiring' | 'expired'>('all');
 
   const modalRef = useRef<HTMLDivElement>(null);
+  const modalOpenerRef = useRef<HTMLElement | null>(null);
+  const wasEditingRef = useRef(false);
 
   const cabinetQuery = useQuery({
     queryKey: ['medicine-cabinet', auth.user?.id],
@@ -100,7 +102,22 @@ export function MedicineCabinetPage() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [editing, busy]);
 
+  useEffect(() => {
+    if (editing) {
+      wasEditingRef.current = true;
+      modalRef.current?.querySelector<HTMLElement>('button:not([disabled]), input:not([disabled]), select:not([disabled])')?.focus();
+      return;
+    }
+    if (wasEditingRef.current) {
+      wasEditingRef.current = false;
+      const opener = modalOpenerRef.current;
+      if (opener?.isConnected) opener.focus({ preventScroll: true });
+      else document.querySelector<HTMLElement>('main')?.focus({ preventScroll: true });
+    }
+  }, [editing]);
+
   function openEditor(item: MedicineCabinetItem | 'new') {
+    modalOpenerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     setEditing(item);
     setMedicineQuery('');
     setMedicineChoices([]);

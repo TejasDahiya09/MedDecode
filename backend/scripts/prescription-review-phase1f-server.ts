@@ -81,6 +81,7 @@ async function workerCall(client: PoolClient, sql: string, values: unknown[]): P
 
 async function main(): Promise<void> {
   const rc1b = process.env.RC1B_REAL_OCR === "true";
+  const userModulesOnly = process.env.PHASE1F_USER_MODULES_ONLY === "true";
   if (process.env.NODE_ENV !== "test") throw new Error("PHASE1F_TEST_ENVIRONMENT_GUARD_FAILED");
   if (required("PHASE1F_DATABASE") !== DATABASE || required("PGHOST") !== "127.0.0.1" || required("PGPORT") !== "55440") {
     throw new Error("PHASE1F_LOCAL_DATABASE_GUARD_FAILED");
@@ -107,7 +108,7 @@ async function main(): Promise<void> {
     await adminPool.query("UPDATE public.meddecode_auto_worker_policy SET enabled=true,activated_at=clock_timestamp(),current_rollout_generation=2,worker_login='meddecode_scoped_login',worker_instance_id=$1 WHERE singleton", ["rc1a-local-worker-001"]);
     await adminPool.query("DELETE FROM public.meddecode_auto_test_account");
     await adminPool.query("INSERT INTO public.meddecode_auto_test_account(singleton,user_id) VALUES(true,$1)", [OWNER]);
-  } else {
+  } else if (!userModulesOnly) {
     await localStore.storage.upload({ objectKey, bytes: documentBytes, fileType: "application/pdf" });
     const source = JSON.parse(await readFile(contractPath!, "utf8")) as Record<string, unknown>;
     source.job_id = OCR_JOB; source.prescription_id = PRESCRIPTION;
@@ -117,7 +118,7 @@ async function main(): Promise<void> {
       documentSha256: createHash("sha256").update(documentBytes).digest("hex"), now: new Date().toISOString() });
     await adminPool.query("INSERT INTO public.prescriptions(id,user_id,storage_provider,storage_bucket,object_key,status) VALUES($1,$2,'local','meddecode-local-synthetic',$3,'processing')", [PRESCRIPTION, OWNER, objectKey]);
     await adminPool.query("INSERT INTO public.ai_jobs(id,user_id,prescription_id,job_type,status) VALUES($1,$2,$3,'prescription_analysis','queued')", [OCR_JOB, OWNER, PRESCRIPTION]);
-    await adminPool.query("INSERT INTO public.meddecode_scoped_worker_scope(job_id,prescription_id,user_id,worker_login,worker_instance_id,enabled,expires_at) VALUES($1,$2,$3,'meddecode_scoped_login',$4,true,clock_timestamp()+interval '1 hour')", [OCR_JOB, PRESCRIPTION, WORKER_INSTANCE]);
+    await adminPool.query("INSERT INTO public.meddecode_scoped_worker_scope(job_id,prescription_id,user_id,worker_login,worker_instance_id,enabled,expires_at) VALUES($1,$2,$3,'meddecode_scoped_login',$4,true,clock_timestamp()+interval '1 hour')", [OCR_JOB, PRESCRIPTION, OWNER, WORKER_INSTANCE]);
     const worker = await workerPool.connect();
     try { await workerCall(worker, "SELECT public.meddecode_initialize_prescription_review_v1($1,$2,$3,$4,$5,$6)", [OCR_JOB, PRESCRIPTION,
       { evidenceSetId: EVIDENCE, schemaVersion: "1.0", documentSha256: initial.evidence.documentSha256, pageCount: 1, providerCount: 1, payload: {} }, initial,

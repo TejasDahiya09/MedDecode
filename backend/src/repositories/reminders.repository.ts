@@ -25,6 +25,13 @@ export class RemindersRepositoryError extends Error {
   }
 }
 
+export class ReminderNotFoundError extends Error {
+  constructor() {
+    super("Reminder not found.");
+    this.name = "ReminderNotFoundError";
+  }
+}
+
 /**
  * Thrown when the medication reminders database tables have not been deployed.
  * Translates to an honest, actionable HTTP 503 Service Unavailable state.
@@ -231,7 +238,7 @@ export class SupabaseRemindersRepository implements RemindersRepository {
     try {
       const reminder = await this.findById(client, userId, reminderId);
       if (!reminder) {
-        throw new RemindersRepositoryError("Reminder not found.");
+        throw new ReminderNotFoundError();
       }
 
       const now = new Date().toISOString();

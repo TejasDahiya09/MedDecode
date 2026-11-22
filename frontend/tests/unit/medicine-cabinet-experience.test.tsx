@@ -125,6 +125,11 @@ describe('Medicine Cabinet Experience', () => {
     expect(screen.getByText(`Record ID: ${sampleCabinetEntryId}`)).toBeTruthy();
     const addBtn = screen.getByRole('button', { name: 'Add medicine' }) as HTMLButtonElement;
     expect(addBtn.disabled).toBe(false);
+    addBtn.focus();
+    fireEvent.click(addBtn);
+    expect(screen.getByRole('dialog')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Close modal' }));
+    expect(document.activeElement).toBe(addBtn);
     const removeBtn = screen.getByRole('button', { name: `Remove medicine record ${sampleCabinetEntryId}` }) as HTMLButtonElement;
     expect(removeBtn.disabled).toBe(false);
   });

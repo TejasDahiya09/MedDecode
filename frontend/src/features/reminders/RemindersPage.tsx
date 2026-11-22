@@ -235,6 +235,7 @@ export function RemindersPage() {
   const [formError, setFormError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [doseActionBusy, setDoseActionBusy] = useState<string | null>(null);
+  const [recordedDoses, setRecordedDoses] = useState<readonly DoseLog[]>([]);
   const [notificationStatus, setNotificationStatus] = useState<'default' | 'granted' | 'denied' | 'unsupported'>(() => {
     if (typeof window !== 'undefined' && 'Notification' in window) {
       return Notification.permission;
@@ -432,9 +433,14 @@ export function RemindersPage() {
     if (!token || doseActionBusy) return;
     setDoseActionBusy(item.id);
     try {
-      await logDose(item.id, { status }, token);
-      await queryClient.invalidateQueries({ queryKey: ['medication-reminders'] });
-      await queryClient.invalidateQueries({ queryKey: ['medication-recent-doses'] });
+      const result = await logDose(item.id, { status }, token);
+      setRecordedDoses(current => [result.dose, ...current.filter(dose => dose.id !== result.dose.id)].slice(0, 10));
+      queryClient.setQueryData<readonly DoseLog[]>(
+        ['medication-recent-doses', auth.user?.id],
+        (current = []) => [result.dose, ...current.filter((dose) => dose.id !== result.dose.id)].slice(0, 10),
+      );
+      await remindersQuery.refetch();
+      void recentDosesQuery.refetch();
     } catch {
       void remindersQuery.refetch();
     } finally {
@@ -448,8 +454,7 @@ export function RemindersPage() {
     try {
       await deleteReminder(deleteTarget.id, token);
       setDeleteTarget(null);
-      await queryClient.invalidateQueries({ queryKey: ['medication-reminders'] });
-      await queryClient.invalidateQueries({ queryKey: ['medication-recent-doses'] });
+      await Promise.all([remindersQuery.refetch(), recentDosesQuery.refetch()]);
     } catch {
       void remindersQuery.refetch();
     } finally {
@@ -466,7 +471,10 @@ export function RemindersPage() {
   const isGenericError = Boolean(queryError && !isBackendUnavailable && !isAuthError);
 
   const reminders = remindersQuery.data?.items ?? [];
-  const recentDoses: readonly DoseLog[] = recentDosesQuery.data ?? [];
+  const recentDoses: readonly DoseLog[] = [
+    ...recordedDoses,
+    ...(recentDosesQuery.data ?? []).filter(dose => !recordedDoses.some(recorded => recorded.id === dose.id)),
+  ].slice(0, 10);
 
   const todayReminders = reminders.filter(
     (r) => r.recurrence === 'daily' || r.recurrence === 'twice_daily' || r.recurrence === 'thrice_daily',
