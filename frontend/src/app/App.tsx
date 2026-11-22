@@ -10,6 +10,7 @@ import { NotFound } from './SectionPlaceholder';
 import { DemoProvider } from '../features/demo/DemoProvider';
 import { ProtectedRoute } from '../features/auth/ProtectedRoute';
 import { WorkspacePage } from './WorkspacePage';
+import { RouteLoadingState } from './RouteLoadingState';
 
 const DemoWorkspaceRoute = lazy(() => import('../features/demo/DemoWorkspaceRoute').then((module) => ({ default: module.DemoWorkspaceRoute })));
 const PrescriptionHistoryPage = lazy(() => import('../features/prescriptions/PrescriptionHistoryPage').then((module) => ({ default: module.PrescriptionHistoryPage })));
@@ -30,7 +31,7 @@ function MedicineInsightsRedirect() {
 
 function DeferredRoute({ children, label }: { readonly children: ReactNode; readonly label: string }) {
   return (
-    <Suspense fallback={<div role="status" aria-live="polite" aria-busy="true">Loading {label}â€¦</div>}>
+    <Suspense fallback={<RouteLoadingState label={label} />}>
       {children}
     </Suspense>
   );
@@ -51,8 +52,8 @@ export function AppRoutes() {
        <Route path="demo/:section" element={<DeferredRoute label="demonstration workspace"><DemoWorkspaceRoute /></DeferredRoute>} />
       </Route>
       <Route element={<ProtectedRoute />}>
-       {ProcessingRpcTestPanel ? <Route path="__dev/processing-rpc-test" element={<Suspense fallback={<main tabIndex={-1}><p>Loading local test panel…</p></main>}><ProcessingRpcTestPanel /></Suspense>} /> : null}
-       {FictionalIntelligenceDemo ? <Route path="__dev/fictional-intelligence" element={<Suspense fallback={<main tabIndex={-1}><p>Loading fictional fixture…</p></main>}><FictionalIntelligenceDemo /></Suspense>} /> : null}
+       {ProcessingRpcTestPanel ? <Route path="__dev/processing-rpc-test" element={<Suspense fallback={<main tabIndex={-1}><RouteLoadingState label="local test panel" /></main>}><ProcessingRpcTestPanel /></Suspense>} /> : null}
+       {FictionalIntelligenceDemo ? <Route path="__dev/fictional-intelligence" element={<Suspense fallback={<main tabIndex={-1}><RouteLoadingState label="fictional fixture" /></main>}><FictionalIntelligenceDemo /></Suspense>} /> : null}
        <Route element={<AppShell />}>
         {destinations.filter((d) => d.path !== '/prescriptions').map((destination) => <Route key={destination.path} path={destination.path} element={<WorkspacePage key={destination.path} path={destination.path} />} />)}
         <Route path="prescriptions" element={<DeferredRoute label="prescription history"><PrescriptionHistoryPage /></DeferredRoute>} />

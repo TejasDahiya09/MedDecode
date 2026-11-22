@@ -22,6 +22,11 @@ import { PostgresWorkerRpcCaller } from "../src/repositories/postgres-worker-rpc
 import { RpcPrescriptionReviewWorkerStore } from "../src/repositories/prescription-review-worker.rpc-store.js";
 import { createRc1aDisabledWorker } from "./rc1a-local-runtime.js";
 import { DEFAULT_REQUESTED_ANALYSIS } from "../src/types/intelligence-jobs.js";
+import {
+  createPhase1fCabinetRepository,
+  createPhase1fCatalogueRepository,
+  createPhase1fRemindersRepository,
+} from "./phase1f-user-modules.js";
 
 const OWNER = "10000000-0000-4000-8000-000000000001";
 const OTHER = "20000000-0000-4000-8000-000000000002";
@@ -242,6 +247,9 @@ async function main(): Promise<void> {
   } };
   const authenticate = createAuthenticateMiddleware(localAuth.verifier, clients);
   const python = confirmed;
+  const cabinet = createPhase1fCabinetRepository(adminPool);
+  const reminders = createPhase1fRemindersRepository(adminPool);
+  const catalogue = createPhase1fCatalogueRepository(adminPool);
   const app = createApp((router) => {
     router.post("/__acceptance/auth/sign-in", (request, response) => {
       const account = request.body?.account; const secret = request.body?.secret;
@@ -301,11 +309,13 @@ async function main(): Promise<void> {
         await adminPool.query("UPDATE public.meddecode_auto_worker_policy SET enabled=false,activated_at=NULL WHERE singleton");
         await adminPool.query("DELETE FROM public.meddecode_auto_test_account");
       }
+      await rm(storageRoot, { recursive: true, force: true });
       return response.status(200).json({ marker: "PHASE1F_FIXTURE_CLEANUP_OK" });
     });
-  }, localAuth.verifier, clients, undefined, rc1b ? uploadDependencies : undefined, history, undefined, undefined, processingJobs, results,
-    { enabled: true, repositoryFactory: (client) => new PostgresPrescriptionReviewRepository(client), documentPreviewService: preview }, undefined,
-    rc1b ? automaticJobs : undefined);
+  }, localAuth.verifier, clients, undefined, rc1b ? uploadDependencies : undefined, history, cabinet, undefined, processingJobs, results,
+    { enabled: true, repositoryFactory: (client) => new PostgresPrescriptionReviewRepository(client), documentPreviewService: preview }, reminders,
+    rc1b ? automaticJobs : undefined,
+    { repository: catalogue, enabled: true, defaultSource: "official_catalogue" });
   const server = app.listen(3011, "127.0.0.1", () => console.log(`PHASE1F_SERVER_READY:${PRESCRIPTION}`));
   const stop = async () => { await workerComposition?.runtime.stop().catch(() => undefined); server.close(); await adminPool.end(); await workerPool.end(); };
   process.once("SIGINT", () => void stop().finally(() => process.exit(0)));
@@ -349,6 +359,9 @@ async function ownedPrescriptionHistory(
 }
 
 async function cleanup(pool: Pool): Promise<void> {
+  await pool.query("DELETE FROM public.medication_dose_logs WHERE user_id IN ($1,$2)", [OWNER, OTHER]);
+  await pool.query("DELETE FROM public.medication_reminders WHERE user_id IN ($1,$2)", [OWNER, OTHER]);
+  await pool.query("DELETE FROM public.medicine_cabinet WHERE user_id IN ($1,$2)", [OWNER, OTHER]);
   await pool.query("DELETE FROM public.prescription_intelligence_results WHERE prescription_id=$1", [PRESCRIPTION]);
   await pool.query("DELETE FROM public.prescription_medicine_alternatives WHERE prescription_medicine_id IN (SELECT id FROM public.prescription_medicines WHERE prescription_id=$1)", [PRESCRIPTION]);
   await pool.query("DELETE FROM public.prescription_recommendations WHERE prescription_id=$1", [PRESCRIPTION]);

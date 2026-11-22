@@ -52,7 +52,12 @@ import {
 import { createDevelopmentFixtureIntelligenceRouter } from "./routes/development-fixture-intelligence.routes.js";
 import { LocalPythonIntelligenceClient } from "./services/local-python-intelligence.client.js";
 import { createPrescriptionResultsRouter } from "./routes/prescription-results.routes.js";
-import { createMedicineCatalogueRouter } from "./routes/medicine-catalogue.routes.js";
+import {
+  createMedicineCatalogueRouter,
+  userMedicineCatalogueRepository,
+  type MedicineCatalogueRepository,
+} from "./routes/medicine-catalogue.routes.js";
+import type { MedicineCatalogueDefaultSource } from "./config/env.js";
 import { createPrescriptionReviewRouter } from "./routes/prescription-review.routes.js";
 import {
   type PrescriptionReviewRepositoryFactory,
@@ -98,7 +103,12 @@ export function createApp(
   },
   remindersRepository: RemindersRepository = defaultRemindersRepository,
   automaticProcessingJobStoreFactory: ProcessingJobStoreFactory =
-    createConfiguredAutomaticProcessingJobStore
+    createConfiguredAutomaticProcessingJobStore,
+  medicineCatalogueOptions: {
+    readonly repository?: MedicineCatalogueRepository;
+    readonly enabled?: boolean;
+    readonly defaultSource?: MedicineCatalogueDefaultSource;
+  } = {}
 ): Express {
   if (env.prescriptionAutoSubmitEnabled && !env.processingJobStoreEnabled) {
     throw new Error("Automatic prescription submission requires the durable job store.");
@@ -161,9 +171,13 @@ export function createApp(
   ));
   // Keep the catalogue disabled until hosted RPC access has passed deployment
   // verification. Source selection remains explicit and legacy-defaulted.
-  app.use(createMedicineCatalogueRouter(authVerifier, userClientFactory, undefined,
-    process.env.MEDICINE_CATALOGUE_READ_ENABLED === "true",
-    env.medicineCatalogueDefaultSource));
+  app.use(createMedicineCatalogueRouter(
+    authVerifier,
+    userClientFactory,
+    medicineCatalogueOptions.repository ?? userMedicineCatalogueRepository,
+    medicineCatalogueOptions.enabled ?? process.env.MEDICINE_CATALOGUE_READ_ENABLED === "true",
+    medicineCatalogueOptions.defaultSource ?? env.medicineCatalogueDefaultSource,
+  ));
   app.use(createFamilyMemberRouter(
     authVerifier,
     userClientFactory,

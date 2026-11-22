@@ -117,5 +117,8 @@ if ($LASTEXITCODE) { throw 'Phase 1F upload-schema compatibility setup failed.' 
 $identity = & $psql @(PgArgs) -qAt -F '|' -c 'SELECT current_user,current_database(),inet_server_addr(),inet_server_port()'
 if ($identity -ne "phase1f_admin|$database|127.0.0.1|$port") { throw 'Phase 1F database identity guard failed.' }
 Write-Output "PHASE1F_DATABASE_READY:$identity"
+& $psql @(PgArgs) -f (Join-Path $repo 'backend\scripts\phase1f-user-modules.sql')
+if ($LASTEXITCODE) { throw 'Phase 1F user-module fixture installation failed.' }
+Write-Output 'PHASE1F_USER_MODULES_READY:verified'
 Write-Output 'RC1A_SYNTHETIC_CATALOGUE_READY:records=4:restricted_reader=verified'
 Write-Output 'RC1B_INITIAL_REVIEW_COMPLETION_READY:verified'

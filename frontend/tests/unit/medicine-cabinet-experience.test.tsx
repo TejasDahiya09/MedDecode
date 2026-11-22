@@ -120,7 +120,7 @@ describe('Medicine Cabinet Experience', () => {
     expect(screen.getByText('Your medicine cabinet')).toBeTruthy();
     expect(screen.getByText(/Take 1 tablet daily with breakfast/)).toBeTruthy();
     expect(screen.getByText('30')).toBeTruthy();
-    expect(screen.getByText('Expired')).toBeTruthy();
+    expect(screen.getAllByText('Expired')).toHaveLength(2);
     expect(screen.getByText(`Medicine ID: ${sampleMedicineId}`)).toBeTruthy();
     expect(screen.getByText(`Record ID: ${sampleCabinetEntryId}`)).toBeTruthy();
     const addBtn = screen.getByRole('button', { name: 'Add medicine' }) as HTMLButtonElement;

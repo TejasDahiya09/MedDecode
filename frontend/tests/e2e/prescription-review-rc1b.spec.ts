@@ -1,8 +1,10 @@
 import { expect, test, type Route } from '@playwright/test';
+import { existsSync } from 'node:fs';
 
 const prescriptionId = 'f1000000-0000-4000-8000-000000000001';
 const ownerId = '10000000-0000-4000-8000-000000000001';
 const fixture = 'C:\\Users\\dahiy\\MedDecode\\tmp\\phase1d4-scanned.pdf';
+const storageRoot = 'C:\\Users\\dahiy\\MedDecode\\tmp\\rc1b-documents';
 let ownerToken = '';
 
 async function json(route: Route, status: number, body: object): Promise<void> {
@@ -77,6 +79,64 @@ test('browser upload reaches genuine supervised OCR, review, confirmation and hi
   await page.goto('/prescriptions'); await page.getByRole('link', { name: /PDF Prescription.*View analysis/ }).click();
   await page.goBack(); await expect(page).toHaveURL(/\/prescriptions$/); await page.goForward();
   await expect(page.getByText(/Examplemed/i).first()).toBeVisible();
+
+  const ownerHeaders = { Authorization: `Bearer ${ownerToken}` };
+  const catalogue = await request.get('http://127.0.0.1:3011/api/v1/medicines/browse?limit=24&offset=0', { headers: ownerHeaders });
+  expect(catalogue.status()).toBe(200);
+  const catalogueBody = await catalogue.json() as { items: Array<{ id: string; canonical_name: string }>; pagination: { total: number } };
+  expect(catalogueBody.pagination.total).toBe(4);
+  expect(catalogueBody.items[0]?.canonical_name).toContain('Synthetic Fixture');
+  const medicineId = catalogueBody.items[0]!.id;
+  const cabinetCreate = await request.post('http://127.0.0.1:3011/api/v1/medicine-cabinet', {
+    headers: ownerHeaders,
+    data: { medicine_id: medicineId, quantity: '12', usage_information: 'Synthetic demonstration inventory only' },
+  });
+  expect(cabinetCreate.status()).toBe(201);
+  const cabinetId = (await cabinetCreate.json() as { entry: { id: string } }).entry.id;
+  const cabinetList = await request.get('http://127.0.0.1:3011/api/v1/medicine-cabinet', { headers: ownerHeaders });
+  expect((await cabinetList.json() as { items: unknown[] }).items).toHaveLength(1);
+  const bobCabinet = await request.get('http://127.0.0.1:3011/api/v1/medicine-cabinet', { headers: { Authorization: `Bearer ${bobToken}` } });
+  expect((await bobCabinet.json() as { items: unknown[] }).items).toHaveLength(0);
+
+  const reminderCreate = await request.post('http://127.0.0.1:3011/api/v1/reminders', {
+    headers: ownerHeaders,
+    data: { medicine_id: cabinetId, medicine_name: 'Synthetic Fixture Alpha', dosage: 'Demonstration label only', scheduled_time: '09:00', recurrence: 'daily' },
+  });
+  expect(reminderCreate.status()).toBe(201);
+  const reminderId = (await reminderCreate.json() as { reminder: { id: string } }).reminder.id;
+  const crossOwnerReminder = await request.post('http://127.0.0.1:3011/api/v1/reminders', {
+    headers: { Authorization: `Bearer ${bobToken}` },
+    data: { medicine_id: cabinetId, medicine_name: 'Forbidden cross owner', scheduled_time: '10:00', recurrence: 'daily' },
+  });
+  expect(crossOwnerReminder.status()).toBeGreaterThanOrEqual(400);
+  const dose = await request.post(`http://127.0.0.1:3011/api/v1/reminders/${reminderId}/doses`, {
+    headers: ownerHeaders, data: { status: 'taken', dose_time: '2026-11-22T09:00:00.000Z' },
+  });
+  expect(dose.status()).toBe(200);
+  const duplicateDose = await request.post(`http://127.0.0.1:3011/api/v1/reminders/${reminderId}/doses`, {
+    headers: ownerHeaders, data: { status: 'taken', dose_time: '2026-11-22T09:00:00.000Z' },
+  });
+  expect(duplicateDose.status()).toBe(200);
+  const recent = await request.get('http://127.0.0.1:3011/api/v1/reminders/doses/recent', { headers: ownerHeaders });
+  expect((await recent.json() as { items: unknown[] }).items).toHaveLength(1);
+
+  await page.goto('/my-cabinet');
+  await expect(page.getByText('Synthetic demonstration inventory only')).toBeVisible();
+  await page.reload();
+  await expect(page.getByText('Synthetic demonstration inventory only')).toBeVisible();
+  await page.goto('/reminders');
+  await expect(page.getByText('Synthetic Fixture Alpha').first()).toBeVisible();
+  await page.goto('/medicine-library');
+  await expect(page.getByText('Synthetic Fixture Alpha 250 mg Tablet').first()).toBeVisible();
+  await page.goto(`/compare-medicines?a=${catalogueBody.items[0]!.id}&b=${catalogueBody.items[1]!.id}&source=official_catalogue`);
+  await expect(page.getByRole('heading', { name: 'Compare Medicines' })).toBeVisible();
+  await expect(page.getByText('Synthetic Fixture Alpha 250 mg Tablet').first()).toBeVisible();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/my-cabinet');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
+  await expect(page.getByRole('button', { name: /Add medicine/i }).first()).toBeVisible();
+
   const cleanup = await request.post('http://127.0.0.1:3011/__acceptance/cleanup', { headers: { Authorization: `Bearer ${ownerToken}` } });
   expect(cleanup.status()).toBe(200);
+  expect(existsSync(storageRoot)).toBe(false);
 });

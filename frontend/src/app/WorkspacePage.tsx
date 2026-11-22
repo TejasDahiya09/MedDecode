@@ -1,6 +1,7 @@
 import { lazy, Suspense, type ComponentType, type LazyExoticComponent } from 'react';
 import { BackendUnavailablePage } from '../features/workspace/BackendUnavailablePage';
 import { DashboardPage } from '../features/dashboard/DashboardPage';
+import { RouteLoadingState } from './RouteLoadingState';
 
 const MedicineCabinetPage = lazy(() => import('../features/cabinet/MedicineCabinetPage').then((module) => ({ default: module.MedicineCabinetPage })));
 const UploadPage = lazy(() => import('../features/demo/UploadPage').then((module) => ({ default: module.UploadPage })));
@@ -10,7 +11,7 @@ const RemindersPage = lazy(() => import('../features/reminders/RemindersPage').t
 
 function FeatureRoute({ component: Component, label }: { readonly component: LazyExoticComponent<ComponentType>; readonly label: string }) {
   return (
-    <Suspense fallback={<div role="status" aria-live="polite" aria-busy="true">Loading {label}â€¦</div>}>
+    <Suspense fallback={<RouteLoadingState label={label} />}>
       <Component />
     </Suspense>
   );
