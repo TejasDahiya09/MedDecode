@@ -43,7 +43,7 @@ def fake_module(tmp_path: Path) -> tuple[str, dict[str, str]]:
         "if mode=='large': print('x'*2000000); raise SystemExit(0)\n"
         "if mode=='exit': raise SystemExit(7)\n"
         "if os.environ.get('MEDDECODE_SAFE_OCR_DIAGNOSTICS')=='1': print('SAFE_OCR_ROUTE:EASYOCR=3:PADDLEOCR=1',file=sys.stderr)\n"
-        "print(json.dumps({'schema_version':'1.0','job_id':data['job_id'],'prescription_id':data['prescription_id'],'status':'completed','medicines':[],'warnings':[],'recommendations':[],'child_argv':sys.argv[1:],'paddle_source_check_disabled':os.environ.get('PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK')}))\n",
+        "print(json.dumps({'schema_version':'1.0','job_id':data['job_id'],'prescription_id':data['prescription_id'],'status':'completed','medicines':[],'warnings':[],'recommendations':[],'child_argv':sys.argv[1:],'paddle_source_check_disabled':os.environ.get('PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK'),'omp_threads':os.environ.get('OMP_NUM_THREADS'),'mkl_threads':os.environ.get('MKL_NUM_THREADS')}))\n",
         encoding="utf-8",
     )
     existing = os.environ.get("PYTHONPATH", "")
@@ -65,7 +65,23 @@ def test_success_and_identity_validation(tmp_path):
         result = await runner.run(document, REQUEST)
         assert result.payload["status"] == "completed"
         assert result.elapsed_ms >= 0
+        assert result.payload["omp_threads"] == "1"
+        assert result.payload["mkl_threads"] == "1"
         assert runner.active_process_count == 0
+    asyncio.run(exercise())
+
+
+def test_parent_thread_environment_cannot_bypass_child_memory_bound(tmp_path, monkeypatch):
+    monkeypatch.setenv("OMP_NUM_THREADS", "32")
+    monkeypatch.setenv("MKL_NUM_THREADS", "32")
+    document = tmp_path / "document.pdf"
+    document.write_bytes(b"test")
+
+    async def exercise():
+        result = await supervisor(tmp_path).run(document, REQUEST)
+        assert result.payload["omp_threads"] == "1"
+        assert result.payload["mkl_threads"] == "1"
+
     asyncio.run(exercise())
 
 

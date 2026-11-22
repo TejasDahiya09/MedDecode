@@ -275,6 +275,13 @@ class ProcessingSupervisor:
             key: value for key, value in os.environ.items()
             if key.startswith("MEDDECODE_CATALOGUE_") or key.upper() in system_keys
         }
+        # Bound native CPU thread pools before importing Torch/EasyOCR in the
+        # child. On Windows, a cold Torch 2.13 process otherwise transiently
+        # commits enough per-thread working memory to cross the unchanged
+        # 2 GiB process-tree guard. Explicit supervisor overrides remain the
+        # only supported way for isolated profiling to select another value.
+        child_environment["OMP_NUM_THREADS"] = "1"
+        child_environment["MKL_NUM_THREADS"] = "1"
         if self._adaptive_ocr_enabled:
             # Explicit local model directories are supplied on the command
             # line. Disable PaddleX source discovery so the child cannot turn
